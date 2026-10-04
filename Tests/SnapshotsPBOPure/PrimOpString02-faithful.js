@@ -6,10 +6,7 @@
  * @param {(string, string) => nat(bigint)} op
  * @returns {Array<nat(bigint)>}
  */
-export const stringValues = (op) => {
-  const x$1 = op("a", "a");
-  return [x$1, op("a", "b"), op("b", "a")];
-};
+export const stringValues = (op) => [op("a", "a"), op("a", "b"), op("b", "a")];
 
 /**
  * `test1`

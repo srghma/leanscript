@@ -527,7 +527,12 @@ partial def cBindArg {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {o : Lvl}
     ConvM (JsBlock S C M J e) :=
   match flat, a with
   | true, .record_mk as => cArgsBind as n C M J [] fun rs C' => rest (.fields rs false) C'
-  | _, a => do bindConst (← cPExpr a n C M) rest
+  | _, a => do
+    let e ← cPExpr a n C M
+    -- a literal is passed as it is (`Ref.lit`)
+    match e.lit? with
+    | some ⟨t, l⟩ => rest (.lit t l) C
+    | none => bindConst e rest
 
 /-- Elements of an array or list literal of type `A`. -/
 partial def cElems {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks} {o : Lvl} {A : JsTy}

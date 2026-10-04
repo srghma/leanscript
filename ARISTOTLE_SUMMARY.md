@@ -1,3 +1,38 @@
+# Summary of changes for run 347bc853-78c0-4753-9163-2ee8c17bd2d1
+The JavaScript for `Tests/SnapshotsPBOPure/PrimOpBoolean02.lean` now matches the legacy output at both presets, and `boolValues` is slightly better. The full comparison is in `Tests/SnapshotsPBOPure/PrimOpBoolean02.md`.
+
+**What I found:**
+- `test1` … `test9` already matched legacy line for line (with `export` in front). The `Term` optimiser inlines `boolValues` and folds each test to an array literal.
+- `boolValues` was the only difference. We printed `const x$1 = op(true, true); const x$2 = op(true, false); return [x$1, x$2, op(false, true), op(false, false)];`.
+- Legacy prints `[op(true)(true), op(true)(false), …]`.
+
+**Now:** `export const boolValues = (op) => [op(true, true), op(true, false), op(false, true), op(false, false)];`. This is legacy's shape, with one call of two arguments instead of two calls of one.
+
+**Why the first two calls had names, and what changed** (following your order of preference):
+- **`Term → Term`:** nothing to change. The optimised `Term` is already minimal: eight `let`s, each used once, in the order they are used. Both problems came after it.
+- **`Term → JsTerm` (conversion):** each literal argument was first bound to a constant (`const a = true; … op(a, b)`), which gave 12 constants instead of 4. A literal argument is now passed as it is. This is a new reference kind, `Ref.lit`, in `JsTerm/Lower/Basic.lean`, used by `cBindArg` in `JsTerm/Lower/FromTerm.lean`.
+- **Writing a constant read once at its use:** the printer had a hard limit here.
+  - It may only do this when no other call happens first, so call order is preserved. Calls that are themselves written at their uses don't count, but finding them was an exponential search cut off after 3 constants. The literal constants used up that limit.
+  - Even without them, six calls (`#[op 1 2, …, op 11 12]`) still kept `x$1` and `x$2`.
+  - The decisions are now made once per run of constants, from the last one up, in `JsBlock.constPlan` (`JsTerm/Syntax/Vars/Occs.lean`). Each decision reuses the ones already made for later constants, via a new `ahead` argument of `useFirst`/`constInline`. The printer (`JsTerm/Print/Mini/Block.lean`) passes the plan along in `Scope.plan`.
+  - This removes the limit and takes quadratic time. The rule itself is unchanged.
+  - This isn't a `JsTerm → JsTerm` pass: the printer is where a constant gets written at its use, and only the analysis behind that choice changed.
+- This file has no loops or recursion, so labelled blocks and loops didn't come into it.
+
+**Other outputs that improved:** the same way, with no named calls left, in `PrimOpChar02` (`charValues`), `PrimOpString02`, `StringHigherOrder` (`stringValues`), and `PrimOpInt02Configurable`/`NonConfigurable` (`intValues`, six calls).
+
+**Tests:**
+- New snapshot `Tests/SnapshotsMy/CallChain.lean`:
+  - runs of 6 and 8 calls, and calls whose arguments are calls (`[f("a"), f(g(1)), f("b"), …]`), are all written at their uses;
+  - `swapped` (calls made in the order 1, 2, 3 but read as 3, 2, 1) keeps `const x$1 = op(1, 2); const x$2 = op(3, 4); return [op(5, 6), x$2, x$1];`, so the calls still happen in the program's order.
+- 21/21 checks pass for it at both presets, and 9/9 for `PrimOpBoolean02` (`boolValues` takes a function, so it has no checks).
+- New `primOpBoolean02Spec` in `Tests/Main.lean`. It checks that every legacy `const testN` line appears in our output, checks the `boolValues` array and the `CallChain` fragments, checks that no literal is bound to a constant, and runs the checks with node.
+- I regenerated every snapshot and every node check passes. Three files (`PrimOpInt02Configurable`, `PrimOpInt03Configurable`, `PrimOpIntBit02Configurable`) still make `leanscript` exit with "literal too big" at the `pbo` preset. That happened before this change too: the committed outputs already list those definitions as not translated.
+- The full `tests --timeout 180` run passed 146/147. The one failure was my new spec expecting 10 checks for `PrimOpBoolean02` and a `CallChain` fragment that didn't account for `faithful`'s BigInt literals (`1n`). I fixed both, and the `PrimOpBoolean` specs now pass 3/3; I didn't re-run the whole suite after that fix.
+- `JsTerm`, `JsSpec`, `LanguageJavascriptMini`, `leanscript` and `tests` build.
+
+No new theorems were added: these are conversion and printer changes, and the snapshot checks back them up rather than a proof. Everything is committed.
+
 # Summary of changes for run b461234f-e1e2-4c17-a608-055325219d43
 The JavaScript for `Tests/SnapshotsPBOPure/PrimOpBoolean01.lean` now matches `legacy-backend/PrimOpBoolean01.js` line for line (with `export` in front), at both presets. All 34 checks against Lean pass at each preset. The full comparison is in `Tests/SnapshotsPBOPure/PrimOpBoolean01.md`.
 

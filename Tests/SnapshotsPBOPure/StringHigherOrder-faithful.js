@@ -6,18 +6,15 @@
  * @param {(string, string) => nat(bigint)} op
  * @returns {ConsList<nat(bigint)>}
  */
-export const stringValues = (op) => {
-  const x$1 = op("a", "a");
-  return {
+export const stringValues = (op) => ({
+  tag: 1,
+  _1: op("a", "a"),
+  _2: {
     tag: 1,
-    _1: x$1,
-    _2: {
-      tag: 1,
-      _1: op("a", "b"),
-      _2: { tag: 1, _1: op("b", "a"), _2: { tag: 0 } },
-    },
-  };
-};
+    _1: op("a", "b"),
+    _2: { tag: 1, _1: op("b", "a"), _2: { tag: 0 } },
+  },
+});
 
 /**
  * `test1`

@@ -143,6 +143,11 @@ inductive Ref where
       a subvalue, `JsTerm.Lower.DataRec`): made where it is read, or bound to a constant
       where the pair holding it is taken apart (`bindCalls`). -/
   | call (f : Ref) (args : List (Ref × JsTy)) (ret : JsTy)
+  /-- A literal (`true`, `0`, `"a"`), written wherever it is read: an argument of a call that is a
+      literal is passed as it is (`op(true, false)`), not first bound to a constant
+      (`const x = true;`), which would only stand between the calls the printer writes at their
+      uses (`cBindArg`). -/
+  | lit (t : JsTerminalTy) (l : JsLit t)
   deriving Inhabited
 
 /-- A variable of JavaScript as the facts on sizes name it: a mutable variable or not, and its
@@ -386,6 +391,7 @@ partial def Ref.get {C M : List JsTy} (r : Ref) (τ : JsTy) : ConvM (JsExpr S C 
       | none => throw "internal: the fields of a known constructor"
     | _ => throw s!"internal: a known constructor at the type {τ}"
   | .call f args ret => do castE (← papCall f args ret) τ
+  | .lit _ l => castE (.lit l) τ
 
 /-- The call of `base` on all its arguments `args`, answering a value of type `c`. -/
 partial def papCall {C M : List JsTy} (base : Ref) (args : List (Ref × JsTy)) (c : JsTy) :
@@ -441,6 +447,11 @@ partial def bindCalls {C M J : List JsTy} {k : JsEnd} (rs : List Ref) (used : Li
         rest (.c C.length :: rs'') C')
     | .call _ _ _, false => bindCalls rs' used.tail fun rs'' C' => rest (.none :: rs'') C'
     | _, _ => bindCalls rs' used.tail fun rs'' C' => rest (r :: rs'') C'
+
+/-- The literal the expression is, if it is one. -/
+def JsExpr.lit? {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Option (Σ t, JsLit t)
+  | .lit l => some ⟨_, l⟩
+  | _ => none
 
 /-- `e` as a constant, for `k`: `e` itself when it is a constant already, else `const x = e;`
     and the rest. -/

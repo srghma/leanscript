@@ -73,13 +73,14 @@ export const TestUInt64$test8 = [true, false, true, false, true, true];
  * @param {(uint53(number), uint53(number)) => uint53(number)} op
  * @returns {Array<uint53(number)>}
  */
-export const TestNat$intValues = (op) => {
-  const x$1 = op(1, 1);
-  const x$2 = op(1, 2);
-  const x$3 = op(2, 1);
-  const x$4 = op(1, 0);
-  return [x$1, x$2, x$3, x$4, op(0, 2), op(0, 0)];
-};
+export const TestNat$intValues = (op) => [
+  op(1, 1),
+  op(1, 2),
+  op(2, 1),
+  op(1, 0),
+  op(0, 2),
+  op(0, 0),
+];
 
 /**
  * `TestNat.test1`
@@ -146,13 +147,14 @@ export const TestNat$test10 = [1, 0, 2, 0, 0, 0];
  * @param {(int53(number), int53(number)) => uint53(number)} op
  * @returns {Array<uint53(number)>}
  */
-export const TestInt64$intValues = (op) => {
-  const x$1 = op(1, 1);
-  const x$2 = op(1, 2);
-  const x$3 = op(2, 1);
-  const x$4 = op(1, -2);
-  return [x$1, x$2, x$3, x$4, op(-1, 2), op(-1, -1)];
-};
+export const TestInt64$intValues = (op) => [
+  op(1, 1),
+  op(1, 2),
+  op(2, 1),
+  op(1, -2),
+  op(-1, 2),
+  op(-1, -1),
+];
 
 /**
  * `TestInt64.test1`
@@ -225,13 +227,14 @@ export const TestInt64$test11 = [-1, 1];
  * @param {(int53(number), int53(number)) => uint53(number)} op
  * @returns {Array<uint53(number)>}
  */
-export const TestInt$intValues = (op) => {
-  const x$1 = op(1, 1);
-  const x$2 = op(1, 2);
-  const x$3 = op(2, 1);
-  const x$4 = op(1, -2);
-  return [x$1, x$2, x$3, x$4, op(-1, 2), op(-1, -1)];
-};
+export const TestInt$intValues = (op) => [
+  op(1, 1),
+  op(1, 2),
+  op(2, 1),
+  op(1, -2),
+  op(-1, 2),
+  op(-1, -1),
+];
 
 /**
  * `TestInt.test1`

@@ -294,12 +294,18 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
   | .const hint e rest => do
     -- a constant read once, where its computation can be moved to (not in a loop or a closure,
     -- nothing in between that the move would reorder): its value written there
-    if constInline e rest then
-      let m ← exprToMini sc e
-      return ← blockToMini { sc with c := m :: sc.c } tl rest
-    let m ← exprToMini sc e
-    let x ← constName sc hint e
-    return constDecl x m :: (← blockToMini { sc with c := ident x :: sc.c } tl rest)
+    -- (decided once for the whole run of constants it starts, `JsBlock.constPlan`)
+    let plan := match sc.plan with
+      | [] => (JsBlock.const hint e rest).constPlan
+      | p => p
+    let sc' := { sc with plan := [] }
+    if plan.headD false then
+      let m ← exprToMini sc' e
+      return ← blockToMini { sc' with c := m :: sc.c, plan := plan.tail } tl rest
+    let m ← exprToMini sc' e
+    let x ← constName sc' hint e
+    return constDecl x m ::
+      (← blockToMini { sc' with c := ident x :: sc.c, plan := plan.tail } tl rest)
   | .letMut hint e rest => do
     let e ← exprToMini sc e
     let x ← freshName hint

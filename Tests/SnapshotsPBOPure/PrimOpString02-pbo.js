@@ -6,10 +6,7 @@
  * @param {(string, string) => uint53(number)} op
  * @returns {Array<uint53(number)>}
  */
-export const stringValues = (op) => {
-  const x$1 = op("a", "a");
-  return [x$1, op("a", "b"), op("b", "a")];
-};
+export const stringValues = (op) => [op("a", "a"), op("a", "b"), op("b", "a")];
 
 /**
  * `test1`

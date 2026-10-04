@@ -6,11 +6,12 @@
  * @param {(boolean, boolean) => boolean} op
  * @returns {Array<boolean>}
  */
-export const boolValues = (op) => {
-  const x$1 = op(true, true);
-  const x$2 = op(true, false);
-  return [x$1, x$2, op(false, true), op(false, false)];
-};
+export const boolValues = (op) => [
+  op(true, true),
+  op(true, false),
+  op(false, true),
+  op(false, false),
+];
 
 /**
  * `test1`

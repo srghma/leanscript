@@ -117,6 +117,9 @@ structure Scope where
   m : List String := []
   joins : List (String × String) := []
   loop : LoopExit := .none
+  /-- Whether each constant of the run of constants being printed is written at its use
+      (`JsBlock.constPlan`, decided once for the run, at its first constant; empty elsewhere). -/
+  plan : List Bool := []
 
 /-- Where a block ends: at the end of the body of a loop (a `next` there is nothing), at the
     end of the labelled block of the innermost join point (a jump to it needs no `break`). -/

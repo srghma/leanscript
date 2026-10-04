@@ -345,27 +345,36 @@ mutual
     computation is moved to its use (`constInline`) is no obstacle, provided `x` is read before
     it (`bars`); `fuel` bounds how many such constants are looked through. -/
 partial def JsBlock.useFirst {C M J : List JsTy} {k : JsEnd} (strict : Bool) (reads : List Nat)
-    (x : Nat) (bars : List Nat := []) (fuel : Nat := 3) : JsBlock S C M J k → Bool
+    (x : Nat) (bars : List Nat := []) (fuel : Nat := 3) (ahead : List Bool := []) :
+    JsBlock S C M J k → Bool
   | .ret a | .jump _ a | .raise a => a.readFirst strict x bars
   | .const _ a r =>
+    -- whether this constant is written at its use, when known already (`ahead`, the decisions
+    -- `JsBlock.constPlan` made for the constants that follow): then it is not looked into again
+    let (known, ahead') : Option Bool × List Bool := match ahead with
+      | b :: t => (some b, t)
+      | [] => (none, [])
+    -- a constant that can be computed anywhere (`movable`: a literal, a variable) is no
+    -- obstacle wherever it ends up, so it is not one of `bars`; a constant of `bars` that
+    -- `a` reads is read (once) inside `a`, so it is after `x` once `a` is
+    let bars' := if a.movable then bars.map (· + 1)
+      else 0 :: (bars.filter (fun b => !a.mentions ⟨false, b⟩)).map (· + 1)
     if a.mentions ⟨false, x⟩ then
       -- read by a constant that is itself moved to its use: it might then be read after a
       -- constant of `bars`, unless `a` reads all of them (each is read once, so only there,
       -- after `x`, which `a` reads first: `const x = f(); const y = g(); const z = x(y(a));`)
-      if !bars.isEmpty && constInline a r fuel &&
-          !bars.all (fun b => a.mentions ⟨false, b⟩) then false
+      let inl := match known with
+        | some b => b
+        | none => constInline a r fuel
+      if !bars.isEmpty && inl && !bars.all (fun b => a.mentions ⟨false, b⟩) then false
       else a.readFirst strict x bars
     else if !strict && a.waits strict bars then
-      r.useFirst strict reads (x + 1) (bars.map (· + 1)) fuel
-    else match fuel with
-      | 0 => false
-      | fuel + 1 =>
-        -- a constant that can be computed anywhere (`movable`: a literal, a variable) is no
-        -- obstacle wherever it ends up, so it is not one of `bars`; a constant of `bars` that
-        -- `a` reads is read (once) inside `a`, so it is after `x` once `a` is
-        let bars' := if a.movable then bars.map (· + 1)
-          else 0 :: (bars.filter (fun b => !a.mentions ⟨false, b⟩)).map (· + 1)
-        constInline a r fuel && r.useFirst strict reads (x + 1) bars' fuel
+      r.useFirst strict reads (x + 1) (bars.map (· + 1)) fuel ahead'
+    else match known with
+      | some b => b && r.useFirst strict reads (x + 1) bars' fuel ahead'
+      | none => match fuel with
+        | 0 => false
+        | fuel + 1 => constInline a r fuel && r.useFirst strict reads (x + 1) bars' fuel
   | .assign y a r =>
     if a.mentions ⟨false, x⟩ then a.readFirst strict x bars
     else !strict && a.waits strict bars && !reads.contains y.index &&
@@ -386,7 +395,7 @@ partial def JsBlock.useFirst {C M J : List JsTy} {k : JsEnd} (strict : Bool) (re
     computing `e` gives the same result (`JsExpr.movable` anywhere; otherwise at a use it reads
     first, `JsBlock.useFirst`)? -/
 partial def constInline {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (e : JsExpr S C M τ)
-    (rest : JsBlock S (τ :: C) M J k) (fuel : Nat := 3) : Bool :=
+    (rest : JsBlock S (τ :: C) M J k) (fuel : Nat := 3) (ahead : List Bool := []) : Bool :=
   let us := rest.occs.filter fun o => !o.isMut && o.idx == 0
   match us.toList with
   | [u] =>
@@ -399,9 +408,21 @@ partial def constInline {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (e : JsExpr 
       else if e.movable then true
       else
         let reads := (e.occs.filter (·.isMut)).toList.map (·.idx)
-        rest.useFirst (!e.noEffect) reads 0 [] fuel
+        rest.useFirst (!e.noEffect) reads 0 [] fuel ahead
   | _ => false
 end
+
+/-- For a run of constants `const x₁ = e₁; …; const xₙ = eₙ;` at the start of the block, whether
+    each is written at its use (`constInline`), decided from the last one up: each decision
+    knows the ones of the constants after it (`ahead`), instead of finding them again, with a
+    bound on how many it looks through (`fuel`).  So a computation read once is written at its
+    use however many others written at theirs come before that use
+    (`return [f(1), f(2), f(3), f(4), f(5)];`), in time quadratic in the length of the run. -/
+partial def JsBlock.constPlan {C M J : List JsTy} {k : JsEnd} : JsBlock S C M J k → List Bool
+  | .const _ e r =>
+    let ds := r.constPlan
+    constInline e r 3 ds :: ds
+  | _ => []
 
 end MoreJs
 

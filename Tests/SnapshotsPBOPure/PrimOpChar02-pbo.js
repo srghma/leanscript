@@ -6,10 +6,7 @@
  * @param {(string, string) => boolean} op
  * @returns {Array<boolean>}
  */
-export const charValues = (op) => {
-  const x$1 = op("a", "a");
-  return [x$1, op("a", "b"), op("b", "a")];
-};
+export const charValues = (op) => [op("a", "a"), op("a", "b"), op("b", "a")];
 
 /**
  * `test1`

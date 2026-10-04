@@ -31,20 +31,14 @@
  * @param {(nat(bigint), nat(bigint)) => nat(bigint)} op
  * @returns {Array<nat(bigint)>}
  */
-export const TestUInt64$intValues = (op) => {
-  const x$1 = op(1n, 1n);
-  const x$2 = op(1n, 2n);
-  const x$3 = op(2n, 1n);
-  const x$4 = op(1n, 18446744073709551614n);
-  return [
-    x$1,
-    x$2,
-    x$3,
-    x$4,
-    op(18446744073709551615n, 2n),
-    op(18446744073709551615n, 18446744073709551615n),
-  ];
-};
+export const TestUInt64$intValues = (op) => [
+  op(1n, 1n),
+  op(1n, 2n),
+  op(2n, 1n),
+  op(1n, 18446744073709551614n),
+  op(18446744073709551615n, 2n),
+  op(18446744073709551615n, 18446744073709551615n),
+];
 
 /**
  * `TestUInt64.test1`
@@ -145,13 +139,14 @@ export const TestUInt64$test11 = BigUint64Array.of(18446744073709551615n, 1n);
  * @param {(nat(bigint), nat(bigint)) => nat(bigint)} op
  * @returns {Array<nat(bigint)>}
  */
-export const TestNat$intValues = (op) => {
-  const x$1 = op(1n, 1n);
-  const x$2 = op(1n, 2n);
-  const x$3 = op(2n, 1n);
-  const x$4 = op(1n, 0n);
-  return [x$1, x$2, x$3, x$4, op(0n, 2n), op(0n, 0n)];
-};
+export const TestNat$intValues = (op) => [
+  op(1n, 1n),
+  op(1n, 2n),
+  op(2n, 1n),
+  op(1n, 0n),
+  op(0n, 2n),
+  op(0n, 0n),
+];
 
 /**
  * `TestNat.test1`
@@ -218,13 +213,14 @@ export const TestNat$test10 = [1n, 0n, 2n, 0n, 0n, 0n];
  * @param {(int(bigint), int(bigint)) => nat(bigint)} op
  * @returns {Array<nat(bigint)>}
  */
-export const TestInt64$intValues = (op) => {
-  const x$1 = op(1n, 1n);
-  const x$2 = op(1n, 2n);
-  const x$3 = op(2n, 1n);
-  const x$4 = op(1n, -2n);
-  return [x$1, x$2, x$3, x$4, op(-1n, 2n), op(-1n, -1n)];
-};
+export const TestInt64$intValues = (op) => [
+  op(1n, 1n),
+  op(1n, 2n),
+  op(2n, 1n),
+  op(1n, -2n),
+  op(-1n, 2n),
+  op(-1n, -1n),
+];
 
 /**
  * `TestInt64.test1`
@@ -297,13 +293,14 @@ export const TestInt64$test11 = BigInt64Array.of(-1n, 1n);
  * @param {(int(bigint), int(bigint)) => nat(bigint)} op
  * @returns {Array<nat(bigint)>}
  */
-export const TestInt$intValues = (op) => {
-  const x$1 = op(1n, 1n);
-  const x$2 = op(1n, 2n);
-  const x$3 = op(2n, 1n);
-  const x$4 = op(1n, -2n);
-  return [x$1, x$2, x$3, x$4, op(-1n, 2n), op(-1n, -1n)];
-};
+export const TestInt$intValues = (op) => [
+  op(1n, 1n),
+  op(1n, 2n),
+  op(2n, 1n),
+  op(1n, -2n),
+  op(-1n, 2n),
+  op(-1n, -1n),
+];
 
 /**
  * `TestInt.test1`

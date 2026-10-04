@@ -3585,6 +3585,73 @@ def primOpBoolean01Spec : Spec := describe "PrimOpBoolean01" do
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+/-! `Tests/SnapshotsPBOPure/PrimOpBoolean02.lean`: `boolValues op` calls `op` on the four pairs of
+booleans; the nine tests are folded to array literals.  `boolValues` is written as one array of
+the four calls, as purescript-backend-optimizer writes it (`legacy-backend/PrimOpBoolean02.js`,
+which calls `op(true)(true)`): a literal argument is passed as it is (`Ref.lit`, in the
+conversion), and the decisions to write a constant read once at its use are made for a whole run
+of constants (`JsBlock.constPlan`, in the printer), so not only for the last few.
+`Tests/SnapshotsMy/CallChain.lean` has longer runs, and calls that must stay named. -/
+
+/-- The JavaScript with the suffix `n` of its `BigInt` literals dropped (`op(1n, 2n)` is
+    `op(1, 2)`), so that one fragment is checked at both presets. -/
+def dropBigIntSuffix (js : String) : String := Id.run do
+  let cs := js.toList.toArray
+  let mut out : Array Char := #[]
+  for i in [0:cs.size] do
+    let c := cs[i]!
+    let prevDigit := i > 0 && cs[i-1]!.isDigit
+    let nextWord := i + 1 < cs.size && (cs[i+1]!.isAlphanum || cs[i+1]! == '_' || cs[i+1]! == '$')
+    unless c == 'n' && prevDigit && !nextWord do out := out.push c
+  return String.mk out.toList
+
+def primOpBoolean02Spec : Spec := describe "PrimOpBoolean02" do
+  it "calls read once are written at their uses, as in legacy (needs node and leanscript)"
+      (timeoutMs? := some 120000) do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/primopboolean02"
+    IO.FS.createDirAll dir
+    -- every line `const testN = [...];` of the legacy output is a line of ours, after `export `
+    let legacy ← IO.FS.readFile "Tests/SnapshotsPBOPure/legacy-backend/PrimOpBoolean02.js"
+    let legacyFns := (legacy.splitOn "\n").filter (fun (l : String) => l.startsWith "const test")
+    assertEq "legacy: nine tests" 9 legacyFns.length
+    let boolValues :=
+      "export const boolValues = (op) => [\n  op(true, true),\n  op(true, false),\n  op(false, true),\n  op(false, false),\n];"
+    -- (directory, file, fragments, fragments that must not appear, checks)
+    for (path, file, frags, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "PrimOpBoolean02", boolValues :: legacyFns.map ("export " ++ ·),
+          ["const x"], (9 : Nat)),
+        ("Tests/SnapshotsMy", "CallChain",
+          [boolValues,
+           "export const chain6 = (op) => [\n  op(1, 2),\n  op(3, 4),\n  op(5, 6),\n  op(7, 8),",
+           "  op(11, 12),\n];",
+           "export const chainVars = (op, a, b) => [\n  op(a, b),\n  op(b, a),\n  op(a, a),\n  op(b, b),",
+           "export const chainStr = (f, g) => [f(\"a\"), f(g(1)), f(\"b\"), f(g(2)), f(\"c\")];",
+           -- made in the order 1, 2, 3, read in the order 3, 2, 1: the first two stay named
+           "  const x$1 = op(1, 2);\n  const x$2 = op(3, 4);\n  return [op(5, 6), x$2, x$1];"],
+          ["= true;", "= false;"], 21)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript exit code" 0 out.exitCode
+      for preset in ["pbo", "faithful"] do
+        let js := dropBigIntSuffix (← IO.FS.readFile s!"{dir}/{file}-{preset}.js")
+        assertEq s!"{file}-{preset}: every function translated" false
+          ((js.splitOn "not translated").length > 1)
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -3640,6 +3707,7 @@ def spec : Spec := do
   primOpBitVec01Spec
   primOpBitVec02Spec
   primOpBoolean01Spec
+  primOpBoolean02Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

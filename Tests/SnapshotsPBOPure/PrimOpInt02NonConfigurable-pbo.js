@@ -6,13 +6,14 @@
  * @param {(uint8, uint8) => uint53(number)} op
  * @returns {Array<uint53(number)>}
  */
-export const TestUInt8$intValues = (op) => {
-  const x$1 = op(1, 1);
-  const x$2 = op(1, 2);
-  const x$3 = op(2, 1);
-  const x$4 = op(1, 254);
-  return [x$1, x$2, x$3, x$4, op(255, 2), op(255, 255)];
-};
+export const TestUInt8$intValues = (op) => [
+  op(1, 1),
+  op(1, 2),
+  op(2, 1),
+  op(1, 254),
+  op(255, 2),
+  op(255, 255),
+];
 
 /**
  * `TestUInt8.test1`
@@ -85,13 +86,14 @@ export const TestUInt8$test11 = [255, 1];
  * @param {(uint16, uint16) => uint53(number)} op
  * @returns {Array<uint53(number)>}
  */
-export const TestUInt16$intValues = (op) => {
-  const x$1 = op(1, 1);
-  const x$2 = op(1, 2);
-  const x$3 = op(2, 1);
-  const x$4 = op(1, 65534);
-  return [x$1, x$2, x$3, x$4, op(65535, 2), op(65535, 65535)];
-};
+export const TestUInt16$intValues = (op) => [
+  op(1, 1),
+  op(1, 2),
+  op(2, 1),
+  op(1, 65534),
+  op(65535, 2),
+  op(65535, 65535),
+];
 
 /**
  * `TestUInt16.test1`
@@ -164,13 +166,14 @@ export const TestUInt16$test11 = [65535, 1];
  * @param {(uint32, uint32) => uint53(number)} op
  * @returns {Array<uint53(number)>}
  */
-export const TestUInt32$intValues = (op) => {
-  const x$1 = op(1, 1);
-  const x$2 = op(1, 2);
-  const x$3 = op(2, 1);
-  const x$4 = op(1, 4294967294);
-  return [x$1, x$2, x$3, x$4, op(4294967295, 2), op(4294967295, 4294967295)];
-};
+export const TestUInt32$intValues = (op) => [
+  op(1, 1),
+  op(1, 2),
+  op(2, 1),
+  op(1, 4294967294),
+  op(4294967295, 2),
+  op(4294967295, 4294967295),
+];
 
 /**
  * `TestUInt32.test1`
@@ -243,13 +246,14 @@ export const TestUInt32$test11 = [4294967295, 1];
  * @param {(int8, int8) => uint53(number)} op
  * @returns {Array<uint53(number)>}
  */
-export const TestInt8$intValues = (op) => {
-  const x$1 = op(1, 1);
-  const x$2 = op(1, 2);
-  const x$3 = op(2, 1);
-  const x$4 = op(1, -2);
-  return [x$1, x$2, x$3, x$4, op(-1, 2), op(-1, -1)];
-};
+export const TestInt8$intValues = (op) => [
+  op(1, 1),
+  op(1, 2),
+  op(2, 1),
+  op(1, -2),
+  op(-1, 2),
+  op(-1, -1),
+];
 
 /**
  * `TestInt8.test1`
@@ -322,13 +326,14 @@ export const TestInt8$test11 = [-1, 1];
  * @param {(int16, int16) => uint53(number)} op
  * @returns {Array<uint53(number)>}
  */
-export const TestInt16$intValues = (op) => {
-  const x$1 = op(1, 1);
-  const x$2 = op(1, 2);
-  const x$3 = op(2, 1);
-  const x$4 = op(1, -2);
-  return [x$1, x$2, x$3, x$4, op(-1, 2), op(-1, -1)];
-};
+export const TestInt16$intValues = (op) => [
+  op(1, 1),
+  op(1, 2),
+  op(2, 1),
+  op(1, -2),
+  op(-1, 2),
+  op(-1, -1),
+];
 
 /**
  * `TestInt16.test1`
@@ -401,13 +406,14 @@ export const TestInt16$test11 = TestInt8$test11;
  * @param {(int32, int32) => uint53(number)} op
  * @returns {Array<uint53(number)>}
  */
-export const TestInt32$intValues = (op) => {
-  const x$1 = op(1, 1);
-  const x$2 = op(1, 2);
-  const x$3 = op(2, 1);
-  const x$4 = op(1, -2);
-  return [x$1, x$2, x$3, x$4, op(-1, 2), op(-1, -1)];
-};
+export const TestInt32$intValues = (op) => [
+  op(1, 1),
+  op(1, 2),
+  op(2, 1),
+  op(1, -2),
+  op(-1, 2),
+  op(-1, -1),
+];
 
 /**
  * `TestInt32.test1`
