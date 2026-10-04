@@ -347,6 +347,55 @@ def runtimeNames : List String :=
 
 end JsListOp
 
+/-- A comparison of two booleans written as a JavaScript operator (`JsExpr.boolCmp`).  The
+    relational operators compare booleans as the numbers `0` (`false`) and `1` (`true`), so
+    `a < b` is `!a && b` and `a <= b` is `!a || b`. -/
+inductive JsBoolCmp where
+  /-- `a === b`. -/
+  | eq
+  /-- `a !== b`. -/
+  | ne
+  /-- `a < b`: `a` is `false` and `b` is `true`. -/
+  | lt
+  /-- `a <= b`: `a` is `false` or `b` is `true`. -/
+  | le
+  /-- `a > b`: `a` is `true` and `b` is `false`. -/
+  | gt
+  /-- `a >= b`: `a` is `true` or `b` is `false`. -/
+  | ge
+  deriving Inhabited, BEq, DecidableEq, Repr
+
+/-- The JavaScript operator of a comparison of booleans. -/
+def JsBoolCmp.op : JsBoolCmp → String
+  | .eq => "==="
+  | .ne => "!=="
+  | .lt => "<"
+  | .le => "<="
+  | .gt => ">"
+  | .ge => ">="
+
+/-- The answer of a comparison of booleans (`false < true`, as JavaScript compares them). -/
+def JsBoolCmp.eval : JsBoolCmp → Bool → Bool → Bool
+  | .eq, a, b => a == b
+  | .ne, a, b => a != b
+  | .lt, a, b => !a && b
+  | .le, a, b => !a || b
+  | .gt, a, b => a && !b
+  | .ge, a, b => a || !b
+
+/-- The opposite comparison: `!(a op b)` is `a op.neg b`. -/
+def JsBoolCmp.neg : JsBoolCmp → JsBoolCmp
+  | .eq => .ne
+  | .ne => .eq
+  | .lt => .ge
+  | .le => .gt
+  | .gt => .le
+  | .ge => .lt
+
+/-- The opposite comparison answers the negation. -/
+theorem JsBoolCmp.eval_neg (op : JsBoolCmp) (a b : Bool) : op.neg.eval a b = !op.eval a b := by
+  cases op <;> cases a <;> cases b <;> rfl
+
 /-! ## Expressions and blocks -/
 
 mutual
@@ -396,6 +445,10 @@ inductive JsExpr (S : JsSig) : List JsTy → List JsTy → JsTy → Type where
       (e : JsExpr S C M (.enum n shift)) : JsExpr S C M N
   /-- `a === b` on two constructors of the same enum. -/
   | enumEq {C M : List JsTy} {n : Nat} {shift : Int} (a b : JsExpr S C M (.enum n shift)) :
+      JsExpr S C M (.terminal .bool)
+  /-- `a op b` on two booleans (`a === b`, `a !== b`, `a < b`, `a <= b`, …, `JsBoolCmp`): both
+      operands are always computed, `a` first. -/
+  | boolCmp {C M : List JsTy} (op : JsBoolCmp) (a b : JsExpr S C M (.terminal .bool)) :
       JsExpr S C M (.terminal .bool)
   /-- `[e₀, ...a, e₂]` (a generic array) or `Uint8Array.of(e₀, ...a)` (a typed array). -/
   | array_mk {C M : List JsTy} {A E : JsTy} (l : JsArrayLayout A E) (parts : JsParts S C M A E) :

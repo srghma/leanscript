@@ -44,6 +44,7 @@ partial def JsExpr.runtimeNames {C M : List JsTy} {τ : JsTy} (acc : Array Strin
     | none => acc)
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.runtimeNames acc
   | .enumEq a b => b.runtimeNames (a.runtimeNames acc)
+  | .boolCmp _ a b => b.runtimeNames (a.runtimeNames acc)
   | .index _ _ a i => i.runtimeNames (a.runtimeNames acc)
   | .indexOr _ _ a i d => d.runtimeNames (i.runtimeNames (a.runtimeNames acc))
   | _ => acc

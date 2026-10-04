@@ -91,6 +91,7 @@ def JsExpr.substG {C M C' M' : List JsTy} (rc : JsSubG C C') (rm : JsRenM Option
   | .enum_mk n s i => pure (.enum_mk n s i)
   | .enumIndex nt e => .enumIndex nt <$> e.substG rc rm
   | .enumEq a b => return .enumEq (← a.substG rc rm) (← b.substG rc rm)
+  | .boolCmp op a b => return .boolCmp op (← a.substG rc rm) (← b.substG rc rm)
   | .index l nt a i => return .index l nt (← a.substG rc rm) (← i.substG rc rm)
   | .indexOr l nt a i d =>
     return .indexOr l nt (← a.substG rc rm) (← i.substG rc rm) (← d.substG rc rm)
@@ -257,6 +258,7 @@ partial def JsExpr.linkFuns {C M : List JsTy} {τ : JsTy} (tbl : List (List JsTy
   | .union_mk ix as => .union_mk ix (as.linkFuns tbl)
   | .enumIndex nt e => .enumIndex nt (e.linkFuns tbl)
   | .enumEq a b => .enumEq (a.linkFuns tbl) (b.linkFuns tbl)
+  | .boolCmp op a b => .boolCmp op (a.linkFuns tbl) (b.linkFuns tbl)
   | .index l nt a i => .index l nt (a.linkFuns tbl) (i.linkFuns tbl)
   | .indexOr l nt a i d => .indexOr l nt (a.linkFuns tbl) (i.linkFuns tbl) (d.linkFuns tbl)
   | .array_mk l ps => .array_mk l (ps.linkFuns tbl)

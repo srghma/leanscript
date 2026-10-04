@@ -101,7 +101,7 @@ export const testEq = (inst, noInline, a, b, expected) => {
     x$2 = !noInline(a, b);
   }
   if (x$2) {
-    return x$1 ? expected : !expected;
+    return x$1 === expected;
   }
   return false;
 };
@@ -124,7 +124,7 @@ export const testNe = (inst, noInline, a, b, expected) => {
     x$2 = noInline(a, b);
   }
   if (x$2) {
-    return x$1 ? !expected : expected;
+    return x$1 !== expected;
   }
   return false;
 };

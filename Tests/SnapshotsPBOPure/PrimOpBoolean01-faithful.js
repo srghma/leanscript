@@ -23,7 +23,7 @@ export const test2 = (a, b) => a || b;
  * @param {boolean} b
  * @returns {boolean}
  */
-export const test3 = (a, b) => (a ? b : !b);
+export const test3 = (a, b) => a === b;
 
 /**
  * `test4`
@@ -31,7 +31,7 @@ export const test3 = (a, b) => (a ? b : !b);
  * @param {boolean} b
  * @returns {boolean}
  */
-export const test4 = (a, b) => !(a ? b : !b);
+export const test4 = (a, b) => a !== b;
 
 /**
  * `test5`
@@ -39,7 +39,7 @@ export const test4 = (a, b) => !(a ? b : !b);
  * @param {boolean} b
  * @returns {boolean}
  */
-export const test5 = (a, b) => (a ? false : b);
+export const test5 = (a, b) => a < b;
 
 /**
  * `test6`
@@ -47,7 +47,7 @@ export const test5 = (a, b) => (a ? false : b);
  * @param {boolean} b
  * @returns {boolean}
  */
-export const test6 = (a, b) => (b ? false : a);
+export const test6 = (a, b) => a > b;
 
 /**
  * `test7`
@@ -55,7 +55,7 @@ export const test6 = (a, b) => (b ? false : a);
  * @param {boolean} b
  * @returns {boolean}
  */
-export const test7 = (a, b) => (a ? b : true);
+export const test7 = (a, b) => a <= b;
 
 /**
  * `test8`
@@ -63,7 +63,7 @@ export const test7 = (a, b) => (a ? b : true);
  * @param {boolean} b
  * @returns {boolean}
  */
-export const test8 = (a, b) => (b ? a : true);
+export const test8 = (a, b) => a >= b;
 
 /**
  * `test9`

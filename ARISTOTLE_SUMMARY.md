@@ -1,3 +1,41 @@
+# Summary of changes for run b461234f-e1e2-4c17-a608-055325219d43
+The JavaScript for `Tests/SnapshotsPBOPure/PrimOpBoolean01.lean` now matches `legacy-backend/PrimOpBoolean01.js` line for line (with `export` in front), at both presets. All 34 checks against Lean pass at each preset. The full comparison is in `Tests/SnapshotsPBOPure/PrimOpBoolean01.md`.
+
+| fn | before | now = legacy |
+|---|---|---|
+| `test1`, `test2`, `test9` | `a && b`, `a \|\| b`, `!a` | unchanged |
+| `test3` (`==`) | `(a ? b : !b)` | `a === b` |
+| `test4` (`!=`) | `!(a ? b : !b)` | `a !== b` |
+| `test5` (`<`) | `(a ? false : b)` | `a < b` |
+| `test6` (`>`) | `(b ? false : a)` | `a > b` |
+| `test7` (`<=`) | `(a ? b : true)` | `a <= b` |
+| `test8` (`>=`) | `(b ? a : true)` | `a >= b` |
+
+**Which phase:** this couldn't go in `Term → Term`. Lean's comparisons on `Bool` aren't externs, so they reach `Term` as conditionals (`cond(a, b, cond(b, false, true))`, …). `Term` has no operation comparing two booleans to rewrite them to, and the `Term` optimiser already leaves them as small as `Term` allows. So the change is in `Term → JsTerm`, your second choice:
+- **New node:** `JsExpr.boolCmp` (`===`, `!==`, `<`, `<=`, `>`, `>=` on booleans), defined in `JsTerm/Syntax/Basic.lean`. Every pass over `JsTerm` handles it.
+- **Rewrite:** `JsExpr.boolCond?` in the new file `JsTerm/Lower/BoolCmp.lean`, called where the conversion handles conditionals.
+
+**When the rewrite applies** (this keeps what is evaluated, and in what order):
+- `c ? y : !y` becomes `c === y` for any condition `c`, as long as both copies of `y` are the same variable. `c ? !y : y` becomes `c !== y`.
+- `c ? false : y` becomes `c < y`, and `c ? y : true` becomes `c <= y`, only when `c` and `y` are both variables. A conditional reads `y` for only one value of `c`, while a comparison always reads it.
+- When both sides are variables, the parameter declared first goes on the left, so you get `a > b` rather than `b < a`.
+- Negating a comparison gives the opposite one: `!(a < b)` becomes `a >= b`.
+
+**Proofs:** the boolean identities each rule relies on are proved without `sorry` and use no axioms (`JsBoolCmp.eval_eq`, `eval_ne`, `eval_lt`, `eval_le`, `cond_neg`, `eval_neg`). They're stated about a model of how JavaScript compares booleans. The rewrite code itself is not formally verified; the checks back it up.
+
+The `JsTerm` optimiser wasn't changed. This file has no loops or recursion, so labelled blocks and loops didn't come into it.
+
+**Tests:**
+- New snapshot `Tests/SnapshotsMy/BoolCmp.lean` covers computed operands, all the negations, a comparison used as a condition, `decide (a = b)`, and parameters that aren't adjacent. 110/110 checks pass at both presets.
+- New `primOpBoolean01Spec` in `Tests/Main.lean`. It checks every legacy line appears in our output, checks the expected `BoolCmp` lines, and runs both files' checks.
+- I regenerated all snapshots and no check fails. The only other output that changed is `PrimOpNumber02`: `testEq` and `testNe` now return `x$1 === expected` and `x$1 !== expected`.
+- `tests --timeout 180` passes 146/146.
+- `JsTerm`, `JsSpec`, `TermTests`, `TyTests`, `LanguageJavascriptMini`, `leanscript`, `tests`, `RuntimeSpec` and `OpsSpec` build.
+
+**Not changed:** a computed condition keeps its conditional, e.g. `decide (x < 5) < b` stays `(x < 5 ? false : b)`.
+
+Everything is committed.
+
 # Summary of changes for run 009cfc17-02a4-4902-8fe7-27e3a7b91762
 All 12 functions in `Tests/SnapshotsPBOPure/PrimOpBitVec02Configurable.lean` now translate, and each one's JavaScript is on par with the purescript-backend-optimizer references (`-num.js` / `-bigint.js`) or better. Before this run, the four shifts failed with "`BitVec 32` is a leaf of the language". The function-by-function comparison is in `Tests/SnapshotsPBOPure/PrimOpBitVec02Configurable.md`.
 

@@ -87,6 +87,7 @@ def JsExpr.occsAt {C M : List JsTy} {τ : JsTy} (o : OccCtx) : JsExpr S C M τ �
   | .imported _ as | .inlined _ as | .listOp _ as => as.occsAt o
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.occsAt o
   | .enumEq a b => a.occsAt o ++ b.occsAt o
+  | .boolCmp _ a b => a.occsAt o ++ b.occsAt o
   | .index _ _ a i => a.occsAt o ++ i.occsAt o
   | .indexOr _ _ a i d => a.occsAt o ++ i.occsAt o ++ d.occsAt o
   | .app f as =>
@@ -174,6 +175,7 @@ def JsExpr.movable {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
   | .cvar _ | .lit _ | .enum_mk .. | .unreachable _ | .lam .. | .global _ => true
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.movable
   | .enumEq a b => a.movable && b.movable
+  | .boolCmp _ a b => a.movable && b.movable
   | .record_mk fs => fs.movable
   | .union_mk _ as => as.movable
   | .cond c a b => c.movable && a.movable && b.movable
@@ -197,6 +199,7 @@ def JsExpr.noEffect {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
   | .cvar _ | .mvar _ | .lit _ | .enum_mk .. | .unreachable _ | .lam .. | .global _ => true
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.noEffect
   | .enumEq a b => a.noEffect && b.noEffect
+  | .boolCmp _ a b => a.noEffect && b.noEffect
   | .index _ _ a i => a.noEffect && i.noEffect
   | .indexOr _ _ a i d => a.noEffect && i.noEffect && d.noEffect
   | .record_mk fs => fs.noEffect
@@ -271,6 +274,7 @@ partial def JsExpr.readFirst {C M : List JsTy} {τ : JsTy} (strict : Bool) (x : 
   | .cvar y => y.index == x
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.readFirst strict x bars
   | .enumEq a b => JsExpr.readFirst2 strict x bars a b
+  | .boolCmp _ a b => JsExpr.readFirst2 strict x bars a b
   | .index _ _ a i => JsExpr.readFirst2 strict x bars a i
   -- `a[i] ?? d` computes `a`, then `i`, then (out of bounds) `d`
   | .indexOr _ _ a i d =>

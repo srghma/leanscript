@@ -3,6 +3,7 @@ module
 public import JsTerm.Lower.DataRec
 public import JsTerm.Lower.Bounds
 public import JsTerm.Lower.Shift
+public import JsTerm.Lower.BoolCmp
 public import LeanScript.Term.Optimize.KnownCond
 
 @[expose] public section
@@ -23,7 +24,7 @@ syntax-directed and type-directed: a `Term` of type `τ` becomes a `JsTerm` of t
 | `PExpr.lit` | a literal at the configured representation (`12n` or `12`); a literal that does not fit in a `number` is refused |
 | `record_mk`, `union_mk ix`, `array_mk`, `list_mk` | `{ _1: f₁, … }`, `{ tag: ix, _1: f₁, … }`, `[e₀, …]` or `Uint8Array.of(…)`, `[e₀, …]` (`listRepr = stdListToJsArray`) or `{ tag: 1, _1: e₀, _2: … { tag: 0 } }` (`listRepr = taggedUnion`) |
 | `enum_mk i` | the number `shift + i` |
-| `Neu.cond` | `c ? a : b`, simplified first (`Neu.condSimp`: `c ? 7 : 7` is `7`, `(c && false) ? a : b` is `b`) |
+| `Neu.cond` | `c ? a : b`, simplified first (`Neu.condSimp`: `c ? 7 : 7` is `7`, `(c && false) ? a : b` is `b`); on booleans, `c ? y : !y` is `c === y`, `c ? false : y` is `c < y`, … (`JsTerm.Lower.BoolCmp`) |
 | `Neu.extern` | the operation of the extern at these types (`MoreJs.lowerExtern`); `a[i]!` known in bounds by the enclosing tests is `a[i]`, and a comparison of sizes of arrays at `BigInt` is done on the numbers (`JsTerm.Lower.Bounds`) |
 | `Val.lam` | `(x, y) => { … }`, of all the parameters of its type (uncurried) |
 | `Val.thunk_mk`, `Val.lazy_mk` | `thunk__lean_mk_thunk(() => { … })`, `() => { … }` |
@@ -372,6 +373,8 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
       let be ← cPExpr b' ne C M
       -- `i < a.length ? a[i] : d` is `a[i] ?? d` (`JsTerm.Lower.Bounds`)
       if let some r := JsExpr.condGet? ce ae be then return r
+      -- `a ? b : !b` is `a === b`, `a ? false : b` is `a < b`, … (`JsTerm.Lower.BoolCmp`)
+      if let some r := JsExpr.boolCond? ce ae be then return r
       -- a shift of `BitVec 64` (`y < 64 ? x <<< y : 0`) without the mask of its count
       -- (`JsTerm.Lower.Shift`)
       return (JsExpr.condShift? ce ae be).getD (.cond ce ae be)

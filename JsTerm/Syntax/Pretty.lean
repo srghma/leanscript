@@ -43,6 +43,7 @@ partial def JsExpr.pretty {C M : List JsTy} {τ : JsTy} (ind : String) : JsExpr 
   | .enum_mk _ shift i => toString (shift + i.val)
   | .enumIndex _ e => s!"enumIndex({e.pretty ind})"
   | .enumEq a b => s!"({a.pretty ind} === {b.pretty ind})"
+  | .boolCmp op a b => s!"({a.pretty ind} {op.op} {b.pretty ind})"
   | .index _ _ a i => s!"{a.pretty ind}[{i.pretty ind}]"
   | .indexOr _ _ a i d => s!"({a.pretty ind}[{i.pretty ind}] ?? {d.pretty ind})"
   | .array_mk (.generic _) ps => "[" ++ ", ".intercalate (ps.pretty ind) ++ "]"

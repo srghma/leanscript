@@ -3531,6 +3531,60 @@ def primOpBitVec02Spec : Spec := describe "PrimOpBitVec02Configurable" do
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{n} passed, 0 failed").length > 1)
 
+/-! `Tests/SnapshotsPBOPure/PrimOpBoolean01.lean`: `&&`, `||`, `==`, `!=`, `<`, `>`, `≤`, `≥`, `!`
+on `Bool`.  Every function is written as purescript-backend-optimizer writes it
+(`legacy-backend/PrimOpBoolean01.js`): the comparisons, which reach the conversion as
+conditionals of booleans, are JavaScript comparisons (`JsTerm/Lower/BoolCmp.lean`).
+`Tests/SnapshotsMy/BoolCmp.lean` has the cases where a conditional is kept. -/
+
+def primOpBoolean01Spec : Spec := describe "PrimOpBoolean01" do
+  it "the comparisons of booleans are JavaScript comparisons, as in legacy (needs node and leanscript)"
+      (timeoutMs? := some 120000) do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/primopboolean01"
+    IO.FS.createDirAll dir
+    -- every line `const testN = …;` of the legacy output is a line of ours, after `export `
+    let legacy ← IO.FS.readFile "Tests/SnapshotsPBOPure/legacy-backend/PrimOpBoolean01.js"
+    let legacyFns := (legacy.splitOn "\n").filter (fun (l : String) => l.startsWith "const test")
+    assertEq "legacy: nine functions" 9 legacyFns.length
+    -- (directory, file, fragments, checks)
+    for (path, file, frags, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "PrimOpBoolean01", legacyFns.map ("export " ++ ·), (34 : Nat)),
+        ("Tests/SnapshotsMy", "BoolCmp",
+          ["export const eqCmp = (x, y, b) => x < y === b;",
+           "export const neCmp = (x, y, b) => (x === y) !== b;",
+           -- (`5` at `pbo`, `5n` at `faithful`)
+           "export const ltComputed = (x, b) => (x < 5", " ? false : b);",
+           "export const leComputed = (x, b) => (x < 5", " ? b : true);",
+           "export const notLt = (a, b) => a >= b;",
+           "export const notLe = (a, b) => a > b;",
+           "export const notGt = (a, b) => a <= b;",
+           "export const notGe = (a, b) => a < b;",
+           "export const notEq = (a, b) => a !== b;",
+           "export const notNe = (a, b) => a === b;",
+           "export const ifEq = (a, b, x, y) => (a === b ? x : y);",
+           "export const decideEq = (a, b) => a === b;",
+           "export const ltFar = (a, _b, c) => a < c;"], 110)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript exit code" 0 out.exitCode
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        assertEq s!"{file}-{preset}: every function translated" false
+          ((js.splitOn "not translated").length > 1)
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -3585,6 +3639,7 @@ def spec : Spec := do
   primOpArray01Spec
   primOpBitVec01Spec
   primOpBitVec02Spec
+  primOpBoolean01Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

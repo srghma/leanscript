@@ -176,6 +176,10 @@ partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr S C M
       else .binary x .minus (natNum shift.natAbs)
     return natOfNumber nt i
   | .enumEq a b => do return .binary (← exprToMini sc a) .strictEq (← exprToMini sc b)
+  | .boolCmp op a b => do
+    let bop : BinOp := match op with
+      | .eq => .strictEq | .ne => .strictNeq | .lt => .lt | .le => .le | .gt => .gt | .ge => .ge
+    return .binary (← exprToMini sc a) bop (← exprToMini sc b)
   | .index _ nt a i => do
     let a ← exprToMini sc a
     let i : MiniExpr ← match nt.isBigInt, i.natLit? with
