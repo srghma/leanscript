@@ -41,6 +41,7 @@ def strictOf : Ty ks → Ty ks false
   | .fn a b => .fn a b
   | .array t => .array t
   | .list t => .list t
+  | .strMap t => .strMap t
   | .enum s => .enum s
   | .record t fs => .record t fs
   | .union cs (h := h) => .union cs (h := h)
@@ -54,6 +55,7 @@ def toStrictOf (E : Ref ks → Type) : (t : Ty ks) → Ty.den E t → Ty.den E (
   | .fn _ _, x => x
   | .array _, x => x
   | .list _, x => x
+  | .strMap _, x => x
   | .enum _, x => x
   | .record _ _, x => x
   | .union _ (h := _), x => x
@@ -67,6 +69,7 @@ def ofStrictOf (E : Ref ks → Type) : (t : Ty ks) → Ty.den E (Ty.relax t.stri
   | .fn _ _, x => x
   | .array _, x => x
   | .list _, x => x
+  | .strMap _, x => x
   | .enum _, x => x
   | .record _ _, x => x
   | .union _ (h := _), x => x
@@ -81,12 +84,15 @@ def ofStrictOf (E : Ref ks → Type) : (t : Ty ks) → Ty.den E (Ty.relax t.stri
     the catalogue that speak about them (`HashMapExtern`, `HashSetExtern`) are therefore not
     constructors of `LeanInitPureExtern`, so no extern of the language has such a type.  Until
     `Ty` has the formers, this coercion sends them to the type of their `toArray`
-    (`Array (κ × ν)`, `Array κ`), only so that it is total; nothing reads this. -/
+    (`Array (κ × ν)`, `Array κ`), only so that it is total; nothing reads this.  The one
+    exception is a hash map with string keys, which is the former `Ty.strMap` (the externs of
+    `StrMapExtern` speak about it). -/
 def ofCovariant : LeanPrimTyCovariant (Ty ks) → Ty ks
   | .array t => .array t
   | .list t => .list t
   | .thunk t => .thunk t.strictOf
   | .lazy t => .lazy t.strictOf
+  | .hashMap (.prim .string) v => .strMap v
   | .hashMap k v => .array (Ty.pair k v)
   | .hashSet k => .array k
 

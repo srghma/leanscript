@@ -3,6 +3,7 @@ module
 public import LeanScript.Term.Semantics.Eval
 public import LeanScript.Term.Optimize.Count
 public import LeanScript.Term.Optimize.Fold
+public import LeanScript.Term.Optimize.StrMap
 
 @[expose] public section
 
@@ -19,6 +20,10 @@ JavaScript backend on its own grammar before, `MoreJs.condNode`, and by its prin
 * a condition that is a negation, `c ? false : true`, is `c` with the two branches swapped:
   `(c ? false : true) ? a : b` is `c ? b : a` (`Neu.mkCond`), and
   `if (c ? false : true) then t else e` is `if c then e else t` (`Branch.mkIte`).
+
+It also answers a test of a key of a hash map with string keys, the case analysis of `m[k]?`
+whose arms answer Boolean literals, by `m.contains k` (`Term.ofBranchStrMap`,
+`LeanScript.Term.Optimize.StrMap`).
 
 Both keep the level index (a literal is closed, so `c ? true : false` has the level of `c`;
 swapping the branches changes the level only up to `Lvl.meet_comm`, which a cast takes care
@@ -258,7 +263,7 @@ def Term.condWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty
   | _, _, _, _, _, _, .letV u v b => .letV u v.condWalk b.condWalk
   | _, _, _, _, _, _, .letE u c b => .letE u c.condWalk b.condWalk
   | _, _, _, _, _, _, .record_casesOn us n b => .record_casesOn us n.condWalk b.condWalk
-  | _, _, _, _, _, _, .branch br => .branch br.condWalk
+  | _, _, _, _, _, _, .branch br => Term.ofBranchStrMap br.condWalk
   | _, _, _, _, _, _, .jump j e => .jump j e.condWalk
 /-- `Term.condWalk` in a branch. -/
 def Branch.condWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} → {js : JCtx ks} →
@@ -341,7 +346,7 @@ theorem Term.condWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} →
   | _, _, _, _, _, _, .record_casesOn us n b, κ, ρ, jκ => by
       simp only [Term.condWalk, Term.eval, Neu.condWalk_eval n, Term.condWalk_eval b]
   | _, _, _, _, _, _, .branch br, κ, ρ, jκ => by
-      simp only [Term.condWalk, Term.eval, Branch.condWalk_eval br]
+      simp only [Term.condWalk, Term.ofBranchStrMap_eval, Term.eval, Branch.condWalk_eval br]
   | _, _, _, _, _, _, .jump _ e, κ, ρ, jκ => by
       simp only [Term.condWalk, Term.eval, PExpr.condWalk_eval e]
   termination_by structural _ _ _ _ _ _ x _ _ _ => x
@@ -436,7 +441,7 @@ theorem Term.numCalls_condWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks}
   | _, _, _, _, _, _, .record_casesOn _ _ b => by
       simp only [Term.condWalk, Term.numCalls, Term.numCalls_condWalk b]
   | _, _, _, _, _, _, .branch br => by
-      simp only [Term.condWalk, Term.numCalls, Branch.numCalls_condWalk br]
+      simp only [Term.condWalk, Term.numCalls_ofBranchStrMap, Term.numCalls, Branch.numCalls_condWalk br]
   | _, _, _, _, _, _, .jump _ _ => rfl
   termination_by structural _ _ _ _ _ _ x => x
 theorem Branch.numCalls_condWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} →

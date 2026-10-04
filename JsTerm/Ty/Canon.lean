@@ -34,6 +34,7 @@ def JsTy.substDecl (g : Nat → JsTy) : JsTy → JsTy
   | .array e => .array (e.substDecl g)
   | .typedArray e => .typedArray e
   | .list e => .list (e.substDecl g)
+  | .strMap e => .strMap (e.substDecl g)
   | .fn ds c => .fn (JsTy.substDecls g ds) (c.substDecl g)
   | .enum n s => .enum n s
   | .thunk t => .thunk (t.substDecl g)
@@ -54,6 +55,7 @@ theorem JsTy.substDecl_substDecl (f g : Nat → JsTy) : (t : JsTy) →
   | .terminal _ | .typedArray _ | .enum _ _ | .obj (.decl _) _ => by simp [JsTy.substDecl]
   | .array e => by simp [JsTy.substDecl, JsTy.substDecl_substDecl f g e]
   | .list e => by simp [JsTy.substDecl, JsTy.substDecl_substDecl f g e]
+  | .strMap e => by simp [JsTy.substDecl, JsTy.substDecl_substDecl f g e]
   | .thunk e => by simp [JsTy.substDecl, JsTy.substDecl_substDecl f g e]
   | .fn ds c => by
     simp [JsTy.substDecl, JsTy.substDecls_substDecls f g ds, JsTy.substDecl_substDecl f g c]

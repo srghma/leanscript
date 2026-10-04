@@ -58,6 +58,7 @@ def externName {ks : List Nat} {σs : List (Ty ks)} {τ : Ty ks} : Extern ks σs
   | .sIntFloat32Extern e => (ctor_names% SIntFloat32Extern)[e.ctorIdx]!
   | .ordStringExtern e => (ctor_names% OrdStringExtern)[e.ctorIdx]!
   | .arrayStdExtern e => (ctor_names% ArrayStdExtern)[e.ctorIdx]!
+  | .strMapExtern e => (ctor_names% StrMapExtern)[e.ctorIdx]!
 
 /-- The C symbol of an extern: its name up to the `__` that disambiguates the Lean functions
     sharing one symbol (`lean_nat_mod__Nat_mod` is `lean_nat_mod`). -/

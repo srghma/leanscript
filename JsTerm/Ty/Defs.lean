@@ -27,6 +27,7 @@ The leaves are `JsTerminalTy`; the compound shapes have one layout each:
 | `union cs` | `obj (union [a₀, a₁, …] r) [fields…]` | an object `{ tag: i, _1: f₁, _2: f₂, … }`, the constructor's position `i` counting from `0` (two constructors or more; `aᵢ` fields each); at the representation `r = smallIntNullary` a constructor without fields is the number `i` |
 | `enum s` | `enum n shift` | the number `shift + i` |
 | `list t` | `list t` (`listRepr = stdListToJsArray`) | an (immutable) JavaScript array |
+| `strMap t` | `strMap t` | an (immutable) JavaScript object whose own properties are the keys |
 | `list t` | `obj consList [t]` (`listRepr = taggedUnion`) | cons cells: `{ tag: 0 }` (`[]`) and `{ tag: 1, _1: head, _2: tail }` |
 | `fn a (fn b c)` | `fn [a, b] c` | a function of all its arguments (uncurried) |
 | `thunk t` | `thunk t` | a memoising thunk object |
@@ -215,6 +216,10 @@ inductive JsTy where
   | typedArray (elem : JsTypedElem)
   /-- A Lean `List`, as an immutable JavaScript array (`ListRepr.stdListToJsArray`). -/
   | list (elem : JsTy)
+  /-- A Lean `Std.HashMap String ν`: a JavaScript object whose own properties are the keys,
+      each holding its value (`Object.keys`, `Object.hasOwn(m, k)`, `m[k]`).  Never mutated: an
+      operation that answers a new map answers a new object. -/
+  | strMap (val : JsTy)
   /-- A function of the arguments `doms` (none for a delay): `(x₁, …, xₙ) => …`. -/
   | fn (doms : List JsTy) (cod : JsTy)
   /-- An enum: a number, `shift` for the first of its `n` constructors. -/

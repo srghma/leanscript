@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Ty.Den.Basic
+public import LeanScript.Ty.Den.HashMapMap
 
 @[expose] public section
 
@@ -51,6 +52,7 @@ theorem Ty.lift_lower {d : Bool} : (t : Ty ks d) → (x : Ty.den E (Ty.map f t))
         | nil => rfl
         | cons z y ih => simp only [List.map_cons, Ty.lift_lower t z, ih]
       exact key x
+  | .strMap t, x => Std.HashMap.map_map_of_leftInverse _ _ (Ty.lift_lower t) x
   | .enum _, _ => rfl
   | .record t fs, x => by
       show (Ty.lift f E t (Ty.lower f E t x.1), Fields.lift f E fs (Fields.lower f E fs x.2)) = x
@@ -82,6 +84,7 @@ theorem Ty.lower_lift {d : Bool} : (t : Ty ks d) → (x : Ty.den (fun r => E (f 
         | nil => rfl
         | cons z y ih => simp only [List.map_cons, Ty.lower_lift t z, ih]
       exact key x
+  | .strMap t, x => Std.HashMap.map_map_of_leftInverse _ _ (Ty.lower_lift t) x
   | .enum _, _ => rfl
   | .record t fs, x => by
       show (Ty.lower f E t (Ty.lift f E t x.1), Fields.lower f E fs (Fields.lift f E fs x.2)) = x

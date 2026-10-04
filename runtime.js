@@ -1221,6 +1221,101 @@ export const obj__nullary_to_int = (u) => ("_1" in u ? u : u.tag);
  *  @returns {{tag: number}} `obj (union ar cells) args` */
 export const obj__nullary_to_cells = (u) => (typeof u === "number" ? { tag: u } : u);
 
+/* Hash maps with string keys (`JsTy.strMap`, the externs `lean_str_map_*` of `StrMapExtern`):
+ * a JavaScript object whose own enumerable properties are the keys.  The generated code writes
+ * most operations inline (`Object.keys(m)`, `Object.hasOwn(m, k)`, `m.k ?? d`, `{ ...m, [k]: v }`);
+ * these functions are the ones it calls when that would read an argument twice or out of order,
+ * or when the answer is of a layout of the catalogue (an option, an array of pairs).  A map is
+ * never modified: every update copies it.  Keys are set with `CreateDataProperty` (an object
+ * literal, `Object.fromEntries`), never by assignment, so `"__proto__"` is an ordinary key. */
+
+/** `HashMap.emptyWithCapacity`: the capacity is ignored.
+ *  @param {*} _n `nat`
+ *  @returns {Object<string, *>} */
+export const strMap__empty = (_n) => ({});
+
+/** `HashMap.insert`.
+ *  @template v
+ *  @param {Object<string, v>} m
+ *  @param {string} k
+ *  @param {v} x
+ *  @returns {Object<string, v>} */
+export const strMap__insert = (m, k, x) => ({ ...m, [k]: x });
+
+/** `HashMap.erase`: a copy without the key.
+ *  @template v
+ *  @param {Object<string, v>} m
+ *  @param {string} k
+ *  @returns {Object<string, v>} */
+export const strMap__erase = (m, k) => {
+  if (!Object.hasOwn(m, k)) return m;
+  const r = { ...m };
+  delete r[k];
+  return r;
+};
+
+/** `m[k]?`.
+ *  @template v
+ *  @param {Object<string, v>} m
+ *  @param {string} k
+ *  @returns {({tag: 0}|{tag: 1, _1: v})} `obj (union [0, 1] cells) [v]` */
+export const strMap__get_opt = (m, k) => (Object.hasOwn(m, k) ? { tag: 1, _1: m[k] } : { tag: 0 });
+
+/** `HashMap.contains`.
+ *  @param {Object<string, *>} m
+ *  @param {string} k
+ *  @returns {boolean} */
+export const strMap__contains = (m, k) => Object.hasOwn(m, k);
+
+/** `HashMap.getD`.
+ *  @template v
+ *  @param {Object<string, v>} m
+ *  @param {string} k
+ *  @param {v} d
+ *  @returns {v} */
+export const strMap__get_d = (m, k, d) => (Object.hasOwn(m, k) ? m[k] : d);
+
+/** `HashMap.get!`, the default (`Inhabited`) first.
+ *  @template v
+ *  @param {v} d
+ *  @param {Object<string, v>} m
+ *  @param {string} k
+ *  @returns {v} */
+export const strMap__get_bang = (d, m, k) => (Object.hasOwn(m, k) ? m[k] : d);
+
+/** `HashMap.size`, as a number.
+ *  @param {Object<string, *>} m
+ *  @returns {number} */
+export const strMap__size = (m) => Object.keys(m).length;
+
+/** `HashMap.isEmpty`.
+ *  @param {Object<string, *>} m
+ *  @returns {boolean} */
+export const strMap__is_empty = (m) => Object.keys(m).length === 0;
+
+/** `HashMap.keys` (an array).
+ *  @param {Object<string, *>} m
+ *  @returns {Array<string>} */
+export const strMap__keys = (m) => Object.keys(m);
+
+/** `HashMap.values` (an array).
+ *  @template v
+ *  @param {Object<string, v>} m
+ *  @returns {Array<v>} */
+export const strMap__values = (m) => Object.values(m);
+
+/** `HashMap.toList` / `HashMap.toArray`: the pairs, as records.
+ *  @template v
+ *  @param {Object<string, v>} m
+ *  @returns {Array<{_1: string, _2: v}>} `array (obj (record 2) [string, v])` */
+export const strMap__to_array = (m) => Object.keys(m).map((k) => ({ _1: k, _2: m[k] }));
+
+/** `HashMap.ofList`: a later pair of the same key replaces an earlier one.
+ *  @template v
+ *  @param {Array<{_1: string, _2: v}>} a `list (obj (record 2) [string, v])`
+ *  @returns {Object<string, v>} */
+export const strMap__of_array = (a) => Object.fromEntries(a.map((p) => [p._1, p._2]));
+
 /** `Array.replicate`, on the typed array of constructor `C` (`Uint8Array`, …).
  *  @template t the typed-array element (`JsTypedElem`); `TypedArray` is `t.kind`
  *  @param {function(new:TypedArray, number)} C `t.kind` (the typed-array constructor)

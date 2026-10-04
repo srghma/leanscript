@@ -6,6 +6,7 @@ public import LeanScript.Term.Extern.Eval.SInt
 public import LeanScript.Term.Extern.Eval.String
 public import LeanScript.Term.Extern.Eval.Float
 public import LeanScript.Term.Extern.Eval.ArrayStd
+public import LeanScript.Term.Extern.Eval.StrMap
 
 @[expose] public section
 
@@ -62,6 +63,7 @@ def Extern.eval {ks : List Nat} (E : Ref ks → Type) {σs : List (Ty ks)} {τ :
   | .sIntFloat32Extern e => SIntFloat32Extern.eval E e
   | .ordStringExtern e => OrdStringExtern.eval E e
   | .arrayStdExtern e => ArrayStdExtern.eval E e
+  | .strMapExtern e => StrMapExtern.eval E e
 
 end LeanScript
 

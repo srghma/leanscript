@@ -506,7 +506,23 @@ def externTableList : List (Name × Name) :=
    (`Array.zip, `lean_array_zip),
    (`Array.back?, `lean_array_back_opt),
    (`Array.countP, `lean_array_count_p),
-   (`List.append, `lean_list_append)]
+   (`List.append, `lean_list_append),
+   (`Std.HashMap.emptyWithCapacity, `lean_str_map_empty_with_capacity),
+   (`Std.HashMap.insert, `lean_str_map_insert),
+   (`Std.HashMap.erase, `lean_str_map_erase),
+   (`Std.HashMap.get?, `lean_str_map_get_opt),
+   (`Std.HashMap.contains, `lean_str_map_contains),
+   (`Std.HashMap.getD, `lean_str_map_get_d),
+   (`Std.HashMap.get!, `lean_str_map_get_bang),
+   (`Std.HashMap.size, `lean_str_map_size),
+   (`Std.HashMap.isEmpty, `lean_str_map_is_empty),
+   (`Std.HashMap.keys, `lean_str_map_keys),
+   (`Std.HashMap.keysArray, `lean_str_map_keys_array),
+   (`Std.HashMap.values, `lean_str_map_values),
+   (`Std.HashMap.valuesArray, `lean_str_map_values_array),
+   (`Std.HashMap.toList, `lean_str_map_to_list),
+   (`Std.HashMap.toArray, `lean_str_map_to_array),
+   (`Std.HashMap.ofList, `lean_str_map_of_list)]
 
 /-- `externTableList`, as a map from the Lean function to the entry. -/
 def externTable : NameMap Name :=

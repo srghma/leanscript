@@ -187,6 +187,11 @@ partial def exprToMini {C M : List JsTy} {τ : JsTy} (sc : Scope) : JsExpr S C M
   | .array_mk (.typed t) ps => do
     return .call (.dot (ident t.kind.ctorName) (nes "of")) (← partsToMini sc ps)
   | .list_mk ps => do return .array ((← partsToMini sc ps).map .elem)
+  | .listOp (.strMap sop _ N) args => do
+    let es ← argsToMini sc args
+    let infos := args.atomInfos
+    if sop.inline infos then return strMapInlineToMini sop N es infos
+    return .call (ident sop.runtimeName) es
   | .listOp op args => do return .call (ident op.runtimeName) (← argsToMini sc args)
   -- one layer in or out of a declared datatype: nothing at run time
   | .fold _ e | .unfold _ e => exprToMini sc e

@@ -121,6 +121,7 @@ partial def pretty : JsTy → String
   | .array t => s!"Array<{t.pretty}>"
   | .typedArray t => s!"{t.kind.ctorName}<{t.leaf.pretty}>"
   | .list t => s!"List<{t.pretty}>"
+  | .strMap t => s!"Object<string, {t.pretty}>"
   | .fn ds c => "(" ++ ", ".intercalate (ds.map pretty) ++ s!") => {c.pretty}"
   | .enum n shift => s!"enum{n}@{shift}"
   | .thunk t => s!"Thunk<{t.pretty}>"

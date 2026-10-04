@@ -41,6 +41,7 @@ partial def Ty.pretty {ks : List Nat} {d : Bool} : Ty ks d → String
   | .fn a b => s!"({a.pretty} → {b.pretty})"
   | .array t => s!"(Array {t.pretty})"
   | .list t => s!"(List {t.pretty})"
+  | .strMap t => s!"(Std.HashMap String {t.pretty})"
   | .enum s => s!"(enum {s.nOfConstructors} @{s.shift})"
   | .record t fs => "(" ++ " × ".intercalate (t.pretty :: Fields.prettyList fs) ++ ")"
   | .union cs (h := _) => "(" ++ " | ".intercalate (Ctors.prettyList cs) ++ ")"

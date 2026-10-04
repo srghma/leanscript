@@ -84,6 +84,11 @@ def Three.array {α : Type} (v : α) : Three (Array α) :=
 def Three.list {α : Type} (v : α) : Three (List α) :=
   ⟨[], [v], [v, v], List.length, rfl, rfl, rfl⟩
 
+/-- Three string-keyed maps: of size `0`, `1` and `2`. -/
+def Three.strMap {α : Type} (v : α) : Three (Std.HashMap String α) :=
+  ⟨∅, (∅ : Std.HashMap String α).insert "" v, ((∅ : Std.HashMap String α).insert "" v).insert "a" v,
+    Std.HashMap.size, StrMapPoints.size_empty, StrMapPoints.size_one v, StrMapPoints.size_two v⟩
+
 /-- Three values of an `Option`: `none` and two told-apart `some`s. -/
 def Three.opt {α : Type} (A : Two α) : Three (Option α) where
   x := none
@@ -223,6 +228,7 @@ def Ty.three {d : Bool} : (t : Ty ks d) → t.isBool = false → Three (Ty.den E
   | .fn a b, _ => Three.fn (Ty.pick E TE a) (Ty.pick E TE b)
   | .array t, _ => Three.array (Ty.pick E TE t).x
   | .list t, _ => Three.list (Ty.pick E TE t).x
+  | .strMap t, _ => Three.strMap (Ty.pick E TE t).x
   | .enum s, _ =>
       ⟨⟨0, by simp [LeanEnumSchema.nOfConstructors]⟩, ⟨1, by simp [LeanEnumSchema.nOfConstructors]⟩,
         ⟨2, by simp [LeanEnumSchema.nOfConstructors]⟩, Fin.val, rfl, rfl, rfl⟩

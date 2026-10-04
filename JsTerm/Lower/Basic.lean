@@ -404,7 +404,7 @@ end
 partial def JsTy.hasMutable (S : JsSig) (seen : List Nat := []) : JsTy → Bool
   | .array _ | .typedArray _ => true
   | .terminal _ | .enum .. | .fn .. => false
-  | .list e | .thunk e => e.hasMutable S seen
+  | .list e | .strMap e | .thunk e => e.hasMutable S seen
   | .obj (.decl i) args =>
     args.any (·.hasMutable S seen) || (!seen.contains i && (S.body i).hasMutable S (i :: seen))
   | .obj _ args => args.any (·.hasMutable S seen)

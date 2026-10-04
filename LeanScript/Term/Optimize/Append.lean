@@ -4,6 +4,7 @@ public import LeanScript.Term.Semantics.Eval
 public import LeanScript.Term.Extern.Eval
 public import LeanScript.Term.Optimize.Count
 public import LeanScript.Term.Optimize.StringAppend
+public import LeanScript.Term.Optimize.StrMap
 
 @[expose] public section
 
@@ -518,11 +519,12 @@ theorem normNeu_eval (k : SeqKind) {t : Ty ks} {ℓ : Nat} (n : Neu Δ Φ Γ (k.
 
 end SeqKind
 
-/-- `SeqKind.normNeu` on a neutral expression of an array or list type, `StrApp.normNeu`
-    (`LeanScript.Term.Optimize.StringAppend`) on one of type `String`. -/
+/-- `SeqKind.normNeu` on a neutral expression of an array or list type (an array of the keys or
+    of the pairs of a hash map with string keys built at once first, `Neu.normStrMapArray`),
+    `StrApp.normNeu` (`LeanScript.Term.Optimize.StringAppend`) on one of type `String`. -/
 def Neu.normAppend {Φ : KCtx ks} {Γ : UCtx ks} : {τ : Ty ks} → {ℓ : Nat} →
     Neu Δ Φ Γ τ ℓ → Neu Δ Φ Γ τ ℓ
-  | .array t, _, n => SeqKind.normNeu .array (t := t) n
+  | .array t, _, n => SeqKind.normNeu .array (t := t) n.normStrMapArray
   | .list t, _, n => SeqKind.normNeu .list (t := t) n
   | .prim .string, _, n => StrApp.normNeu n
   | _, _, n => n
@@ -531,7 +533,8 @@ theorem Neu.normAppend_eval {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Na
     (n : Neu Δ Φ Γ τ ℓ) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
     n.normAppend.eval κ ρ = n.eval κ ρ := by
   cases τ with
-  | array t => exact SeqKind.normNeu_eval .array (t := t) n κ ρ
+  | array t =>
+    exact (SeqKind.normNeu_eval .array (t := t) _ κ ρ).trans (Neu.normStrMapArray_eval n κ ρ)
   | list t => exact SeqKind.normNeu_eval .list (t := t) n κ ρ
   | prim p =>
     cases p

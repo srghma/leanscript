@@ -9,6 +9,7 @@ public import LeanScript.LeanInitPureExterns.Float
 public import LeanScript.LeanInitPureExterns.ArrayStdFunctionsNonExternButBigEnoughToLoseInformation
 public import LeanScript.LeanInitPureExterns.HashMap
 public import LeanScript.LeanInitPureExterns.HashSet
+public import LeanScript.LeanInitPureExterns.StrMap
 -- public import Init.Data.FloatArray.Basic
 -- public import Init.System.IO
 -- public import Init.System.Promise
@@ -254,6 +255,9 @@ inductive LeanInitPureExtern : List MyTy → MyTy → Type where
   /-- An entry of `ArrayStdExtern` (the array functions of `Init` written in Lean that the
       backend knows, `LeanScript.LeanInitPureExterns.ArrayStdFunctionsNonExternButBigEnoughToLoseInformation`). -/
   | arrayStdExtern {σs : List MyTy} {τ : MyTy} : ArrayStdExtern option fn1 fn2 prod σs τ → LeanInitPureExtern σs τ
+  /-- An entry of `StrMapExtern` (the functions of `Std.HashMap String ν`,
+      `LeanScript.LeanInitPureExterns.StrMap`). -/
+  | strMapExtern {σs : List MyTy} {τ : MyTy} : StrMapExtern option prod σs τ → LeanInitPureExtern σs τ
 
 end LeanScript
 

@@ -121,6 +121,22 @@ partial def wrapperField? (cinfo : ConstructorVal) (args : Array Expr) : TM (Opt
     ty := b.instantiate1 a
   return if kept.size == 1 then some kept[0]! else none
 
+/-- Is the entry one of the hash maps with string keys (`StrMapExtern`)? -/
+def isStrMapEntry (entry : Name) : Bool :=
+  entry.toString.startsWith "lean_str_map_"
+
+/-- Is the call `Std.HashMap.f α β instBEq instHashable …` one on string keys compared and hashed
+    by `String`'s own instances (the hash maps of `Ty.strMap`, whose functions are the entries
+    of `StrMapExtern`)?  Any other hash map is not a type of the language: its functions are
+    unfolded. -/
+def strKeyedHashMapCall (args : Array Expr) : MetaM Bool := do
+  if args.size < 4 then return false
+  unless (← whnf args[0]!).isConstOf ``String do return false
+  let beq ← synthInstance (← mkAppM ``BEq #[mkConst ``String])
+  let hash ← synthInstance (← mkAppM ``Hashable #[mkConst ``String])
+  return (← withReducibleAndInstances (isDefEq args[2]! beq)) &&
+    (← withReducibleAndInstances (isDefEq args[3]! hash))
+
 /-- A call of the extern `entry` (an entry of the catalogue, `LeanInitPureExtern.entry`)
     whose Lean function is `fn`, applied to `args`: `Neu.extern (.entry _ …) args'`.  The
     arguments of the extern are the explicit arguments of `fn` that are values (not types,
@@ -130,6 +146,9 @@ partial def wrapperField? (cinfo : ConstructorVal) (args : Array Expr) : TM (Opt
     extern decides them).  The type arguments of the entry (`αt` of `lean_array_push αt`) are
     found by unification with the types of the arguments. -/
 partial def externCall (L : Loc) (entry : Name) (fn : Expr) (args : Array Expr) : TM Src := do
+  -- the entries of the hash maps with string keys (`StrMapExtern`) do not take the `BEq`
+  -- instance of the key: it is `String`'s own (`strKeyedHashMapCall`)
+  let strMap := isStrMapEntry entry
   let mut ty ← inferType fn
   let mut vals : Array Expr := #[]
   for a in args do
@@ -140,7 +159,7 @@ partial def externCall (L : Loc) (entry : Name) (fn : Expr) (args : Array Expr) 
     if bi.isInstImplicit && d.isAppOfArity ``Inhabited 1 then
       let v ← whnf (← mkAppOptM ``Inhabited.default #[d.appArg!, a])
       vals := vals.push (if v.isConstOf ``Nat.zero then mkNatLit 0 else v)
-    else if bi.isInstImplicit && d.isAppOfArity ``BEq 1 then
+    else if bi.isInstImplicit && d.isAppOfArity ``BEq 1 && !strMap then
       -- a `[BEq α]` argument is its function `beq` (`fun x y => x == y`), which the extern
       -- takes as an argument (`Array.contains`, `Array.idxOf?`)
       let α := d.appArg!
@@ -196,6 +215,10 @@ partial def trExtern (L : Loc) (e fn : Expr) (args : Array Expr) : TM Src := do
       language would need a representative of the class (`Quot.out` is not computable)"
   let .const c _ := fn | fail m!"cannot translate the application{indentExpr e}"
   if let some entry := externTable.find? c then
+    if isStrMapEntry entry && !(← strKeyedHashMapCall args) then
+      if let some e' ← unfoldCall? e then return ← tr L e'
+      fail m!"the call{indentExpr e}\nis on a hash map whose keys are not strings compared and \
+        hashed by `String`'s own instances (only those are a type of the language, `Ty.strMap`)"
     -- a function of values that are functions (`Array.map g` on an array of functions) is
     -- unfolded rather than the extern: JavaScript uncurries `fun x => fun y => b` to
     -- `(x, y) => b`, which the operations of the externs (which take `(x) => …`) do not accept

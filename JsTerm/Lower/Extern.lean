@@ -65,7 +65,7 @@ def JsExpr.asArrayList {C M : List JsTy} : {σ : JsTy} → JsExpr S C M σ → J
   | .obj (.union ar .smallIntNullary) args, e => .listOp (.nullaryToCells ar args) (.cons e .nil)
   | .obj .consList [], e | .obj .consList (_ :: _ :: _), e | .obj (.record _) _, e
   | .obj (.union _ .cells) _, e | .obj (.decl _) _, e => e
-  | .terminal _, e | .array _, e | .typedArray _, e | .list _, e | .fn _ _, e
+  | .terminal _, e | .array _, e | .typedArray _, e | .list _, e | .strMap _, e | .fn _ _, e
   | .enum _ _, e | .thunk _, e => e
 
 /-- A value given at the layout of the operations (`JsTy.arrayList`), at its type: an array
@@ -76,7 +76,7 @@ def JsExpr.ofArrayListAt {C M : List JsTy} : (σ : JsTy) → JsExpr S C M σ.arr
   | .obj (.union ar .smallIntNullary) args, e => .listOp (.nullaryToInt ar args) (.cons e .nil)
   | .obj .consList [], e | .obj .consList (_ :: _ :: _), e | .obj (.record _) _, e
   | .obj (.union _ .cells) _, e | .obj (.decl _) _, e => e
-  | .terminal _, e | .array _, e | .typedArray _, e | .list _, e | .fn _ _, e
+  | .terminal _, e | .array _, e | .typedArray _, e | .list _, e | .strMap _, e | .fn _ _, e
   | .enum _ _, e | .thunk _, e => e
 
 /-- Arguments at the layouts of the operations. -/
@@ -84,6 +84,46 @@ def JsArgs.asArrayLists {C M : List JsTy} : {σs : List JsTy} → JsArgs S C M �
     JsArgs S C M (σs.map JsTy.arrayList)
   | [], .nil => .nil
   | _ :: _, .cons a as => .cons a.asArrayList as.asArrayLists
+
+/-- The type of the values of the first hash map with string keys among the types. -/
+def strMapValue? : List JsTy → Option JsTy
+  | [] => none
+  | .strMap v :: _ => some v
+  | _ :: ts => strMapValue? ts
+
+/-- The operation `op` on a hash map with string keys (`JsStrMapOp`) at the arguments `args`,
+    answering a value of type `τ`, when the types are its signature (`JsStrMapOp.sig`). -/
+def strMapCall? {C M σs : List JsTy} {τ : JsTy} (op : JsStrMapOp) (args : JsArgs S C M σs) :
+    Option (JsExpr S C M τ) :=
+  match strMapValue? (σs ++ [τ]) with
+  | none => none
+  | some v =>
+    -- the representation of a natural number: the answer of `size`, the capacity of
+    -- `emptyWithCapacity`
+    let N : JsTy := match op with
+      | .size => τ
+      | .emptyWithCapacity => σs.headD (.terminal .uint53)
+      | _ => .terminal .uint53
+    if h₁ : σs = (op.sig v N).1 then
+      if h₂ : (op.sig v N).2 = τ then
+        some (h₂ ▸ JsExpr.listOp (S := S) (C := C) (M := M) (.strMap op v N) (h₁ ▸ args))
+      else none
+    else none
+
+/-- The call of the extern `name` of `StrMapExtern` (`LeanScript.LeanInitPureExterns.StrMap`) on
+    the arguments `args`: its operation (`JsStrMapOp`), with the conversions of a list of cons
+    cells or of a union whose constructors without fields are numbers around it, as for the
+    operations of the other externs. -/
+def lowerStrMap {C M σs : List JsTy} {τ : JsTy} (op : JsStrMapOp) (name : String)
+    (args : JsArgs S C M σs) : Except String (JsExpr S C M τ) :=
+  match strMapCall? op args with
+  | some e => pure e
+  | none =>
+    let err := s!"the extern {name} has no operation at the types {σs} → {τ}"
+    if !(σs.any JsTy.isConsList || τ.isConsList) then throw err else
+    match strMapCall? (τ := τ.arrayList) op args.asArrayLists with
+    | some e => pure (JsExpr.ofArrayListAt τ e)
+    | none => throw err
 
 /-- The call of the extern `name` on the arguments `args`, answering a value of type `τ`; an
     error if the extern has no operation at these types. -/
@@ -100,6 +140,7 @@ def lowerExtern {C M σs : List JsTy} {τ : JsTy} (name : String) (args : JsArgs
   match pushEmpty? with
   | some e => pure e
   | none =>
+    if let some op := JsStrMapOp.ofExtern? name then lowerStrMap op name args else
     match JsOp.lookup name σs τ with
     | some ⟨_, _, .imported op⟩ => pure (.imported op args)
     | some ⟨_, _, .inlined op⟩ => pure (.inlined op args)

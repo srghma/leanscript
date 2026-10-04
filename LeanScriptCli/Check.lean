@@ -59,6 +59,13 @@ inductive SType where
       that tell their arguments apart (`fun x => "[" ++ toString x ++ "]"`), spelled in Lean
       and in JavaScript. -/
   | fn (dom cod : SType)
+  /-- A hash map with string keys (`Std.HashMap String t`, `t` among `Nat`, `Int`, `Bool`,
+      `String`): a JavaScript object whose own properties are the keys (`Ty.strMap`).  Only a
+      parameter can have this type (the order of the keys of a result would be JavaScript's, not
+      Lean's); its samples are built by `Std.HashMap.ofList`, and their JavaScript objects list
+      the keys in the order of the Lean map (`Std.HashMap.toList`), so that `keys` answers the
+      same array on both sides. -/
+  | strMap (t : SType)
   /-- A function of two arguments (`Int → Nat → Nat`): each argument and the answer a `Nat` or
       an `Int` (`fn2SampleOk`).  Only a parameter can have this type; JavaScript passes it as
       a function of two parameters (`(x, y) => …`, the generated code calls it `g(a, b)`), and
@@ -137,6 +144,13 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
     | some t@(SType.arr SType.nat) | some t@(SType.arr SType.int) | some t@(SType.arr SType.bool)
     | some t@(SType.arr SType.string) => return some (.arr t)
     | _ => return none
+  if e.isAppOfArity ``Std.HashMap 4 then
+    let args := e.getAppArgs
+    unless (← whnf args[0]!).isConstOf ``String do return none
+    match ← stypeOf? args[1]! with
+    | some t@SType.nat | some t@SType.int | some t@SType.bool | some t@SType.string =>
+      return some (.strMap t)
+    | _ => return none
   if e.isAppOfArity ``List 1 then
     match ← stypeOf? e.appArg! with
     | some t@SType.nat | some t@SType.int | some t@SType.bool | some t@SType.string =>
@@ -173,7 +187,7 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
       -- JavaScript value: no sample
       if t.hasAnyFVar (fun _ => true) then return none
       match ← stypeOf? t with
-      | some (.fn ..) | some (.fn2 ..) | some .unit | none => return none
+      | some (.fn ..) | some (.fn2 ..) | some (.strMap _) | some .unit | none => return none
       -- a `Float` field is a JavaScript number in the record (shown by its bits: `jsShowOf`)
       | some .float => if xs.size == 1 then return none else out := out.push .float
       | some ft => out := out.push ft
@@ -242,6 +256,28 @@ partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : Lis
   | .arr t => (listSamples cfg t true nats).map fun l =>
       ⟨mkApp2 (mkConst ``List.toArray [.zero]) (elemTy t) l.lean, l.js⟩
   | .list t => listSamples cfg t (cfg.listRepr == .stdListToJsArray) nats
+  | .strMap t =>
+    -- the keys a lookup is likely to name (a literal of the function among them, `strs` of
+    -- `combos` are not seen here) and a few of the string samples, bound to value samples
+    let vs := samplesOf cfg t nats
+    let v (i : Nat) : Sample := vs[i % vs.length]!
+    let mk (kvs : List (String × Sample)) : Sample :=
+      let pairTy := mkApp2 (mkConst ``Prod [.zero, .zero]) (mkConst ``String) (elemTy t)
+      let l := kvs.foldr (fun (k, x) acc =>
+          mkApp3 (mkConst ``List.cons [.zero]) pairTy
+            (mkApp4 (mkConst ``Prod.mk [.zero, .zero]) (mkConst ``String) (elemTy t) (toExpr k)
+              x.lean) acc)
+        (mkApp (mkConst ``List.nil [.zero]) pairTy)
+      let beq := mkApp2 (mkConst ``instBEqOfDecidableEq [.succ .zero]) (mkConst ``String)
+        (mkConst ``instDecidableEqString)
+      let lean := mkApp5 (mkConst ``Std.HashMap.ofList [.zero, .zero]) (mkConst ``String)
+        (elemTy t) beq (mkConst ``instHashableString) l
+      -- the keys in the order of the Lean map
+      let ordered := (Std.HashMap.ofList kvs).toList
+      ⟨lean, "{ " ++ ", ".intercalate (ordered.map fun (k, x) => s!"[{jsStringLit k}]: {x.js}")
+        ++ " }"⟩
+    [mk [], mk [("foo", v 1)], mk [("a", v 2), ("foo.bar", v 3), ("wat", v 4)],
+     mk [("foo", v 0), ("hello world", v 3), ("", v 1), ("toString", v 2), ("abcabc", v 4)]]
   | .record _ ctor fs =>
     -- a few records, the samples of each field taken at shifted positions
     let fss := fs.map (samplesOf cfg · nats)
@@ -667,7 +703,7 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
       let r := sub r
       if r.hasAnyFVar (fun _ => true) then return none
       let some rt ← stypeOf? r | return none
-      if rt matches .fn .. | .fn2 .. | .unit then return none
+      if rt matches .fn .. | .fn2 .. | .strMap _ | .unit then return none
       -- a union result only of leaf fields (`Option Int`); a recursive one is not printed
       unless resultPrintable rt do return none
       -- `Unit` parameters only at the end (one delay, called with `()` in JavaScript)

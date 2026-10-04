@@ -439,6 +439,18 @@ partial def classify (e : Expr) : MetaM Head := do
       unless ← listNestedInElem args[0]! e do return .list args[0]!
     return .node e
   | ``Thunk, 1 => return .thunk args[0]!
+  | ``Std.HashMap, 4 =>
+    -- a hash map with string keys (and `String`'s own instances) is the built-in `Ty.strMap`
+    -- (a JavaScript object); any other hash map is read as the structure it is
+    if (← whnf args[0]!).isConstOf ``String then
+      let beq ← synthInstance (← mkAppM ``BEq #[mkConst ``String])
+      let hash ← synthInstance (← mkAppM ``Hashable #[mkConst ``String])
+      unless (← withReducibleAndInstances (isDefEq args[2]! beq)) &&
+          (← withReducibleAndInstances (isDefEq args[3]! hash)) do
+        fail m!"the hash map{indentExpr e}\nhas string keys compared or hashed by instances \
+          other than `String`'s own: only those are the keys of a JavaScript object"
+      return .strMap args[1]!
+    return .node e
   | _, _ =>
     unless ((← getEnv).find? c).any (·.isInductive) do
       fail m!"`{c}` is not an inductive type{indentExpr e}"
@@ -449,7 +461,7 @@ partial def occurrences (e : Expr) : MetaM (Array Expr) := do
   match ← classify e with
   | .prim _ | .leanName | .var _ => return #[]
   | .fn a b => return (← occurrences a) ++ (← occurrences b)
-  | .array a | .list a | .thunk a | .lazy a => occurrences a
+  | .array a | .list a | .strMap a | .thunk a | .lazy a => occurrences a
   | .node n => return #[n]
 
 end LeanScript.Gen

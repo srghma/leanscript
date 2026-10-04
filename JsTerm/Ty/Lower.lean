@@ -178,6 +178,7 @@ def lowerTy (cfg : JsConfig) {ks : List Nat} {d : Bool} : Ty ks d → JsTy
   | .list t => match cfg.listRepr with
     | .stdListToJsArray => .list (lowerTy cfg t)
     | .taggedUnion => .obj .consList [lowerTy cfg t]
+  | .strMap t => .strMap (lowerTy cfg t)
   | .enum s => .enum s.nOfConstructors s.shift
   | .record t fs => .obj (.record (lowerFields cfg fs).length.succ) (lowerTy cfg t :: lowerFields cfg fs)
   | .union cs (h := _) =>

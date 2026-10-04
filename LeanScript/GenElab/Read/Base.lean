@@ -40,6 +40,9 @@ inductive Head where
   | array (a : Expr)
   /-- `List a`, read as the built-in list (`Ty.list`) when `builtinListOption` is set. -/
   | list (a : Expr)
+  /-- `Std.HashMap String a` (with `String`'s own `BEq` and `Hashable` instances): the built-in
+      string-keyed map (`Ty.strMap`). -/
+  | strMap (a : Expr)
   /-- `Thunk a`: a memoised delay. -/
   | thunk (a : Expr)
   /-- `Unit → a`: a delay recomputed every time. -/

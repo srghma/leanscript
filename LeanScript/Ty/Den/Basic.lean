@@ -2,6 +2,7 @@ module
 
 public import LeanScript.Ty.Syntax.Decl
 public import LeanScript.Ty.Den.Container
+public import Std.Data.HashMap.AdditionalOperations
 
 @[expose] public section
 
@@ -51,6 +52,7 @@ def Ty.den {ks : List Nat} (E : Ref ks → Type) {d : Bool} : Ty ks d → Type
   | .fn a b => Ty.den E a → Ty.den E b
   | .array t => Array (Ty.den E t)
   | .list t => List (Ty.den E t)
+  | .strMap t => Std.HashMap String (Ty.den E t)
   | .enum s => Fin s.nOfConstructors
   | .record t fs => Ty.den E t × Fields.den E fs
   | .union cs (h := _) => Ctors.den E cs
@@ -83,6 +85,7 @@ def Ty.ofRelax {ks : List Nat} (E : Ref ks → Type) : (t : Ty ks false) → Ty.
   | .fn _ _, x => x
   | .array _, x => x
   | .list _, x => x
+  | .strMap _, x => x
   | .enum _, x => x
   | .record _ _, x => x
   | .union _ (h := _), x => x
@@ -94,6 +97,7 @@ def Ty.toRelax {ks : List Nat} (E : Ref ks → Type) : (t : Ty ks false) → Ty.
   | .fn _ _, x => x
   | .array _, x => x
   | .list _, x => x
+  | .strMap _, x => x
   | .enum _, x => x
   | .record _ _, x => x
   | .union _ (h := _), x => x
@@ -120,6 +124,7 @@ def Ty.lift {d : Bool} : (t : Ty ks d) → Ty.den (fun r => E (f r)) t → Ty.de
   | .fn a b, x => fun y => Ty.lift b (x (Ty.lower a y))
   | .array t, x => x.map (Ty.lift t)
   | .list t, x => x.map (Ty.lift t)
+  | .strMap t, x => x.map (fun _ v => Ty.lift t v)
   | .enum _, x => x
   | .record t fs, x => (Ty.lift t x.1, Fields.lift fs x.2)
   | .union cs (h := _), x => Ctors.lift cs x
@@ -132,6 +137,7 @@ def Ty.lower {d : Bool} : (t : Ty ks d) → Ty.den E (Ty.map f t) → Ty.den (fu
   | .fn a b, x => fun y => Ty.lower b (x (Ty.lift a y))
   | .array t, x => x.map (Ty.lower t)
   | .list t, x => x.map (Ty.lower t)
+  | .strMap t, x => x.map (fun _ v => Ty.lower t v)
   | .enum _, x => x
   | .record t fs, x => (Ty.lower t x.1, Fields.lower fs x.2)
   | .union cs (h := _), x => Ctors.lower cs x

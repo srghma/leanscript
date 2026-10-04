@@ -393,13 +393,6 @@ partial def constInline {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (e : JsExpr 
   | _ => false
 end
 
-/-- Is the expression a variable or a literal (one that can be repeated without
-    recomputing anything)? -/
-def JsExpr.isAtom {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
-  | .cvar _ | .mvar _ | .lit _ | .enum_mk .. | .global _ => true
-  | .fold _ e | .unfold _ e => e.isAtom
-  | _ => false
-
 end MoreJs
 
 end

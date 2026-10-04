@@ -419,4 +419,59 @@ partial def JsUnionArms.earlyJump {C M J : List JsTy} {k : JsEnd} {cs : List (Li
   | .cons _ b rest => b.earlyJump i tail || rest.earlyJump i tail
 end
 
+/-! ## Hash maps with string keys -/
+
+/-- Can the string be written after a dot (`m.k`): an identifier name (a reserved word is one,
+    `m.class` is valid)? -/
+def isIdentName (s : String) : Bool :=
+  match s.toList with
+  | [] => false
+  | c :: cs =>
+    let start (c : Char) : Bool := c.isAlpha || c == '_' || c == '$'
+    start c && cs.all fun c => start c || c.isDigit
+
+/-- The property `k` of the object `m`: `m.k` when the key is a string literal that is an
+    identifier name, `m[k]` otherwise. -/
+def strMapProp (m k : MiniExpr) (lit : Option String) : MiniExpr :=
+  match lit with
+  | some s => if isIdentName s then .dot m (nes s) else .index m k
+  | none => .index m k
+
+/-- `Object.f(args)`. -/
+def objectCall (f : String) (args : List MiniExpr) : MiniExpr :=
+  .call (.dot (ident "Object") (nes f)) args
+
+/-- The JavaScript of an operation on a hash map with string keys that is written inline
+    (`JsStrMapOp.inline`), on the JavaScript of its arguments `es` (`infos`: whether each is an
+    atom, and the string of a string literal); `N` is the representation of a natural number
+    (the answer of `size`). -/
+def strMapInlineToMini (op : JsStrMapOp) (N : JsTy) (es : List MiniExpr)
+    (infos : List (Bool × Option String)) : MiniExpr :=
+  let e (i : Nat) : MiniExpr := es.getD i (ident "undefined")
+  let lit (i : Nat) : Option String := infos[i]?.bind (·.2)
+  let safe (i : Nat) : Bool := match lit i with
+    | some s => !objectProtoNames.contains s
+    | none => false
+  -- the value of the key `k` of `m`, or the default `d`
+  let lookup (mi ki di : Nat) : MiniExpr :=
+    let p := strMapProp (e mi) (e ki) (lit ki)
+    if safe ki then .binary p .coalesce (e di)
+    else .ternary (objectCall "hasOwn" [e mi, e ki]) p (e di)
+  let length : MiniExpr := .dot (objectCall "keys" [e 0]) (nes "length")
+  match op with
+  | .getBang => lookup 1 2 0
+  | .getD => lookup 0 1 2
+  | .contains => objectCall "hasOwn" [e 0, e 1]
+  | .emptyWithCapacity => .object []
+  | .insert =>
+    let key : MiniPropertyName := match lit 1 with
+      | some s => if isIdentName s && s != "__proto__" then .ident (nes s) else .computed (e 1)
+      | none => .computed (e 1)
+    .object [.spread (e 0), .keyValue key (e 2)]
+  | .size => if N == .terminal .bigint_nat then .call (ident "BigInt") [length] else length
+  | .isEmpty => .binary length .strictEq (natNum 0)
+  | .keys | .keysArray => objectCall "keys" [e 0]
+  | .values | .valuesArray => objectCall "values" [e 0]
+  | _ => .call (ident op.runtimeName) es
+
 end MoreJs

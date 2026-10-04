@@ -120,7 +120,9 @@ def freshExterns : List String :=
    "lean_array_reverse", "lean_array_extract", "lean_array_erase_idx",
    "lean_array_insert_idx", "lean_array_erase_idx_if_in_bounds",
    "lean_array_insert_idx_if_in_bounds", "lean_array_qsort", "lean_array_zip_with",
-   "lean_array_zip"]
+   "lean_array_zip",
+   -- the arrays of a hash map with string keys (`Object.keys`, `Object.values`, …)
+   "lean_str_map_keys_array", "lean_str_map_values_array", "lean_str_map_to_array"]
 
 /-- Does the extern always answer a new array? -/
 def isFresh (name : String) : Bool := freshExterns.contains name

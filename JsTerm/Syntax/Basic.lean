@@ -225,6 +225,77 @@ partial def JsLitShape.pretty : JsLitShape → String
 
 /-! ## Conversions between representations -/
 
+/-- The operations on a hash map with string keys (`JsTy.strMap`, a JavaScript object whose own
+    properties are the keys): one per entry of `StrMapExtern`
+    (`LeanScript.LeanInitPureExterns.StrMap`).  Each is written inline (`Object.keys(m)`,
+    `Object.hasOwn(m, k)`, `m.k ?? d`, `{ ...m, [k]: v }`, …) or, when that would compute an
+    argument twice or out of order, as a call of its function of `runtime.js`
+    (`JsListOp.runtimeName`; the printer, `JsTerm.Print.Mini.Block`, chooses). -/
+inductive JsStrMapOp where
+  | emptyWithCapacity | insert | erase | getOpt | contains | getD | getBang | size | isEmpty
+  | keys | keysArray | values | valuesArray | toList | toArray | ofList
+  deriving Repr, DecidableEq, Inhabited
+
+namespace JsStrMapOp
+
+/-- The signature of the operation on maps of values `v`, a natural number being `N` (the
+    capacity of `emptyWithCapacity`, the answer of `size`): the types of its arguments (in the
+    order of the entry's) and of its result.  A list is at the array layout (`JsTy.list`) and an
+    option has every constructor an object, the layouts of the catalogue. -/
+def sig (op : JsStrMapOp) (v N : JsTy) : List JsTy × JsTy :=
+  let m := JsTy.strMap v
+  let s := JsTy.terminal .string
+  let b := JsTy.terminal .bool
+  let pair := JsTy.obj (.record 2) [s, v]
+  match op with
+  | .emptyWithCapacity => ([N], m)
+  | .insert => ([m, s, v], m)
+  | .erase => ([m, s], m)
+  | .getOpt => ([m, s], .obj (.union [0, 1] .cells) [v])
+  | .contains => ([m, s], b)
+  | .getD => ([m, s, v], v)
+  | .getBang => ([v, m, s], v)
+  | .size => ([m], N)
+  | .isEmpty => ([m], b)
+  | .keys => ([m], .list s)
+  | .keysArray => ([m], .array s)
+  | .values => ([m], .list v)
+  | .valuesArray => ([m], .array v)
+  | .toList => ([m], .list pair)
+  | .toArray => ([m], .array pair)
+  | .ofList => ([.list pair], m)
+
+/-- The function of `runtime.js` that computes the operation (when it is not written inline). -/
+def runtimeName : JsStrMapOp → String
+  | .emptyWithCapacity => "strMap__empty" | .insert => "strMap__insert"
+  | .erase => "strMap__erase" | .getOpt => "strMap__get_opt" | .contains => "strMap__contains"
+  | .getD => "strMap__get_d" | .getBang => "strMap__get_bang" | .size => "strMap__size"
+  | .isEmpty => "strMap__is_empty" | .keys | .keysArray => "strMap__keys"
+  | .values | .valuesArray => "strMap__values" | .toList | .toArray => "strMap__to_array"
+  | .ofList => "strMap__of_array"
+
+/-- The operation of an entry of `StrMapExtern`, by the name of the entry. -/
+def ofExtern? : String → Option JsStrMapOp
+  | "lean_str_map_empty_with_capacity" => some .emptyWithCapacity
+  | "lean_str_map_insert" => some .insert
+  | "lean_str_map_erase" => some .erase
+  | "lean_str_map_get_opt" => some .getOpt
+  | "lean_str_map_contains" => some .contains
+  | "lean_str_map_get_d" => some .getD
+  | "lean_str_map_get_bang" => some .getBang
+  | "lean_str_map_size" => some .size
+  | "lean_str_map_is_empty" => some .isEmpty
+  | "lean_str_map_keys" => some .keys
+  | "lean_str_map_keys_array" => some .keysArray
+  | "lean_str_map_values" => some .values
+  | "lean_str_map_values_array" => some .valuesArray
+  | "lean_str_map_to_list" => some .toList
+  | "lean_str_map_to_array" => some .toArray
+  | "lean_str_map_of_list" => some .ofList
+  | _ => none
+
+end JsStrMapOp
+
 /-- The conversions between two representations of the same values, functions of the runtime
     (proposal S of `proposals/TypedDataProposals3.md`: two representations are two types, and a
     change of representation is one of these, never implicit).
@@ -237,7 +308,11 @@ partial def JsLitShape.pretty : JsLitShape → String
       (`union_mk`, `unionCases`).
     * The two representations of a union (`JsRepr`): every constructor an object (`cells`, what
       the externs of the catalogue take and answer), or the constructors without fields as
-      numbers (`smallIntNullary`). -/
+      numbers (`smallIntNullary`).
+
+    It also holds the operations on hash maps with string keys (`JsStrMapOp`), which are written
+    inline or as a call of `runtime.js` depending on their arguments
+    (`JsListOp.importedName?`). -/
 inductive JsListOp : List JsTy → JsTy → Type where
   /-- The cons cells of the elements of an array: `consList__of_array(a)`. -/
   | ofArray (α : JsTy) : JsListOp [.list α] (.consList α)
@@ -251,6 +326,9 @@ inductive JsListOp : List JsTy → JsTy → Type where
       `obj__nullary_to_cells(u)` (`i` is `{ tag: i }`). -/
   | nullaryToCells (ar : List Nat) (args : List JsTy) :
       JsListOp [.obj (.union ar .smallIntNullary) args] (.obj (.union ar .cells) args)
+  /-- An operation on a hash map with string keys, of values `v` (`JsStrMapOp`; `N` is the
+      representation of a natural number, for `size` and `emptyWithCapacity`). -/
+  | strMap (op : JsStrMapOp) (v N : JsTy) : JsListOp (op.sig v N).1 (op.sig v N).2
   deriving Repr
 
 namespace JsListOp
@@ -261,6 +339,7 @@ def runtimeName {σs : List JsTy} {τ : JsTy} : JsListOp σs τ → String
   | .toArray _ => "consList__to_array"
   | .nullaryToInt _ _ => "obj__nullary_to_int"
   | .nullaryToCells _ _ => "obj__nullary_to_cells"
+  | .strMap op _ _ => op.runtimeName
 
 /-- The functions of `runtime.js` the conversions call. -/
 def runtimeNames : List String :=
@@ -461,6 +540,59 @@ inductive JsUnionArms (S : JsSig) : List JsTy → List JsTy → List JsTy → Js
 end
 
 instance {C M : List JsTy} {τ : JsTy} : Inhabited (JsExpr S C M τ) := ⟨.unreachable τ⟩
+
+/-- Is the expression a variable or a literal (one that can be repeated without
+    recomputing anything)? -/
+def JsExpr.isAtom {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
+  | .cvar _ | .mvar _ | .lit _ | .enum_mk .. | .global _ => true
+  | .fold _ e | .unfold _ e => e.isAtom
+  | _ => false
+
+/-- The string of a string literal. -/
+def JsExpr.stringLit? {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Option String
+  | .lit (.string s) => some s
+  | _ => none
+
+/-- Of each argument: is it an atom (`JsExpr.isAtom`), and the string it is if it is a string
+    literal. -/
+def JsArgs.atomInfos {C M : List JsTy} : {σs : List JsTy} → JsArgs S C M σs → List (Bool × Option String)
+  | [], .nil => []
+  | _ :: _, .cons a as => (a.isAtom, a.stringLit?) :: as.atomInfos
+
+/-- The properties every JavaScript object inherits from `Object.prototype`: a key among them
+    may be found on an object that does not have it as its own property. -/
+def objectProtoNames : List String :=
+  ["__proto__", "constructor", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable",
+   "toLocaleString", "toString", "valueOf", "__defineGetter__", "__defineSetter__",
+   "__lookupGetter__", "__lookupSetter__"]
+
+/-- Is the operation on a hash map with string keys written inline, given what its arguments are
+    (`JsArgs.atomInfos`)?  A lookup with a default is `m.k ?? d` when the key is a string literal
+    that no object inherits (no value of the language is `undefined` or `null`, so `??` only
+    takes the default when the key is missing), `Object.hasOwn(m, k) ? m[k] : d` when the map and
+    the key are atoms (each is read twice), and the default an atom (it is read last, and only
+    when the key is missing); otherwise the operation is the call of its function of
+    `runtime.js`, as are the ones that build a value of the catalogue's layouts (an option, a
+    list of pairs) or a copy without a key. -/
+def JsStrMapOp.inline (op : JsStrMapOp) (infos : List (Bool × Option String)) : Bool :=
+  let atom (i : Nat) : Bool := (infos[i]?.map (·.1)).getD false
+  let safeKey (i : Nat) : Bool := match infos[i]?.bind (·.2) with
+    | some s => !objectProtoNames.contains s
+    | none => false
+  match op with
+  | .getBang => atom 0 && (safeKey 2 || (atom 1 && atom 2))
+  | .getD => atom 2 && (safeKey 1 || (atom 0 && atom 1))
+  | .emptyWithCapacity => atom 0
+  | .erase | .getOpt | .toList | .toArray | .ofList => false
+  | .insert | .contains | .size | .isEmpty | .keys | .keysArray | .values | .valuesArray => true
+
+/-- The function of `runtime.js` a conversion calls on the arguments `args`, if it calls one (an
+    operation on a hash map with string keys may be written inline, `JsStrMapOp.inline`). -/
+def JsListOp.importedName? {C M σs : List JsTy} {τ : JsTy} (op : JsListOp σs τ)
+    (args : JsArgs S C M σs) : Option String :=
+  match op with
+  | .strMap sop _ _ => if sop.inline args.atomInfos then none else some sop.runtimeName
+  | op => some op.runtimeName
 instance {C M J : List JsTy} {k : JsEnd} : Inhabited (JsBlock S C M J k) := ⟨.throw "unreachable"⟩
 instance {C M : List JsTy} {A E : JsTy} : Inhabited (JsParts S C M A E) := ⟨.nil⟩
 

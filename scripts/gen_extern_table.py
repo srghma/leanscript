@@ -17,7 +17,7 @@ OUT = os.path.join(ROOT, 'LeanScript', 'TermElab', 'ToTerm', 'ExternTable.lean')
 
 rows, seen = [], set()
 for th in ['Core', 'FixedWidth', 'String', 'Float',
-           'ArrayStdFunctionsNonExternButBigEnoughToLoseInformation']:
+           'ArrayStdFunctionsNonExternButBigEnoughToLoseInformation', 'StrMap']:
     for line in open(os.path.join(CAT, th + '.lean')):
         m = re.match(r'^\s*\| (\S+) : .* -- (\S+)', line)
         if not m:

@@ -1,6 +1,7 @@
 module
 
 public import LeanScript.Ty.Den.Basic
+public import LeanScript.Ty.Den.HashMapMap
 
 @[expose] public section
 
@@ -117,6 +118,11 @@ def Ty.pick {d : Bool} : (t : Ty ks d) → Two (Ty.den E t)
   | .list t =>
       let v := (Ty.pick t).x
       ⟨[], [v], fun a => a.isEmpty, rfl, rfl⟩
+  | .strMap t =>
+      let v := (Ty.pick t).x
+      ⟨(∅ : Std.HashMap String (Ty.den E t)), (∅ : Std.HashMap String (Ty.den E t)).insert "" v,
+        fun (m : Std.HashMap String (Ty.den E t)) => m.isEmpty, StrMapPoints.isEmpty_empty,
+        StrMapPoints.isEmpty_one v⟩
   | .enum s =>
       ⟨⟨0, by simp [LeanEnumSchema.nOfConstructors]⟩, ⟨1, by simp [LeanEnumSchema.nOfConstructors]⟩,
         fun i => i.val == 0, rfl, rfl⟩
