@@ -4,7 +4,7 @@
 // not translated:
 //   hyper: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 
-import { uint53__lean_nat_add } from "../../runtime.js";
+import { uint53__lean_nat_pred, uint53__lean_nat_add } from "../../runtime.js";
 
 /**
  * `hyperBase`
@@ -13,19 +13,14 @@ import { uint53__lean_nat_add } from "../../runtime.js";
  * @returns {uint53(number)}
  */
 export const hyperBase = (a, a1) => {
-  let acc$1 = 1;
-  for (let i$2 = 0; i$2 < a; i$2++) {
-    let acc$3 = a1;
-    for (let i$4 = 0; i$4 < i$2; i$4++) {
-      let acc$5 = 0;
-      for (let i$6 = 0; i$6 < i$4; i$6++) {
-        acc$5 = 1;
-      }
-      acc$3 = acc$5;
-    }
-    acc$1 = acc$3;
+  if (a === 0) {
+    return 1;
   }
-  return acc$1;
+  const x$1 = uint53__lean_nat_pred(a);
+  if (x$1 === 0) {
+    return a1;
+  }
+  return uint53__lean_nat_pred(x$1) === 0 ? 0 : 1;
 };
 
 /**
@@ -71,22 +66,18 @@ export const hyperTCO = (a, a1, a2) => {
         }
       };
       const x$11 = uint53__lean_nat_add(i$3, 1);
-      const k$19 = (x$12) => {
-        let acc$13 = 1;
-        for (let i$14 = 0; i$14 < x$11; i$14++) {
-          let acc$15 = x$12;
-          for (let i$16 = 0; i$16 < i$14; i$16++) {
-            let acc$17 = 0;
-            for (let i$18 = 0; i$18 < i$16; i$18++) {
-              acc$17 = 1;
-            }
-            acc$15 = acc$17;
-          }
-          acc$13 = acc$15;
+      let x$12;
+      if (x$11 === 0) {
+        x$12 = 1;
+      } else {
+        const x$13 = uint53__lean_nat_pred(x$11);
+        if (x$13 === 0) {
+          x$12 = a1;
+        } else {
+          x$12 = uint53__lean_nat_pred(x$13) === 0 ? 0 : 1;
         }
-        return acc$13;
-      };
-      return k$10(x$5, k$19(a1));
+      }
+      return k$10(x$5, x$12);
     };
   }
   return acc$2(a2);
@@ -105,27 +96,22 @@ export const hyperWhile = (a, a1, a2) => {
     const a$4 = acc$2;
     acc$2 = (x$5) => {
       const x$6 = uint53__lean_nat_add(i$3, 1);
-      const k$14 = (x$7) => {
-        let acc$8 = 1;
-        for (let i$9 = 0; i$9 < x$6; i$9++) {
-          let acc$10 = x$7;
-          for (let i$11 = 0; i$11 < i$9; i$11++) {
-            let acc$12 = 0;
-            for (let i$13 = 0; i$13 < i$11; i$13++) {
-              acc$12 = 1;
-            }
-            acc$10 = acc$12;
-          }
-          acc$8 = acc$10;
+      let x$7;
+      if (x$6 === 0) {
+        x$7 = 1;
+      } else {
+        const x$8 = uint53__lean_nat_pred(x$6);
+        if (x$8 === 0) {
+          x$7 = a1;
+        } else {
+          x$7 = uint53__lean_nat_pred(x$8) === 0 ? 0 : 1;
         }
-        return acc$8;
-      };
-      const x$15 = k$14(a1);
-      let acc$16 = x$15;
-      for (let i$17 = 0; i$17 < x$5; i$17++) {
-        acc$16 = a$4(acc$16);
       }
-      return acc$16;
+      let acc$9 = x$7;
+      for (let i$10 = 0; i$10 < x$5; i$10++) {
+        acc$9 = a$4(acc$9);
+      }
+      return acc$9;
     };
   }
   return acc$2(a2);

@@ -306,6 +306,43 @@ theorem Term.openTailCall?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ty τ :
     · cases h
   · cases h
 
+theorem Term.openLetCall?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ty τ : Ty ks}
+    {js : JCtx ks} {o o' : Lvl} (u : Usage1ω) (v : Val Δ d Φ Γ ty o)
+    (b : Term Δ d (⟨ty, u, o, true⟩ :: Φ) Γ τ js o') (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ)
+    (jκ : JEnv Δ τ js) {r : (o'' : Lvl) × Term Δ d Φ Γ τ js o''}
+    (h : Term.openLetCall? u v b = some r) :
+    r.2.eval κ ρ jκ = (Term.letV u v b).eval κ ρ jκ := by
+  unfold Term.openLetCall? at h
+  split at h
+  · rename_i σ₁ τ₁ hty uₓ m body σc uy ℓc oc c rest hf
+    split at h
+    · rename_i σa oa a hca hc
+      split at h
+      · rename_i hst
+        obtain ⟨rfl, rfl⟩ := hst
+        split at h
+        · rename_i a' rest' ha hrest
+          split at h
+          · simp only [Option.bind_eq_some_iff] at h
+            obtain ⟨r', hr', h⟩ := h
+            rw [Term.bindRet_eval _ rest' κ ρ jκ h]
+            simp only [Term.eval]
+            rw [Comp.appHead?_eval c hc]
+            have hs := Term.subst_eval (KLRen.Agree.id κ)
+              (USub.Agree.cons (USub.Agree.ofRen (Δ := Δ) (Φ' := Φ) (κ' := κ) (ULRen.Agree.idL ρ))
+                ⟨_, a'⟩)
+              (JRen.Agree.ofNil (Δ := Δ) (τ := τ₁) (js := []) PUnit.unit) body hr'
+            have hv := Val.openFn?_eval v hf κ ρ
+            simp only at hv hs ⊢
+            rw [hs, ← PExpr.rename_eval (KRen.Agree.drop _ κ) (URen.Agree.id ρ) a ha, ← hv]
+            exact Term.rename_eval (KRen.Agree.drop _ κ) (URen.Agree.id _) (JRen.Agree.id _)
+              rest hrest
+          · cases h
+        · cases h
+      · cases h
+    · cases h
+  · cases h
+
 theorem Term.retLetV_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks}
     {o o' : Lvl} (u : Usage1ω) (v : Val Δ d Φ Γ σ o) (b : Term Δ d (⟨σ, u, o, true⟩ :: Φ) Γ τ js o')
     (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
@@ -326,7 +363,11 @@ theorem Term.retLetV_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks
       split
       · rename_i r hr
         exact Term.openTailCall?_eval u v b κ ρ jκ hr
-      · rfl
+      · simp only
+        split
+        · rename_i r hr
+          exact Term.openLetCall?_eval u v b κ ρ jκ hr
+        · rfl
 
 /-! ## The walk -/
 

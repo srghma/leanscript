@@ -11,15 +11,15 @@ import { array__lean_array_push_mutable } from "../../runtime.js";
  * @returns {D0}
  */
 export const test = (user) => {
-  const k_mut$4 = (x$1) => {
-    const k_mut$3 = (x$2) =>
-      array__lean_array_push_mutable(x$2, { tag: 1, _1: "Posts for " + user });
-    return array__lean_array_push_mutable(
-      array__lean_array_push_mutable(x$1, {
-        tag: 0,
-        _1: "h1",
-        _2: k_mut$3([]),
-      }),
+  const x$1 = array__lean_array_push_mutable([], {
+    tag: 1,
+    _1: "Posts for " + user,
+  });
+  return {
+    tag: 0,
+    _1: "section",
+    _2: array__lean_array_push_mutable(
+      array__lean_array_push_mutable([], { tag: 0, _1: "h1", _2: x$1 }),
       {
         tag: 0,
         _1: "article",
@@ -35,7 +35,6 @@ export const test = (user) => {
           },
         ],
       },
-    );
+    ),
   };
-  return { tag: 0, _1: "section", _2: k_mut$4([]) };
 };

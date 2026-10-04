@@ -3131,6 +3131,58 @@ def knownConstructors02Spec : Spec := describe "KnownConstructors02" do
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+/-- `KnownConstructors03.lean`: `test` (a `match` on `if 42 < x then some "Hello" else none`)
+    is one conditional expression `(x) => (42 < x ? "Hello, World!" : "")`, with no record and
+    no test of a tag (legacy builds no record either but writes `if`/`return`).  Its variants
+    `KnownCtorCaseOfIf.lean`: the arm of the constructor with a field written once as a join point
+    when the conditional has more than one leaf of it (`bigShared`: `let x$1; if … x$1 = s; else
+    if … x$1 = t; else return ""; return f(f(f(x$1 + …)))`), a record of literals taken apart
+    (`pairOpt`, `pairBool`), jumps passing a conditional (`doChain`: `0 < x && 0 < y`), and
+    `match` on `Nat` without a loop (`fromMatch`). -/
+def knownConstructors03Spec : Spec := describe "KnownConstructors03" do
+  it "a case of a conditional of constructors is a conditional (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/knownconstructors03"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at preset pbo, fragments at preset faithful, absent, checks)
+    for (path, file, fragsPbo, fragsFaithful, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "KnownConstructors03",
+          ["export const test = (x) => (42 < x ? \"Hello, World!\" : \"\");"],
+          ["export const test = (x) => (42n < x ? \"Hello, World!\" : \"\");"],
+          [".tag", "if (", "return "], (7 : Nat)),
+        ("Tests/SnapshotsMy", "KnownCtorCaseOfIf",
+          ["export const twiceUse = (x) => (42 < x ? \"HelloHello\" : \"\");",
+           "export const pairOpt = (x) => (0 < x ? x : int53__lean_int_neg(x));",
+           "export const pairBool = (x) => (0 < x ? int53__lean_int_mul(x, 3) : -1);",
+           "export const isSomeIf = (x) => 0 < x;",
+           "  if (0 < x && 0 < y) {",
+           "  } else if (x < 0) {"],
+          ["export const twiceUse = (x) => (42n < x ? \"HelloHello\" : \"\");",
+           "export const pairOpt = (x) => (0n < x ? x : -x);",
+           "export const isSomeIf = (x) => 0n < x;",
+           "  if (0n < x && 0n < y) {",
+           "  } else if (x < 0n) {"],
+          ["while (", "s$1._1", "nat_rec"], 250)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for (preset, frags) in [("pbo", fragsPbo), ("faithful", fragsFaithful)] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -3177,6 +3229,7 @@ def spec : Spec := do
   knownConstructor07Spec
   knownConstructors01Spec
   knownConstructors02Spec
+  knownConstructors03Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

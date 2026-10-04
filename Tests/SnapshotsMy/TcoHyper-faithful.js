@@ -4,6 +4,8 @@
 // not translated:
 //   hyper: defined by well-founded recursion: only non-recursive and structurally recursive definitions are translated (to `Term`)
 
+import { bigint_nat__lean_nat_pred } from "../../runtime.js";
+
 /**
  * `hyperBase`
  * @param {nat(bigint)} a
@@ -11,19 +13,14 @@
  * @returns {nat(bigint)}
  */
 export const hyperBase = (a, a1) => {
-  let acc$1 = 1n;
-  for (let i$2 = 0n; i$2 < a; i$2++) {
-    let acc$3 = a1;
-    for (let i$4 = 0n; i$4 < i$2; i$4++) {
-      let acc$5 = 0n;
-      for (let i$6 = 0n; i$6 < i$4; i$6++) {
-        acc$5 = 1n;
-      }
-      acc$3 = acc$5;
-    }
-    acc$1 = acc$3;
+  if (a === 0n) {
+    return 1n;
   }
-  return acc$1;
+  const x$1 = bigint_nat__lean_nat_pred(a);
+  if (x$1 === 0n) {
+    return a1;
+  }
+  return bigint_nat__lean_nat_pred(x$1) === 0n ? 0n : 1n;
 };
 
 /**
@@ -69,22 +66,18 @@ export const hyperTCO = (a, a1, a2) => {
         }
       };
       const x$11 = i$3 + 1n;
-      const k$19 = (x$12) => {
-        let acc$13 = 1n;
-        for (let i$14 = 0n; i$14 < x$11; i$14++) {
-          let acc$15 = x$12;
-          for (let i$16 = 0n; i$16 < i$14; i$16++) {
-            let acc$17 = 0n;
-            for (let i$18 = 0n; i$18 < i$16; i$18++) {
-              acc$17 = 1n;
-            }
-            acc$15 = acc$17;
-          }
-          acc$13 = acc$15;
+      let x$12;
+      if (x$11 === 0n) {
+        x$12 = 1n;
+      } else {
+        const x$13 = bigint_nat__lean_nat_pred(x$11);
+        if (x$13 === 0n) {
+          x$12 = a1;
+        } else {
+          x$12 = bigint_nat__lean_nat_pred(x$13) === 0n ? 0n : 1n;
         }
-        return acc$13;
-      };
-      return k$10(x$5, k$19(a1));
+      }
+      return k$10(x$5, x$12);
     };
   }
   return acc$2(a2);
@@ -103,27 +96,22 @@ export const hyperWhile = (a, a1, a2) => {
     const a$4 = acc$2;
     acc$2 = (x$5) => {
       const x$6 = i$3 + 1n;
-      const k$14 = (x$7) => {
-        let acc$8 = 1n;
-        for (let i$9 = 0n; i$9 < x$6; i$9++) {
-          let acc$10 = x$7;
-          for (let i$11 = 0n; i$11 < i$9; i$11++) {
-            let acc$12 = 0n;
-            for (let i$13 = 0n; i$13 < i$11; i$13++) {
-              acc$12 = 1n;
-            }
-            acc$10 = acc$12;
-          }
-          acc$8 = acc$10;
+      let x$7;
+      if (x$6 === 0n) {
+        x$7 = 1n;
+      } else {
+        const x$8 = bigint_nat__lean_nat_pred(x$6);
+        if (x$8 === 0n) {
+          x$7 = a1;
+        } else {
+          x$7 = bigint_nat__lean_nat_pred(x$8) === 0n ? 0n : 1n;
         }
-        return acc$8;
-      };
-      const x$15 = k$14(a1);
-      let acc$16 = x$15;
-      for (let i$17 = 0n; i$17 < x$5; i$17++) {
-        acc$16 = a$4(acc$16);
       }
-      return acc$16;
+      let acc$9 = x$7;
+      for (let i$10 = 0n; i$10 < x$5; i$10++) {
+        acc$9 = a$4(acc$9);
+      }
+      return acc$9;
     };
   }
   return acc$2(a2);

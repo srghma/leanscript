@@ -260,6 +260,29 @@ theorem JPos.jump?_eval {d : Nat} {Φ₀ : KCtx ks} {Γ₀ : UCtx ks} {js₀ : J
         simp only [CaseJoin.sem, cast_eq]
         rw [key]
 
+theorem JPos.jumpCond?_eval {d : Nat} {Φ₀ : KCtx ks} {Γ₀ : UCtx ks} {js₀ : JCtx ks}
+    {σ : Ty ks} {uₓ : Usage01ω} {τ : Ty ks} {Φ : KCtx ks} {Γ : UCtx ks} {js : JCtx ks}
+    {C : CaseJoin Δ d Φ₀ Γ₀ σ uₓ τ js₀} {P : JPos Φ₀ Γ₀ js₀ σ Φ Γ js} {κ₀ : KEnv Δ Φ₀}
+    {ρ₀ : UEnv Δ Γ₀} {jκ₀ : JEnv Δ τ js₀} {κ : KEnv Δ Φ} {ρ : UEnv Δ Γ} {jκ : JEnv Δ τ js}
+    (hP : JPos.Agree C P κ₀ ρ₀ jκ₀ κ ρ jκ) {σ' : Ty ks} (j : JVar js σ') :
+    (fuel : Nat) → {o : Lvl} → (e : PExpr Δ Φ Γ σ' o) → {r : (o' : Lvl) × Term Δ d Φ Γ τ js o'} →
+    JPos.jumpCond? C P j fuel e = some r → r.2.eval κ ρ jκ = jκ.get j (e.eval κ ρ)
+  | 0, _, e, _, h => JPos.jump?_eval hP j e h
+  | fuel + 1, _, e, r, h => by
+      unfold JPos.jumpCond? at h
+      split at h
+      · rename_i fuel' _ _ _ c a b heq
+        obtain rfl : fuel = fuel' := Nat.succ.inj heq
+        split at h
+        · rename_i ta tb ha hb
+          cases h
+          simp only [Term.eval, Branch.eval, PExpr.eval, Neu.eval]
+          split
+          · exact JPos.jumpCond?_eval hP j fuel a ha
+          · exact JPos.jumpCond?_eval hP j fuel b hb
+        · cases h
+      · exact JPos.jump?_eval hP j _ h
+
 /-! ## Replacing the jumps -/
 
 section Repl
@@ -287,9 +310,9 @@ theorem Term.jcRepl_eval : {Φ : KCtx ks} → {Γ : UCtx ks} → {js : JCtx ks} 
       exact Branch.jcRepl_eval P br κ ρ jκ hP
   | _, _, _, P, _, .jump j e, κ, ρ, jκ, hP => by
       simp only [Term.jcRepl]
-      cases h : JPos.jump? C P j e with
+      cases h : JPos.jumpCond? C P j 8 e with
       | none => rfl
-      | some r => exact JPos.jump?_eval hP j e h
+      | some r => exact JPos.jumpCond?_eval hP j 8 e h
   termination_by structural _ _ _ _ _ t => t
 theorem Branch.jcRepl_eval : {Φ : KCtx ks} → {Γ : UCtx ks} → {js : JCtx ks} →
     (P : JPos Φ₀ Γ₀ js₀ σ Φ Γ js) → {ℓ : Nat} → (br : Branch Δ d Φ Γ τ js ℓ) →
@@ -401,6 +424,28 @@ theorem Branches.caseLit?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : Lis
     rw [Term.substFields_eval d c.binds (brs.select ix).1 _ _ args hr κ ρ jκ,
       PExpr.unionLit?_eval κ ρ e hl, Branches.select_eval]
 
+theorem Branches.caseOf?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool}
+    {cs : Ctors ks bs} {h : UnionShape bs} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
+    (brs : Branches Δ d Φ Γ cs τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    (fuel : Nat) → {o' : Lvl} → (e : PExpr Δ Φ Γ (.union cs (h := h)) o') →
+    {r : (o'' : Lvl) × Term Δ d Φ Γ τ js o''} → brs.caseOf? fuel e = some r →
+    r.2.eval κ ρ jκ = brs.eval κ ρ jκ (e.eval κ ρ)
+  | 0, _, e, _, hr => Branches.caseLit?_eval brs e hr κ ρ jκ
+  | fuel + 1, _, e, r, hr => by
+      unfold Branches.caseOf? at hr
+      split at hr
+      · rename_i fuel' _ _ _ c a b heq
+        obtain rfl : fuel = fuel' := Nat.succ.inj heq
+        split at hr
+        · rename_i ta tb ha hb
+          cases hr
+          simp only [Term.eval, Branch.eval, PExpr.eval, Neu.eval]
+          split
+          · exact Branches.caseOf?_eval brs κ ρ jκ fuel a ha
+          · exact Branches.caseOf?_eval brs κ ρ jκ fuel b hb
+        · cases hr
+      · exact Branches.caseLit?_eval brs _ hr κ ρ jκ
+
 theorem Neu.caseCond?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool}
     {cs : Ctors ks bs} {h : UnionShape bs} {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat}
     (n : Neu Δ Φ Γ (.union cs (h := h)) ℓ) (brs : Branches Δ d Φ Γ cs τ js o)
@@ -414,9 +459,133 @@ theorem Neu.caseCond?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bo
     · rename_i ta tb ha hb
       cases hr
       simp only [Branch.eval, Neu.eval]
-      split <;> simp only [Branches.caseLit?_eval brs _ ha, Branches.caseLit?_eval brs _ hb]
+      split
+      · exact Branches.caseOf?_eval brs κ ρ jκ 8 _ ha
+      · exact Branches.caseOf?_eval brs κ ρ jκ 8 _ hb
     · cases hr
   · cases hr
+
+theorem Term.underOne_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks}
+    {o : Lvl} (us : List Usage01ω) (t : Term Δ d Φ (UCtx.annot d [σ] us ++ Γ) τ js o)
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) (v : Ty.Den Δ σ) :
+    (Term.underOne us t).2.eval κ (Tuple.cons v ρ) jκ =
+      t.eval κ (Tuple.append (UEnv.ofDL d [σ] us (Tuple.cons v PUnit.unit)) ρ) jκ := by
+  cases us <;> rfl
+
+theorem CtorIx.twoSecond?_eval {Φ : KCtx ks} {Γ : UCtx ks} {a : Bool} {c₁ : Ctor ks a}
+    {σ : Ty ks} (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
+    {b : Bool} → {c : Ctor ks b} → (ix : CtorIx (.two c₁ (.fields (.one σ))) c) → {o' : Lvl} →
+    (args : Args Δ Φ Γ c.binds o') → {r : (o'' : Lvl) × PExpr Δ Φ Γ σ o''} →
+    ix.twoSecond? args = some r →
+    ix.inject (args.eval κ ρ) =
+      CtorIx.inject (cs := .two c₁ (.fields (.one σ))) .two₂ (Tuple.cons (r.2.eval κ ρ) PUnit.unit)
+  | _, _, .two₁, _, _, _, hr => nomatch hr
+  | _, _, .two₂, _, .cons _ .nil, _, hr => by cases hr; rfl
+
+theorem PExpr.twoSecond?_eval {Φ : KCtx ks} {Γ : UCtx ks} {a : Bool} {c₁ : Ctor ks a}
+    {σ : Ty ks} {h : UnionShape [a, true]} (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) {o' : Lvl}
+    (e : PExpr Δ Φ Γ (.union (.two c₁ (.fields (.one σ))) (h := h)) o')
+    {r : (o'' : Lvl) × PExpr Δ Φ Γ σ o''} (hr : e.twoSecond? = some r) :
+    e.eval κ ρ =
+      CtorIx.inject (cs := .two c₁ (.fields (.one σ))) .two₂ (Tuple.cons (r.2.eval κ ρ) PUnit.unit) := by
+  unfold PExpr.twoSecond? at hr
+  cases hl : e.unionLit? with
+  | none => rw [hl] at hr; cases hr
+  | some l =>
+      rw [hl] at hr
+      obtain ⟨b, c, ix, o'', args⟩ := l
+      rw [PExpr.unionLit?_eval κ ρ e hl]
+      exact CtorIx.twoSecond?_eval κ ρ ix args hr
+
+theorem Branches.leafJump?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {a : Bool}
+    {c₁ : Ctor ks a} {σ : Ty ks} {h : UnionShape [a, true]} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
+    (brs : Branches Δ d Φ Γ (.two c₁ (.fields (.one σ))) τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ)
+    (jκ : JEnv Δ τ js) (jκ' : JEnv Δ τ (⟨σ, .many⟩ :: js))
+    (hj : ∀ v, jκ'.head v = brs.eval κ ρ jκ
+      (CtorIx.inject (cs := .two c₁ (.fields (.one σ))) .two₂ (Tuple.cons v PUnit.unit)))
+    (ht : jκ'.tail = jκ) {o' : Lvl}
+    (e : PExpr Δ Φ Γ (.union (.two c₁ (.fields (.one σ))) (h := h)) o')
+    {r : (o'' : Lvl) × Term Δ d Φ Γ τ (⟨σ, .many⟩ :: js) o''} (hr : brs.leafJump? e = some r) :
+    r.2.eval κ ρ jκ' = brs.eval κ ρ jκ (e.eval κ ρ) := by
+  unfold Branches.leafJump? at hr
+  split at hr
+  · rename_i x hl
+    cases hr
+    rw [PExpr.twoSecond?_eval κ ρ e hl]
+    exact hj _
+  · simp only [Option.bind_eq_some_iff, Option.map_eq_some_iff] at hr
+    obtain ⟨r', hr', t, ht', rfl⟩ := hr
+    rw [Term.rename_eval (KRen.Agree.id κ) (URen.Agree.id ρ) (jκ' := jκ') ?_ r'.2 ht',
+      Branches.caseLit?_eval brs e hr' κ ρ jκ]
+    intro _ x y hxy
+    cases hxy
+    simp only [JEnv.get, ht]
+
+theorem Branches.joinTree?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {a : Bool}
+    {c₁ : Ctor ks a} {σ : Ty ks} {h : UnionShape [a, true]} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
+    (brs : Branches Δ d Φ Γ (.two c₁ (.fields (.one σ))) τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ)
+    (jκ : JEnv Δ τ js) (jκ' : JEnv Δ τ (⟨σ, .many⟩ :: js))
+    (hj : ∀ v, jκ'.head v = brs.eval κ ρ jκ
+      (CtorIx.inject (cs := .two c₁ (.fields (.one σ))) .two₂ (Tuple.cons v PUnit.unit)))
+    (ht : jκ'.tail = jκ) :
+    (fuel : Nat) → {o' : Lvl} → (e : PExpr Δ Φ Γ (.union (.two c₁ (.fields (.one σ))) (h := h)) o') →
+    {r : (o'' : Lvl) × Term Δ d Φ Γ τ (⟨σ, .many⟩ :: js) o''} → brs.joinTree? fuel e = some r →
+    r.2.eval κ ρ jκ' = brs.eval κ ρ jκ (e.eval κ ρ)
+  | 0, _, e, _, hr => Branches.leafJump?_eval brs κ ρ jκ jκ' hj ht e hr
+  | fuel + 1, _, e, r, hr => by
+      unfold Branches.joinTree? at hr
+      split at hr
+      · rename_i fuel' _ _ _ c x y heq
+        obtain rfl : fuel = fuel' := Nat.succ.inj heq
+        split at hr
+        · rename_i tx ty hx hy
+          cases hr
+          simp only [Term.eval, Branch.eval, PExpr.eval, Neu.eval]
+          split
+          · exact Branches.joinTree?_eval brs κ ρ jκ jκ' hj ht fuel x hx
+          · exact Branches.joinTree?_eval brs κ ρ jκ jκ' hj ht fuel y hy
+        · cases hr
+      · exact Branches.leafJump?_eval brs κ ρ jκ jκ' hj ht _ hr
+
+theorem Branches.caseJoin?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {a : Bool}
+    {c₁ : Ctor ks a} {σ : Ty ks} {h : UnionShape [a, true]} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
+    {ℓ : Nat} (brs : Branches Δ d Φ Γ (.two c₁ (.fields (.one σ))) τ js o)
+    (n : Neu Δ Φ Γ (.union (.two c₁ (.fields (.one σ))) (h := h)) ℓ)
+    {r : (ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ'} (hr : brs.caseJoin? n = some r)
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    r.2.eval κ ρ jκ = brs.eval κ ρ jκ (n.eval κ ρ) := by
+  unfold Branches.caseJoin? at hr
+  split at hr
+  · rename_i c x y
+    split at hr
+    · rename_i tx ty hx hy
+      cases hr
+      simp only [Branch.eval, Neu.eval]
+      have hj : ∀ v, (Tuple.cons (fun v => (Term.underOne (brs.select .two₂).1
+          (brs.select .two₂).2.2).2.eval κ (Tuple.cons v ρ) jκ) jκ :
+          JEnv Δ τ (⟨σ, .many⟩ :: js)).head v = brs.eval κ ρ jκ
+          (CtorIx.inject (cs := .two c₁ (.fields (.one σ))) .two₂ (Tuple.cons v PUnit.unit)) := by
+        intro v
+        rw [Tuple.head_cons]
+        exact (Term.underOne_eval _ _ κ ρ jκ v).trans
+          (Branches.select_eval brs .two₂ κ ρ jκ (Tuple.cons v PUnit.unit)).symm
+      split
+      · exact Branches.joinTree?_eval _ κ ρ jκ _ hj (Tuple.tail_cons _ _) 8 x hx
+      · exact Branches.joinTree?_eval _ κ ρ jκ _ hj (Tuple.tail_cons _ _) 8 y hy
+    · cases hr
+  · cases hr
+
+theorem Branch.caseJoinAny?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks}
+    {js : JCtx ks} {o : Lvl} {ℓ : Nat} : {bs : List Bool} → {cs : Ctors ks bs} →
+    {h : UnionShape bs} → (n : Neu Δ Φ Γ (.union cs (h := h)) ℓ) →
+    (brs : Branches Δ d Φ Γ cs τ js o) → {r : (ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ'} →
+    Branch.caseJoinAny? n brs = some r → (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) → (jκ : JEnv Δ τ js) →
+    r.2.eval κ ρ jκ = brs.eval κ ρ jκ (n.eval κ ρ)
+  | _, .two _ (.fields (.one _)), _, n, brs, _, hr, κ, ρ, jκ =>
+      Branches.caseJoin?_eval brs n hr κ ρ jκ
+  | _, .two _ (.fields (.cons _ _)), _, _, _, _, hr, _, _, _ => by simp [Branch.caseJoinAny?] at hr
+  | _, .two _ .nullary, _, _, _, _, hr, _, _, _ => by simp [Branch.caseJoinAny?] at hr
+  | _, .cons _ _, _, _, _, _, hr, _, _, _ => by simp [Branch.caseJoinAny?] at hr
 
 theorem Branch.caseCond_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool}
     {cs : Ctors ks bs} {h : UnionShape bs} {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat}
@@ -430,7 +599,80 @@ theorem Branch.caseCond_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List 
       simp only
       by_cases hn : r.2.numCalls ≤ brs.numCalls
       · rw [ite_eq_left_of_eq_true _ _ (eq_true hn)]; exact Neu.caseCond?_eval n brs hc κ ρ jκ
-      · rw [ite_eq_right_of_eq_false _ _ (eq_false hn)]; rfl
+      · rw [ite_eq_right_of_eq_false _ _ (eq_false hn)]
+        cases hj : Branch.caseJoinAny? n brs with
+        | none => rfl
+        | some r' =>
+            simp only
+            by_cases hn' : r'.2.numCalls ≤ brs.numCalls
+            · rw [ite_eq_left_of_eq_true _ _ (eq_true hn')]
+              exact Branch.caseJoinAny?_eval n brs hj κ ρ jκ
+            · rw [ite_eq_right_of_eq_false _ _ (eq_false hn')]; rfl
+
+theorem Term.recordCaseOf?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks}
+    {fs : Fields ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} (us : List Usage01ω)
+    (body : Term Δ d Φ (UCtx.annot d (t :: fs.toList) us ++ Γ) τ js o)
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    (fuel : Nat) → {o' : Lvl} → (e : PExpr Δ Φ Γ (.record t fs) o') →
+    {r : (o'' : Lvl) × Term Δ d Φ Γ τ js o''} → Term.recordCaseOf? us body fuel e = some r →
+    r.2.eval κ ρ jκ = body.eval κ (Tuple.append (UEnv.ofDL d (t :: fs.toList) us
+      (Tuple.cons (e.eval κ ρ).1 (Fields.toDL fs (e.eval κ ρ).2))) ρ) jκ := by
+  have lit : ∀ {o' : Lvl} (e : PExpr Δ Φ Γ (.record t fs) o')
+      {r : (o'' : Lvl) × Term Δ d Φ Γ τ js o''},
+      (match e.recordLit? with
+        | some ⟨_, args⟩ =>
+            Term.substFields d (t :: fs.toList) us (t :: fs.toList).length body args
+        | none => none) = some r →
+      r.2.eval κ ρ jκ = body.eval κ (Tuple.append (UEnv.ofDL d (t :: fs.toList) us
+        (Tuple.cons (e.eval κ ρ).1 (Fields.toDL fs (e.eval κ ρ).2))) ρ) jκ := by
+    intro o' e r hr
+    split at hr
+    · rename_i o₂ args hl
+      have hv := PExpr.recordLit?_eval κ ρ e hl
+      rw [Term.substFields_eval d _ us _ body args hr κ ρ jκ]
+      have key : (Tuple.cons (e.eval κ ρ).1 (Fields.toDL fs (e.eval κ ρ).2) :
+          DenList (DSig.refDen Δ) (t :: fs.toList)) = args.eval κ ρ := by
+        rw [hv]
+        simp only [Fields.toDL_ofDL, Tuple.cons_head_tail]
+      rw [key]
+    · cases hr
+  intro fuel
+  induction fuel with
+  | zero =>
+      intro o' e r hr
+      unfold Term.recordCaseOf? at hr
+      exact lit e hr
+  | succ fuel ih =>
+      intro o' e r hr
+      unfold Term.recordCaseOf? at hr
+      split at hr
+      · rename_i fuel' _ _ _ c a b heq
+        obtain rfl : fuel = fuel' := Nat.succ.inj heq
+        split at hr
+        · rename_i ta tb ha hb
+          cases hr
+          simp only [Term.eval, Branch.eval, PExpr.eval, Neu.eval]
+          split
+          · exact ih a ha
+          · exact ih b hb
+        · cases hr
+      · exact lit _ hr
+
+theorem Term.recordCaseCond_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks}
+    {fs : Fields ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat} (us : List Usage01ω)
+    (n : Neu Δ Φ Γ (.record t fs) ℓ)
+    (body : Term Δ d Φ (UCtx.annot d (t :: fs.toList) us ++ Γ) τ js o)
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    (Term.recordCaseCond us n body).2.eval κ ρ jκ = (Term.record_casesOn us n body).eval κ ρ jκ := by
+  unfold Term.recordCaseCond
+  cases hc : Term.recordCaseOf? us body 8 (.neu n) with
+  | none => rfl
+  | some r =>
+      simp only
+      by_cases hn : r.2.numCalls ≤ body.numCalls
+      · rw [ite_eq_left_of_eq_true _ _ (eq_true hn), Term.recordCaseOf?_eval us body κ ρ jκ 8 _ hc]
+        rfl
+      · rw [ite_eq_right_of_eq_false _ _ (eq_false hn)]
 
 theorem Term.caseCondTop_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
     (r : (o : Lvl) × Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
@@ -443,6 +685,9 @@ theorem Term.caseCondTop_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty k
           simp only [Term.caseCondTop, Term.eval, Branch.eval]
           exact Branch.caseCond_eval _ _ _ _ _
       | _ => rfl
+  | record_casesOn us n body =>
+      simp only [Term.caseCondTop]
+      exact Term.recordCaseCond_eval us n body κ ρ jκ
   | _ => rfl
 
 theorem Term.shareCase_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks}
@@ -529,7 +774,9 @@ theorem Term.jcWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {
       simp only [Term.eval, Comp.jcWalk_eval c κ ρ]
       exact Term.jcWalk_eval b κ _ jκ
   | _, _, _, _, _, _, .record_casesOn us n b, κ, ρ, jκ => by
-      simp only [Term.jcWalk, Term.eval]
+      simp only [Term.jcWalk]
+      rw [Term.recordCaseCond_eval]
+      simp only [Term.eval]
       exact Term.jcWalk_eval b κ _ jκ
   | _, _, _, _, _, _, .branch br, κ, ρ, jκ => by
       simp only [Term.jcWalk, Term.eval]

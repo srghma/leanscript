@@ -118,6 +118,39 @@ theorem Comp.openCall?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks}
     rw [PExpr.toNeu?_eval κ ρ p.2 hn, OpenFnE.apply_eval (hI k f hf) a hp]
   · cases h
 
+theorem Term.letOpenCall_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks}
+    {js : JCtx ks} {ℓ : Nat} {o' : Lvl} {I : OInfo Δ Φ Γ} {κ : KEnv Δ Φ} {ρ : UEnv Δ Γ}
+    (hI : I.Agree κ ρ) (u : Usage1ω) (c : Comp Δ d Φ Γ σ ℓ)
+    (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o') (jκ : JEnv Δ τ js) :
+    (Term.letOpenCall I u c b).2.eval κ ρ jκ = (Term.letE u c b).eval κ ρ jκ := by
+  unfold Term.letOpenCall
+  cases h : c.openCall? I with
+  | some r =>
+      simp only [Term.eval]
+      rw [Comp.openCall?_eval hI _ h]
+  | none =>
+      simp only
+      cases hp : c.openCallExpr? I with
+      | none => rfl
+      | some p =>
+          simp only
+          cases hs : b.subst (D' := d) KLRen.id (USub.cons p (USub.ofRen ULRen.idL)) JRen.id with
+          | none => rfl
+          | some r =>
+              simp only [Term.eval]
+              rw [Term.subst_eval (KLRen.Agree.id κ)
+                (USub.Agree.cons (USub.Agree.ofRen (ULRen.Agree.idL ρ)) p) (JRen.Agree.id jκ) b hs]
+              have hc : p.2.eval κ ρ = c.eval κ ρ := by
+                unfold Comp.openCallExpr? at hp
+                split at hp
+                · rename_i k a _
+                  simp only [Option.bind_eq_some_iff] at hp
+                  obtain ⟨f, hf, hp⟩ := hp
+                  simp only [Comp.eval, PExpr.eval]
+                  rw [OpenFnE.apply_eval (hI k f hf) a hp]
+                · cases hp
+              rw [hc]
+
 /-! ## The walk -/
 
 mutual
@@ -177,14 +210,10 @@ theorem Term.ocWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {
         (hI.cons (fun f hf => Val.openFnE?_sem (v.ocWalk I) κ ρ f hf)) jκ,
         Val.ocWalk_eval v I κ ρ hI]
   | _, _, _, _, _, _, .letE u c b, I, κ, ρ, hI, jκ => by
-      simp only [Term.ocWalk, Term.eval]
-      have hc : ((c.ocWalk I).openCall? I |>.getD ⟨_, c.ocWalk I⟩).2.eval κ ρ = c.eval κ ρ := by
-        cases h : (c.ocWalk I).openCall? I with
-        | none => exact Comp.ocWalk_eval c I κ ρ hI
-        | some r =>
-            simp only [Option.getD_some]
-            rw [Comp.openCall?_eval hI _ h, Comp.ocWalk_eval c I κ ρ hI]
-      rw [hc]
+      simp only [Term.ocWalk]
+      rw [Term.letOpenCall_eval hI]
+      simp only [Term.eval]
+      rw [Comp.ocWalk_eval c I κ ρ hI]
       exact Term.ocWalk_eval b _ κ _ (hI.wk1 _ _) jκ
   | _, _, _, _, _, _, .record_casesOn us n b, I, κ, ρ, hI, jκ => by
       simp only [Term.ocWalk, Term.eval]

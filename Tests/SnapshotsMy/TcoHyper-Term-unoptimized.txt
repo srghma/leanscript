@@ -6,13 +6,18 @@
 -- hyperBase : Nat → Nat → Nat
 val k1 [ω] : (Nat → (Nat → Nat)) := fun x2 [ω] : Nat => (closed)
   val k3 [ω] : (Nat → Nat) := fun x4 [ω] : Nat => (open)
-    let x13 [ω] : Nat := nat_rec x2 1 fun acc5 i6 => (open)
-      let x12 [ω] : Nat := nat_rec i6 x4 fun acc7 i8 => (closed)
-        let x11 [ω] : Nat := nat_rec i8 0 fun acc9 i10 => (closed)
+    if lean_nat_dec_eq__Nat_beq(x2, 0) then
+      ret 1
+    else
+      let x5 [ω] : Nat := share lean_nat_pred(x2)
+      if lean_nat_dec_eq__Nat_beq(x5, 0) then
+        ret x4
+      else
+        let x6 [ω] : Nat := share lean_nat_pred(x5)
+        if lean_nat_dec_eq__Nat_beq(x6, 0) then
+          ret 0
+        else
           ret 1
-        ret x11
-      ret x12
-    ret x13
   ret k3
 ret k1
 
@@ -40,7 +45,7 @@ val k1 [ω] : (Nat → (Nat → (Nat → Nat))) := fun x2 [ω] : Nat => (closed)
     val k5 [ω] : (Nat → Nat) := fun x6 [ω] : Nat => (open)
       val k7 [ω] : (Nat → Nat) := fun x8 [ω] : Nat => (closed)
         ret lean_nat_add(x8, 1)
-      let x47 [ω] : (Nat → Nat) := nat_rec x2 k7 fun acc9 i10 => (open)
+      let x40 [ω] : (Nat → Nat) := nat_rec x2 k7 fun acc9 i10 => (open)
         val k11 [ω] : (Nat → Nat) := fun x12 [ω] : Nat => (open)
           val k13 [ω] : ((Nat → Nat) → (Nat → (Nat → Nat))) := fun x14 [ω] : (Nat → Nat) => (closed)
             val k15 [ω] : (Nat → (Nat → Nat)) := fun x16 [ω] : Nat => (open)
@@ -61,21 +66,26 @@ val k1 [ω] : (Nat → (Nat → (Nat → Nat))) := fun x2 [ω] : Nat => (closed)
           let x30 [ω] : (Nat → Nat) := x29 x12
           val k31 [ω] : (Nat → (Nat → Nat)) := fun x32 [ω] : Nat => (closed)
             val k33 [ω] : (Nat → Nat) := fun x34 [ω] : Nat => (open)
-              let x43 [ω] : Nat := nat_rec x32 1 fun acc35 i36 => (open)
-                let x42 [ω] : Nat := nat_rec i36 x34 fun acc37 i38 => (closed)
-                  let x41 [ω] : Nat := nat_rec i38 0 fun acc39 i40 => (closed)
+              if lean_nat_dec_eq__Nat_beq(x32, 0) then
+                ret 1
+              else
+                let x35 [ω] : Nat := share lean_nat_pred(x32)
+                if lean_nat_dec_eq__Nat_beq(x35, 0) then
+                  ret x34
+                else
+                  let x36 [ω] : Nat := share lean_nat_pred(x35)
+                  if lean_nat_dec_eq__Nat_beq(x36, 0) then
+                    ret 0
+                  else
                     ret 1
-                  ret x41
-                ret x42
-              ret x43
             ret k33
-          let x44 [ω] : (Nat → Nat) := k31 lean_nat_add(i10, 1)
-          let x45 [ω] : Nat := x44 x4
-          let x46 [ω] : Nat := x30 x45
-          ret x46
+          let x37 [ω] : (Nat → Nat) := k31 lean_nat_add(i10, 1)
+          let x38 [ω] : Nat := x37 x4
+          let x39 [ω] : Nat := x30 x38
+          ret x39
         ret k11
-      let x48 [ω] : Nat := x47 x6
-      ret x48
+      let x41 [ω] : Nat := x40 x6
+      ret x41
     ret k5
   ret k3
 ret k1
@@ -86,37 +96,42 @@ val k1 [ω] : (Nat → (Nat → (Nat → Nat))) := fun x2 [ω] : Nat => (closed)
     val k5 [ω] : (Nat → Nat) := fun x6 [ω] : Nat => (open)
       val k7 [ω] : (Nat → Nat) := fun x8 [ω] : Nat => (closed)
         ret lean_nat_add(x8, 1)
-      let x38 [ω] : (Nat → Nat) := nat_rec x2 k7 fun acc9 i10 => (open)
+      let x31 [ω] : (Nat → Nat) := nat_rec x2 k7 fun acc9 i10 => (open)
         val k11 [ω] : (Nat → Nat) := fun x12 [ω] : Nat => (open)
           val k13 [ω] : (Nat → (Nat → Nat)) := fun x14 [ω] : Nat => (closed)
             val k15 [ω] : (Nat → Nat) := fun x16 [ω] : Nat => (open)
-              let x25 [ω] : Nat := nat_rec x14 1 fun acc17 i18 => (open)
-                let x24 [ω] : Nat := nat_rec i18 x16 fun acc19 i20 => (closed)
-                  let x23 [ω] : Nat := nat_rec i20 0 fun acc21 i22 => (closed)
+              if lean_nat_dec_eq__Nat_beq(x14, 0) then
+                ret 1
+              else
+                let x17 [ω] : Nat := share lean_nat_pred(x14)
+                if lean_nat_dec_eq__Nat_beq(x17, 0) then
+                  ret x16
+                else
+                  let x18 [ω] : Nat := share lean_nat_pred(x17)
+                  if lean_nat_dec_eq__Nat_beq(x18, 0) then
+                    ret 0
+                  else
                     ret 1
-                  ret x23
-                ret x24
-              ret x25
             ret k15
-          let x26 [ω] : (Nat → Nat) := k13 lean_nat_add(i10, 1)
-          let x27 [ω] : Nat := x26 x4
-          let x33 [ω] : ([Nat] | [Nat]) := nat_rec x12 ctor#1(x27) fun acc28 i29 => (open)
-            case acc28 of
-            | ctor#0(f30 [ω] : Nat) =>
-              ret ctor#0(f30)
-            | ctor#1(f31 [ω] : Nat) =>
-              let x32 [ω] : Nat := acc9 f31
-              ret ctor#1(x32)
-          join j34 [ω] (x35 [ω] : Nat) :=
-            ret x35
-          case x33 of
-          | ctor#0(f36 [ω] : Nat) =>
-            jump j34 f36
-          | ctor#1(f37 [ω] : Nat) =>
-            jump j34 f37
+          let x19 [ω] : (Nat → Nat) := k13 lean_nat_add(i10, 1)
+          let x20 [ω] : Nat := x19 x4
+          let x26 [ω] : ([Nat] | [Nat]) := nat_rec x12 ctor#1(x20) fun acc21 i22 => (open)
+            case acc21 of
+            | ctor#0(f23 [ω] : Nat) =>
+              ret ctor#0(f23)
+            | ctor#1(f24 [ω] : Nat) =>
+              let x25 [ω] : Nat := acc9 f24
+              ret ctor#1(x25)
+          join j27 [ω] (x28 [ω] : Nat) :=
+            ret x28
+          case x26 of
+          | ctor#0(f29 [ω] : Nat) =>
+            jump j27 f29
+          | ctor#1(f30 [ω] : Nat) =>
+            jump j27 f30
         ret k11
-      let x39 [ω] : Nat := x38 x6
-      ret x39
+      let x32 [ω] : Nat := x31 x6
+      ret x32
     ret k5
   ret k3
 ret k1

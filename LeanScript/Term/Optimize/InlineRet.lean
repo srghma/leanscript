@@ -35,7 +35,11 @@ The rewrites, bottom-up:
 * **an open closure called in tail position**: `val k := fun x => (open) body; let y := k a;
   ret y` becomes `body[x := a]` at the depth of the call (`Term.openTailCall?`; `a` costs
   nothing to repeat, or `x` is used at most once).  The substitution reduces a case analysis
-  that `a` makes known (`case x of …` for an enum literal `a` is the arm of its constructor).
+  that `a` makes known (`case x of …` for an enum literal `a` is the arm of its constructor);
+* **an open closure called once, anywhere in the `let`s after it**: `val k := fun x => (open)
+  body; let y := k a; rest` becomes `body[x := a]` with its answer bound to `y`
+  (`Term.openLetCall?`, `Term.bindRet`: `rest` becomes a join point when the body ends in a
+  branch).
 
 **Proved:** `Term.inlineRet_eval` (the value does not change, in any environment) and
 `Term.numCalls_inlineRet` (no call is added).
@@ -221,6 +225,32 @@ def Term.openTailCall? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ty τ : Ty ks} {
       else none
   | _, _ => none
 
+/-- `val k := fun x => (open) body; let y := k a; rest` (`k` used nowhere else, so `rest` does
+    not mention it): the body at the depth of the call, `x` replaced by `a` (a pure expression
+    that costs nothing to repeat, or any one when `x` is used at most once), its answer bound to
+    `y` (`Term.bindRet`: when the body ends in a branch, `rest` becomes a join point that its
+    answers jump to).  The calls of the body are moved, not copied. -/
+def Term.openLetCall? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ty τ : Ty ks} {js : JCtx ks}
+    {o o' : Lvl} (u : Usage1ω) (v : Val Δ d Φ Γ ty o)
+    (b : Term Δ d (⟨ty, u, o, true⟩ :: Φ) Γ τ js o') :
+    Option ((o'' : Lvl) × Term Δ d Φ Γ τ js o'') :=
+  match v.openFn?, b with
+  | some ⟨σ₁, τ₁, _, uₓ, _, body⟩, .letE (σ := σc) _ c rest =>
+      match c.appHead? with
+      | some ⟨σa, _, a, _⟩ =>
+          if hst : σa = σ₁ ∧ τ₁ = σc then
+            match a.rename KRen.drop URen.id, rest.rename KRen.drop URen.id JRen.id with
+            | some a', some rest' =>
+                if a'.isCheap || uₓ.atMostOnce then
+                  (body.subst (D' := d) (js' := []) KLRen.id
+                    (USub.cons ⟨_, hst.1 ▸ a'⟩ (USub.ofRen ULRen.idL)) JRen.ofNil).bind
+                    fun r => Term.bindRet (hst.2 ▸ r.2 : Term Δ d Φ Γ σc [] r.1) rest'
+                else none
+            | _, _ => none
+          else none
+      | none => none
+  | _, _ => none
+
 /-- `val k := v; b` (both already walked), dropped when `b` does not mention `k`; when `k` is a
     closure with a closed body called exactly once in `b` (`Term.inlineAt`), its body replaces
     the call; when `k` is a closure with an open body and `b` is `let y := k a; ret y`
@@ -236,7 +266,10 @@ def Term.retLetV {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : J
       | none =>
           match Term.openTailCall? u v b with
           | some r => r
-          | none => ⟨_, .letV u v b⟩
+          | none =>
+              match Term.openLetCall? u v b with
+              | some r => r
+              | none => ⟨_, .letV u v b⟩
 
 /-! ## The walk -/
 

@@ -17,17 +17,7 @@ ret k1
 -- test3 : String → Nat → String
 val k1 [1] : (String → (Nat → String)) := fun x2 [ω] : String => (closed)
   val k3 [1] : (Nat → String) := fun x4 [1] : Nat => (open)
-    val k5 [1] : (Nat → ((• | [String]) → String)) := fun x6 [ω] : Nat => (open)
-      val k7 [1] : ((• | [String]) → String) := fun x8 [1] : (• | [String]) => (open)
-        case x8 of
-        | ctor#0() =>
-          ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(x2, " ("), lean_nat_repr(x6)), ")")
-        | ctor#1(f9 [1] : String) =>
-          ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(x2, " ("), lean_nat_repr(x6)), ", "), f9), ")")
-      ret k7
-    let x10 [1] : ((• | [String]) → String) := k5 x4
-    let x11 [1] : String := x10 ctor#0()
-    ret x11
+    ret lean_string_append__String_append(lean_string_append__String_append(lean_string_append__String_append(x2, " ("), lean_nat_repr(x4)), ")")
   ret k3
 ret k1
 

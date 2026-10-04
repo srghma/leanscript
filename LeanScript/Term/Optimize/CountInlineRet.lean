@@ -200,6 +200,34 @@ theorem Term.numCalls_openTailCall? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ty 
     · cases h
   · cases h
 
+theorem Term.numCalls_openLetCall? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {ty τ : Ty ks}
+    {js : JCtx ks} {o o' : Lvl} (u : Usage1ω) (v : Val Δ d Φ Γ ty o)
+    (b : Term Δ d (⟨ty, u, o, true⟩ :: Φ) Γ τ js o') {r : (o'' : Lvl) × Term Δ d Φ Γ τ js o''}
+    (h : Term.openLetCall? u v b = some r) : r.2.numCalls ≤ v.numCalls + b.numCalls := by
+  unfold Term.openLetCall? at h
+  split at h
+  · rename_i σ₁ τ₁ hty uₓ m body σc uy ℓc oc c rest hf
+    split at h
+    · split at h
+      · rename_i hst
+        obtain ⟨rfl, rfl⟩ := hst
+        split at h
+        · rename_i a' rest' ha hrest
+          split at h
+          · simp only [Option.bind_eq_some_iff] at h
+            obtain ⟨r', hr', h⟩ := h
+            have h1 := Term.numCalls_bindRet _ rest' h
+            have h2 := Term.numCalls_subst body hr'
+            have h3 := Term.numCalls_rename rest hrest
+            have hv := Val.numCalls_openFn? v hf
+            simp only [Term.numCalls] at h1 h2 h3 hv ⊢
+            omega
+          · cases h
+        · cases h
+      · cases h
+    · cases h
+  · cases h
+
 theorem Term.numCalls_retLetV {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks}
     {js : JCtx ks} {o o' : Lvl} (u : Usage1ω) (v : Val Δ d Φ Γ σ o)
     (b : Term Δ d (⟨σ, u, o, true⟩ :: Φ) Γ τ js o') :
@@ -232,7 +260,13 @@ theorem Term.numCalls_retLetV {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : T
           have := Term.numCalls_openTailCall? u v b hr
           simp only
           omega
-        · exact Nat.le_refl _
+        · simp only
+          split
+          · rename_i r hr
+            have := Term.numCalls_openLetCall? u v b hr
+            simp only
+            omega
+          · exact Nat.le_refl _
 
 mutual
 theorem Val.numCalls_retWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} →

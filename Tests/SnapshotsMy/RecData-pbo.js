@@ -270,35 +270,25 @@ export const RecData$RoseF$size = (a) => {
   };
   const go1$2 = (v$4) => {
     const { _2: f$5 } = v$4;
-    const { _2: f$8 } = {
+    const { _1: f$8, _2: f$9 } = {
       _1: v$4._1,
       _2: (y$6) => {
         const r$7 = f$5(y$6);
         return { _1: r$7, _2: go0$1(r$7) };
       },
     };
-    let acc$9 = 1;
-    for (
-      let i$10 = 0;
-      i$10 <
-      {
-        _1: v$4._1,
-        _2: (y$6) => {
-          const r$7 = f$5(y$6);
-          return { _1: r$7, _2: go0$1(r$7) };
-        },
-      }._1;
-      i$10++
-    ) {
-      let x$11;
-      if (f$8(i$10)._2.tag === 0) {
-        x$11 = 0;
+    let acc$10 = 1;
+    for (let i$11 = 0; i$11 < f$8; i$11++) {
+      let x$12;
+      const s$13 = f$9(i$11)._2;
+      if (s$13.tag === 0) {
+        x$12 = 0;
       } else {
-        x$11 = f$8(i$10)._2._1;
+        x$12 = s$13._1;
       }
-      acc$9 = uint53__lean_nat_add(acc$9, x$11);
+      acc$10 = uint53__lean_nat_add(acc$10, x$12);
     }
-    return acc$9;
+    return acc$10;
   };
   return go1$2(a);
 };
@@ -343,35 +333,25 @@ export const RecData$roseFTest = (n) => {
   };
   const go1$5 = (v$7) => {
     const { _2: f$8 } = v$7;
-    const { _2: f$11 } = {
+    const { _1: f$11, _2: f$12 } = {
       _1: v$7._1,
       _2: (y$9) => {
         const r$10 = f$8(y$9);
         return { _1: r$10, _2: go0$4(r$10) };
       },
     };
-    let acc$12 = 1;
-    for (
-      let i$13 = 0;
-      i$13 <
-      {
-        _1: v$7._1,
-        _2: (y$9) => {
-          const r$10 = f$8(y$9);
-          return { _1: r$10, _2: go0$4(r$10) };
-        },
-      }._1;
-      i$13++
-    ) {
-      let x$14;
-      if (f$11(i$13)._2.tag === 0) {
-        x$14 = 0;
+    let acc$13 = 1;
+    for (let i$14 = 0; i$14 < f$11; i$14++) {
+      let x$15;
+      const s$16 = f$12(i$14)._2;
+      if (s$16.tag === 0) {
+        x$15 = 0;
       } else {
-        x$14 = f$11(i$13)._2._1;
+        x$15 = s$16._1;
       }
-      acc$12 = uint53__lean_nat_add(acc$12, x$14);
+      acc$13 = uint53__lean_nat_add(acc$13, x$15);
     }
-    return acc$12;
+    return acc$13;
   };
   return go1$5({
     _1: n,

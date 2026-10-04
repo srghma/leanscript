@@ -1,3 +1,32 @@
+# Summary of changes for run 57933e6c-0b5d-4956-b7fb-abafdb8f6439
+**KnownConstructors03.** Our JS for `test` already beat purescript-backend-optimizer before this work started, and it is unchanged:
+`export const test = (x) => (42 < x ? "Hello, World!" : "");`
+The legacy backend gives the same result but writes it as `if`/`return`. To look for gaps, I wrote 19 variants of the same pattern in `Tests/SnapshotsMy/KnownCtorCaseOfIf.lean` and fixed what they turned up.
+
+**Last change in this session (in the `Term → Term` optimiser).** When a `match` is applied to a conditional whose leaves are constructor literals, and the arm for the constructor with a field can't be copied into each leaf without adding calls, that arm becomes a join point. A leaf of that constructor jumps to it with its field, and every other leaf becomes its own arm. For `bigShared`, the output went from building an `Option` record and testing its tag to this:
+`let x$1; if (42 < x) x$1 = s; else if (x < 0) x$1 = t; else return ""; return f(f(f(x$1 + ", World!")));`
+There is no record, no closure and no recursion, and the shared code is written once. `test4` in `KnownConstructors.lean` improved the same way.
+
+**Earlier fixes from this work** (each with proofs that the value is unchanged and no calls are added; details in the write-up):
+- **Elaborator bug:** a nested `if` under a type ascription failed to elaborate; it now does.
+- **Nested conditionals and records:** a `match` on a nested conditional of constructors, or on a record built by a conditional, no longer builds anything (`pairOpt` → `(x) => (0 < x ? x : int53__lean_int_neg(x))`).
+- **`Nat` matches:** a non-recursive `match` on a `Nat` is now an `n === 0` test instead of a loop that runs \(n\) times.
+- **Chained tests:** jumps that pass a conditional into a case collapse chained tests, so `doChain` becomes `if (0 < x && 0 < y)`.
+- **Closure inlining:** a closure that answers a literal or is called once is inlined at its call.
+- **Printer (the only fix outside the optimiser):** a non-simple expression that is taken apart is bound once instead of being recomputed for each field read. This has to be in the printer because only there can you tell whether an expression is cheap to repeat.
+
+**Checks:**
+- `LeanScript.Term.optimize_eval` and `LeanScript.Term.numCalls_optimize` build with no `sorry`; they depend only on `propext`, `Classical.choice` and `Quot.sound`.
+- All targets build (`leanscript TermTests TyTests JsTerm JsSpec tests`).
+- `lake exe tests`: 138/138 pass, including a new `knownConstructors03Spec` in `Tests/Main.lean`. It runs leanscript on both files, checks key output lines at both presets and confirms there are no loops or record reads where none are expected. It also runs the node checks: 7 for `KnownConstructors03`, 250 for the variants.
+- I regenerated the snapshots and reviewed the diffs: every changed output is an improvement. The snapshot script still exits 1, but only because of the expected panics in `KnownConstructors04` and `PrimOpArray01`, which predate this work.
+
+**Not improved yet:**
+- `usedTwice`: an option used by two separate `match`es is still built as a record, because removing it would copy code into both arms.
+- `fromMatch` calls `nat_pred` where `n - 1` would do.
+
+The full comparison with before/after code is in `Tests/SnapshotsPBOPure/KnownConstructors03.md`. Everything is committed.
+
 # Summary of changes for run 183c468b-0221-4425-beb0-2bb0cecd0fba
 **`KnownConstructors02.lean` itself was already better than the legacy output, so its JavaScript didn't change.**
 - Legacy tests `a.tag === "error"` and then `"ok"`, returns `a._1` in each arm, and ends with `throw new Error("UNREACHABLE")`.

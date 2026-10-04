@@ -240,7 +240,9 @@ partial def partsToMini {C M : List JsTy} {A E : JsTy} (sc : Scope) :
 partial def bindSubject {C M : List JsTy} {τ : JsTy} (sc : Scope) (hint : String)
     (e : JsExpr S C M τ) : PM (List MiniStatement × MiniExpr) := do
   let m ← exprToMini sc e
-  if e.isAtom then return ([], m) else
+  -- a variable may stand for a computation written at its only use (`constInline`): that one is
+  -- named all the same, since the arms read the subject again
+  if e.isAtom && isSimpleMini m then return ([], m) else
   let s ← freshName hint
   return ([constDecl s m], ident s)
 
@@ -301,9 +303,16 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
       | _ => .expr (.assign v .assign e)
     return s :: (← blockToMini sc tl rest)
   | .destructure e sel rest => do
-    let src := e.fieldSource
-    let e ← exprToMini sc e
+    let e' ← exprToMini sc e
+    -- the fields of a computation written in place of a constant read once (`constInline`)
+    -- are read in place only when one field is read at all: otherwise that would repeat the
+    -- computation
     let n := sel.binds.length
+    let occs := rest.occs
+    let nRead := ((List.range n).filter fun j =>
+      occs.any fun o => !o.isMut && o.idx == n - 1 - j).length
+    let src := if isSimpleMini e' || nRead ≤ 1 then e.fieldSource else none
+    let e := e'
     let (d, sc') ← destructureToMini sc e sel.binds (readInPlace src n rest)
     return sinkPattern d (← blockToMini sc' tl rest)
   | .ite c t e => do

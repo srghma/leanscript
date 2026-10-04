@@ -78,8 +78,11 @@ partial def renderNeu (s : Sem) (c : Core) (inline : Bool) : TermElabM Lean.Term
     contexts). -/
 partial def render (s : Sem) (c : Core) (inline : Bool) : TermElabM Lean.Term := do
   if s.isNeutral then
+    -- a conditional carries its type itself (`renderNeu`): an ascription would elaborate the
+    -- contexts of its branches as holes
     if let .ascribe s' ty := s then
-      return ← `(($(← render s' c inline) : LeanScript.PExpr _ _ _ $ty _))
+      if !(s' matches .cond ..) then
+        return ← `(($(← render s' c inline) : LeanScript.PExpr _ _ _ $ty _))
     return ← `(LeanScript.PExpr.neu $(← renderNeu s c inline))
   if !inline then
     if let some k := s.name? then

@@ -25,24 +25,14 @@ export const fromString = (a) => {
  * @returns {int(bigint)}
  */
 export const test = (a) => {
-  let x$1;
   if (a === "foo") {
-    x$1 = { tag: 1, _1: 0 };
-  } else if (a === "bar") {
-    x$1 = { tag: 1, _1: 1 };
-  } else if (a === "baz") {
-    x$1 = { tag: 1, _1: 2 };
-  } else {
-    x$1 = a === "qux" ? { tag: 1, _1: 3 } : { tag: 0 };
-  }
-  if (x$1.tag === 0) {
-    return 0n;
-  }
-  if (x$1._1 === 0) {
     return 1n;
   }
-  if (x$1._1 === 1) {
+  if (a === "bar") {
     return 2n;
   }
-  return x$1._1 === 2 ? 3n : 4n;
+  if (a === "baz") {
+    return 3n;
+  }
+  return a === "qux" ? 4n : 0n;
 };

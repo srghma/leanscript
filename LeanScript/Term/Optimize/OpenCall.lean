@@ -17,8 +17,11 @@ not inlined there, because its expression is not one of the known context alone.
 `Term.ocWalk` carries, for each known variable in scope that is such a closure, its expression
 as one of the *current* known and unknown contexts (`OpenFnE`, moved along the binders it goes
 under, `OInfo`), and replaces a call `let y := k a` by `let y := share e[a]` when `e[a]` (the
-parameter replaced by `a`, `PExpr.subst`) is neutral.  `a` must cost nothing to repeat, or the
-parameter be used at most once.  The level may change (`Term.keepLvl` where it is recorded).
+parameter replaced by `a`, `PExpr.subst`) is neutral; otherwise (a constructor literal, such as
+the `some (a + b)` of a `bind` continuation) `e[a]` is written for `y` in the rest of the
+statement (`Term.letOpenCall`, by `Term.subst`, which reduces a case analysis of it and fails
+rather than repeat a computation).  `a` must cost nothing to repeat, or the parameter be used at
+most once.  The level may change (`Term.keepLvl` where it is recorded).
 
 **Proved:** `Term.openCall_eval` (the value does not change) and `Term.numCalls_openCall` (no
 call is added: a call becomes a shared expression).
@@ -115,6 +118,29 @@ def Comp.openCall? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {ℓ : N
       (I.get k).bind fun f => (f.apply a).bind fun p => p.2.toNeu?.map fun n => ⟨_, .share n.2⟩
   | _ => none
 
+/-- The answer of a call of a known closure computing an open expression, whatever its shape. -/
+def Comp.openCallExpr? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {ℓ : Nat}
+    (I : OInfo Δ Φ Γ) : Comp Δ d Φ Γ σ ℓ → Option ((o : Lvl) × PExpr Δ Φ Γ σ o)
+  | .app (.kvar k) a _ => (I.get k).bind fun f => f.apply a
+  | _ => none
+
+/-- `let y := c; b` where `c` is a call of a known closure computing an open expression: the
+    call as that expression shared when it is neutral (`Comp.openCall?`), and otherwise (a
+    constructor or record literal) the expression written for `y` in `b` (`Term.subst`, which
+    reduces a case analysis of the literal; it fails rather than repeat a computation). -/
+def Term.letOpenCall {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks}
+    {ℓ : Nat} {o' : Lvl} (I : OInfo Δ Φ Γ) (u : Usage1ω) (c : Comp Δ d Φ Γ σ ℓ)
+    (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o') : (o : Lvl) × Term Δ d Φ Γ τ js o :=
+  match c.openCall? I with
+  | some c' => ⟨_, .letE u c'.2 b⟩
+  | none =>
+      match c.openCallExpr? I with
+      | some p =>
+          match b.subst (D' := d) KLRen.id (USub.cons p (USub.ofRen ULRen.idL)) JRen.id with
+          | some r => r
+          | none => ⟨_, .letE u c b⟩
+      | none => ⟨_, .letE u c b⟩
+
 /-! ## The walk -/
 
 mutual
@@ -156,9 +182,7 @@ def Term.ocWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty k
       let v' := v.ocWalk I
       ⟨_, .letV u v' (b.ocWalk (I.cons v'.openFnE?)).2⟩
   | _, _, _, _, _, _, .letE u c b, I =>
-      let c' := c.ocWalk I
-      let c'' := (c'.openCall? I).getD ⟨_, c'⟩
-      ⟨_, .letE u c''.2 (b.ocWalk (I.wk1 _)).2⟩
+      Term.letOpenCall I u (c.ocWalk I) (b.ocWalk (I.wk1 _)).2
   | _, _, _, _, _, _, .record_casesOn us n b, I => ⟨_, .record_casesOn us n (b.ocWalk (I.wkN _)).2⟩
   | _, _, _, _, _, _, .branch br, I => ⟨_, .branch (br.ocWalk I).2⟩
   | _, _, _, _, _, _, .jump j e, _ => ⟨_, .jump j e⟩

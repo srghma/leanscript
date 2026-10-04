@@ -155,6 +155,21 @@ def JPos.jump? {d : Nat} {Φ₀ : KCtx ks} {Γ₀ : UCtx ks} {js₀ : JCtx ks} {
               body.subst (D' := d) P.rk
                 (USub.ofArgs (USub.consOpt xs (USub.ofRen P.ru)) d (t :: fs.toList) us args) P.rj
 
+/-- `jump j e` where `j` is the join point and `e` a constructor literal (`JPos.jump?`) or a
+    conditional of such (`c ? a : b`, recursively, at most `fuel` deep):
+    `if c then (jump j a) else (jump j b)`, each jump replaced.  So a `bind` whose continuation
+    answers `if q then some x else none` writes the arms of the `match` that follows. -/
+def JPos.jumpCond? {d : Nat} {Φ₀ : KCtx ks} {Γ₀ : UCtx ks} {js₀ : JCtx ks} {σ : Ty ks}
+    {uₓ : Usage01ω} {τ : Ty ks} {Φ : KCtx ks} {Γ : UCtx ks} {js : JCtx ks}
+    (C : CaseJoin Δ d Φ₀ Γ₀ σ uₓ τ js₀) (P : JPos Φ₀ Γ₀ js₀ σ Φ Γ js) {σ' : Ty ks}
+    (j : JVar js σ') : (fuel : Nat) → {o : Lvl} → PExpr Δ Φ Γ σ' o →
+    Option ((o' : Lvl) × Term Δ d Φ Γ τ js o')
+  | fuel + 1, _, .neu (.cond c a b) =>
+      match JPos.jumpCond? C P j fuel a, JPos.jumpCond? C P j fuel b with
+      | some ta, some tb => some ⟨_, .branch (.ite c ta.2 tb.2)⟩
+      | _, _ => none
+  | _, _, e => JPos.jump? C P j e
+
 /-! ## Replacing the jumps -/
 
 section Repl
@@ -162,7 +177,8 @@ variable {d : Nat} {Φ₀ : KCtx ks} {Γ₀ : UCtx ks} {js₀ : JCtx ks} {σ : T
   {τ : Ty ks} (C : CaseJoin Δ d Φ₀ Γ₀ σ uₓ τ js₀)
 
 mutual
-/-- Replace the jumps to the join point that pass a constructor literal (`JPos.jump?`). -/
+/-- Replace the jumps to the join point that pass a constructor literal, or a conditional of
+    such (`JPos.jumpCond?`). -/
 def Term.jcRepl : {Φ : KCtx ks} → {Γ : UCtx ks} → {js : JCtx ks} →
     JPos Φ₀ Γ₀ js₀ σ Φ Γ js → {o : Lvl} → Term Δ d Φ Γ τ js o → (o' : Lvl) × Term Δ d Φ Γ τ js o'
   | _, _, _, _, _, .ret e => ⟨_, .ret e⟩
@@ -170,7 +186,7 @@ def Term.jcRepl : {Φ : KCtx ks} → {Γ : UCtx ks} → {js : JCtx ks} →
   | _, _, _, P, _, .letE u c b => ⟨_, .letE u c (b.jcRepl (P.wk1 _)).2⟩
   | _, _, _, P, _, .record_casesOn us n b => ⟨_, .record_casesOn us n (b.jcRepl (P.wkN _)).2⟩
   | _, _, _, P, _, .branch br => ⟨_, .branch (br.jcRepl P).2⟩
-  | _, _, _, P, _, .jump j e => (JPos.jump? C P j e).getD ⟨_, .jump j e⟩
+  | _, _, _, P, _, .jump j e => (JPos.jumpCond? C P j 8 e).getD ⟨_, .jump j e⟩
 /-- `Term.jcRepl` in a branch. -/
 def Branch.jcRepl : {Φ : KCtx ks} → {Γ : UCtx ks} → {js : JCtx ks} →
     JPos Φ₀ Γ₀ js₀ σ Φ Γ js → {ℓ : Nat} → Branch Δ d Φ Γ τ js ℓ →
@@ -244,34 +260,165 @@ def Branches.caseLit? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {
       let sel := brs.select ix
       Term.substFields d c.binds sel.1 c.binds.length sel.2.2 args
 
-/-- `case (c ? a : b) of brs`, where `a` and `b` are constructor literals: `if c then (case a
-    of brs) else (case b of brs)`, each case analysis of a literal reduced to its arm
-    (`Branches.caseLit?`).  This is what `match (if c then some x else none) with …` becomes. -/
+/-- `case e of brs` for `e` a constructor literal (`Branches.caseLit?`) or a conditional of
+    such (`c ? a : b`, recursively): the arm of the literal, or `if c then (case a of brs) else
+    (case b of brs)`.  So `if p then some x else if q then some y else none` taken apart is
+    `if p then … else if q then … else …`. -/
+def Branches.caseOf? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
+    {h : UnionShape bs} {τ : Ty ks} {js : JCtx ks} {o : Lvl} (brs : Branches Δ d Φ Γ cs τ js o) :
+    (fuel : Nat) → {o' : Lvl} → PExpr Δ Φ Γ (.union cs (h := h)) o' →
+    Option ((o'' : Lvl) × Term Δ d Φ Γ τ js o'')
+  | fuel + 1, _, .neu (.cond c a b) =>
+      match brs.caseOf? fuel a, brs.caseOf? fuel b with
+      | some ta, some tb => some ⟨_, .branch (.ite c ta.2 tb.2)⟩
+      | _, _ => none
+  | _, _, e => brs.caseLit? e
+
+/-- `case (c ? a : b) of brs`, where `a` and `b` are constructor literals (or conditionals of
+    such, `Branches.caseOf?`): `if c then (case a of brs) else (case b of brs)`, each case
+    analysis of a literal reduced to its arm (`Branches.caseLit?`).  This is what
+    `match (if c then some x else none) with …` becomes. -/
 def Neu.caseCond? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
     {h : UnionShape bs} {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat}
     (n : Neu Δ Φ Γ (.union cs (h := h)) ℓ) (brs : Branches Δ d Φ Γ cs τ js o) :
     Option ((ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ') :=
   match n with
   | .cond c a b =>
-      match brs.caseLit? a, brs.caseLit? b with
+      match brs.caseOf? 8 a, brs.caseOf? 8 b with
       | some ta, some tb => some ⟨_, .ite c ta.2 tb.2⟩
       | _, _ => none
   | _ => none
 
+/-! ### The arm of a constructor with one field, as a join point -/
+
+/-- A statement under the one field `σ` of a constructor (`UCtx.annot d [σ] us`), as a
+    statement under one unknown. -/
+def Term.underOne {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks} {o : Lvl} :
+    (us : List Usage01ω) → Term Δ d Φ (UCtx.annot d [σ] us ++ Γ) τ js o →
+    (u : Usage01ω) × Term Δ d Φ (⟨σ, u, d⟩ :: Γ) τ js o
+  | [], t => ⟨.many, t⟩
+  | u :: _, t => ⟨u, t⟩
+
+/-- The field of a literal of the second constructor, with one field `σ`, of a union of two. -/
+def CtorIx.twoSecond? {Φ : KCtx ks} {Γ : UCtx ks} {a : Bool} {c₁ : Ctor ks a} {σ : Ty ks} :
+    {b : Bool} → {c : Ctor ks b} → CtorIx (.two c₁ (.fields (.one σ))) c → {o' : Lvl} →
+    Args Δ Φ Γ c.binds o' → Option ((o'' : Lvl) × PExpr Δ Φ Γ σ o'')
+  | _, _, .two₁, _, _ => none
+  | _, _, .two₂, _, .cons x .nil => some ⟨_, x⟩
+
+/-- The field of `e` when it is a literal of the second constructor (one field `σ`). -/
+def PExpr.twoSecond? {Φ : KCtx ks} {Γ : UCtx ks} {a : Bool} {c₁ : Ctor ks a} {σ : Ty ks}
+    {h : UnionShape [a, true]} {o' : Lvl}
+    (e : PExpr Δ Φ Γ (.union (.two c₁ (.fields (.one σ))) (h := h)) o') :
+    Option ((o'' : Lvl) × PExpr Δ Φ Γ σ o'') :=
+  e.unionLit?.bind fun r => r.2.2.1.twoSecond? r.2.2.2.2
+
+/-- A leaf `e` of a conditional of literals taken apart by `brs`, whose second constructor has
+    one field `σ`, under `join j (f : σ) := (the arm of the second constructor)`: a literal of
+    the second constructor jumps to `j` with its field; another literal is its arm
+    (`Branches.caseLit?`), seen under `j`. -/
+def Branches.leafJump? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {a : Bool} {c₁ : Ctor ks a}
+    {σ : Ty ks} {h : UnionShape [a, true]} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
+    (brs : Branches Δ d Φ Γ (.two c₁ (.fields (.one σ))) τ js o) {o' : Lvl}
+    (e : PExpr Δ Φ Γ (.union (.two c₁ (.fields (.one σ))) (h := h)) o') :
+    Option ((o'' : Lvl) × Term Δ d Φ Γ τ (⟨σ, .many⟩ :: js) o'') :=
+  match PExpr.twoSecond? e with
+  | some x => some ⟨_, .jump .head x.2⟩
+  | none =>
+      (brs.caseLit? e).bind fun r =>
+        (r.2.rename KRen.id URen.id (fun j => some (.tail j))).map fun t => ⟨_, t⟩
+
+/-- `Branches.leafJump?` at every leaf of a conditional of literals (at most `fuel` deep). -/
+def Branches.joinTree? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {a : Bool} {c₁ : Ctor ks a}
+    {σ : Ty ks} {h : UnionShape [a, true]} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
+    (brs : Branches Δ d Φ Γ (.two c₁ (.fields (.one σ))) τ js o) :
+    (fuel : Nat) → {o' : Lvl} → PExpr Δ Φ Γ (.union (.two c₁ (.fields (.one σ))) (h := h)) o' →
+    Option ((o'' : Lvl) × Term Δ d Φ Γ τ (⟨σ, .many⟩ :: js) o'')
+  | fuel + 1, _, .neu (.cond c x y) =>
+      match brs.joinTree? fuel x, brs.joinTree? fuel y with
+      | some tx, some ty => some ⟨_, .branch (.ite c tx.2 ty.2)⟩
+      | _, _ => none
+  | _, _, e => brs.leafJump? e
+
+/-- `case (c ? x : y) of brs` (`x`, `y` literals or conditionals of such) where the second
+    constructor has one field `σ`: `join j (f : σ) := (its arm); if c then … else …`, a leaf of
+    the second constructor jumping to `j` with its field, any other leaf its own arm.  The arm
+    of the second constructor is written once, and no record is built for it. -/
+def Branches.caseJoin? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {a : Bool} {c₁ : Ctor ks a}
+    {σ : Ty ks} {h : UnionShape [a, true]} {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat}
+    (brs : Branches Δ d Φ Γ (.two c₁ (.fields (.one σ))) τ js o)
+    (n : Neu Δ Φ Γ (.union (.two c₁ (.fields (.one σ))) (h := h)) ℓ) :
+    Option ((ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ') :=
+  match n with
+  | .cond c x y =>
+      match brs.joinTree? 8 x, brs.joinTree? 8 y with
+      | some tx, some ty =>
+          let arm := brs.select .two₂
+          let body := Term.underOne arm.1 arm.2.2
+          some ⟨_, .join σ .many body.1 body.2 (.ite c tx.2 ty.2)⟩
+      | _, _ => none
+  | _ => none
+
+/-- `Branches.caseJoin?` for a union whose second constructor has one field. -/
+def Branch.caseJoinAny? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
+    {o : Lvl} {ℓ : Nat} : {bs : List Bool} → {cs : Ctors ks bs} → {h : UnionShape bs} →
+    Neu Δ Φ Γ (.union cs (h := h)) ℓ → Branches Δ d Φ Γ cs τ js o →
+    Option ((ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ')
+  | _, .two _ (.fields (.one _)), _, n, brs => brs.caseJoin? n
+  | _, _, _, _, _ => none
+
 /-- `case n of brs`, rewritten by `Neu.caseCond?` when that adds no call (an arm selected by
-    both constructors would be written twice). -/
+    both constructors would be written twice); otherwise, when the second constructor has one
+    field, its arm as a join point that the leaves of that constructor jump to
+    (`Branch.caseJoinAny?`), when that adds no call. -/
 def Branch.caseCond {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs : Ctors ks bs}
     {h : UnionShape bs} {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat}
     (n : Neu Δ Φ Γ (.union cs (h := h)) ℓ) (brs : Branches Δ d Φ Γ cs τ js o) :
     (ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ' :=
   match n.caseCond? brs with
-  | some r => if r.2.numCalls ≤ brs.numCalls then r else ⟨_, .union_casesOn n brs⟩
+  | some r =>
+      if r.2.numCalls ≤ brs.numCalls then r
+      else
+        match Branch.caseJoinAny? n brs with
+        | some r' => if r'.2.numCalls ≤ brs.numCalls then r' else ⟨_, .union_casesOn n brs⟩
+        | none => ⟨_, .union_casesOn n brs⟩
   | none => ⟨_, .union_casesOn n brs⟩
 
-/-- A statement that is a case analysis: `Branch.caseCond` on it. -/
+/-- `let ⟨fs⟩ := e; body` for `e` a record literal (its fields substituted,
+    `Term.substFields`) or a conditional of such (`c ? a : b`, recursively, at most `fuel`
+    deep): `if c then (let ⟨fs⟩ := a; body) else (let ⟨fs⟩ := b; body)`, each reduced.  This is
+    what `match (if c then (some x, none) else (none, some y)) with …` becomes. -/
+def Term.recordCaseOf? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks} {fs : Fields ks}
+    {τ : Ty ks} {js : JCtx ks} {o : Lvl} (us : List Usage01ω)
+    (body : Term Δ d Φ (UCtx.annot d (t :: fs.toList) us ++ Γ) τ js o) :
+    (fuel : Nat) → {o' : Lvl} → PExpr Δ Φ Γ (.record t fs) o' →
+    Option ((o'' : Lvl) × Term Δ d Φ Γ τ js o'')
+  | fuel + 1, _, .neu (.cond c a b) =>
+      match Term.recordCaseOf? us body fuel a, Term.recordCaseOf? us body fuel b with
+      | some ta, some tb => some ⟨_, .branch (.ite c ta.2 tb.2)⟩
+      | _, _ => none
+  | _, _, e =>
+      match e.recordLit? with
+      | some ⟨_, args⟩ => Term.substFields d (t :: fs.toList) us (t :: fs.toList).length body args
+      | none => none
+
+/-- `let ⟨fs⟩ := n; body`, rewritten by `Term.recordCaseOf?` when that adds no call (the body
+    is written once per literal). -/
+def Term.recordCaseCond {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks} {fs : Fields ks}
+    {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat} (us : List Usage01ω)
+    (n : Neu Δ Φ Γ (.record t fs) ℓ)
+    (body : Term Δ d Φ (UCtx.annot d (t :: fs.toList) us ++ Γ) τ js o) :
+    (o' : Lvl) × Term Δ d Φ Γ τ js o' :=
+  match Term.recordCaseOf? us body 8 (.neu n) with
+  | some r => if r.2.numCalls ≤ body.numCalls then r else ⟨_, .record_casesOn us n body⟩
+  | none => ⟨_, .record_casesOn us n body⟩
+
+/-- A statement that is a case analysis: `Branch.caseCond` on it (`Term.recordCaseCond` for a
+    record's). -/
 def Term.caseCondTop {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} :
     (o : Lvl) × Term Δ d Φ Γ τ js o → (o : Lvl) × Term Δ d Φ Γ τ js o
   | ⟨_, .branch (.union_casesOn n brs)⟩ => ⟨_, .branch (Branch.caseCond n brs).2⟩
+  | ⟨_, .record_casesOn us n body⟩ => Term.recordCaseCond us n body
   | r => r
 
 /-- Is the neutral expression a conditional? -/
@@ -279,10 +426,11 @@ def Neu.isCond {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} : Neu Δ �
   | .cond .. => true
   | _ => false
 
-/-- Is the statement a case analysis of the innermost unknown? -/
+/-- Is the statement a case analysis (of a union, or of a record) of the innermost unknown? -/
 def Term.isCaseOnHead {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty ks} {u : Usage01ω} {ℓ : Nat}
     {τ : Ty ks} {js : JCtx ks} : {o : Lvl} → Term Δ d Φ (⟨σ, u, ℓ⟩ :: Γ) τ js o → Bool
   | _, .branch (.union_casesOn n _) => n.isHead?.isSome
+  | _, .record_casesOn _ n _ => n.isHead?.isSome
   | _, _ => false
 
 /-- `let x [1] := share (c ? a : b); case x of brs`: the conditional is written in the case
@@ -340,7 +488,7 @@ def Term.jcWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty k
   | _, _, _, _, _, _, .ret e => ⟨_, .ret e⟩
   | _, _, _, _, _, _, .letV u v b => ⟨_, .letV u v.jcWalk b.jcWalk.2⟩
   | _, _, _, _, _, _, .letE u c b => Term.shareCase u c.jcWalk b.jcWalk.2
-  | _, _, _, _, _, _, .record_casesOn us n b => ⟨_, .record_casesOn us n b.jcWalk.2⟩
+  | _, _, _, _, _, _, .record_casesOn us n b => Term.recordCaseCond us n b.jcWalk.2
   | _, _, _, _, _, _, .branch br => ⟨_, .branch br.jcWalk.2⟩
   | _, _, _, _, _, _, .jump j e => ⟨_, .jump j e⟩
 /-- `Term.jcWalk` in a branch. -/

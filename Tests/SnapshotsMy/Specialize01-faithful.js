@@ -24,15 +24,7 @@ export const test2 = (n, s) => "count (" + n + ", " + s + ")";
  * @param {nat(bigint)} n
  * @returns {string}
  */
-export const test3 = (label, n) => {
-  const k$3 = (x$1, x$2) => {
-    if (x$2.tag === 0) {
-      return label + " (" + x$1 + ")";
-    }
-    return label + " (" + x$1 + ", " + x$2._1 + ")";
-  };
-  return k$3(n, { tag: 0 });
-};
+export const test3 = (label, n) => label + " (" + n + ")";
 
 /**
  * `test4`

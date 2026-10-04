@@ -346,6 +346,19 @@ partial def trCases (L : Loc) (c : Name) (args : Array Expr) (e : Expr) : TM Src
     -- a `mutual` group recursing on a `Nat`: one fold of all its functions
     if let some p := recPos? then
       if L.fns.size > 1 then return ← trNatGroup tr L p e
+    -- not recursive: a test, not a fold (`match n with | 0 => z | m + 1 => s` is
+    -- `if n == 0 then z else let m := n.pred; s`, which takes one step instead of `n`)
+    if recPos?.isNone then
+      let zb ← openMinor 0 minors[0]! fun _ _ b => pure b
+      let sb ← openMinor 1 minors[1]! fun xs _ b => do
+        let m := xs[0]!
+        let bAbs := b.abstract #[m]
+        if bAbs.hasLooseBVars then
+          let name ← m.fvarId!.getUserName
+          return mkLet name (mkConst ``Nat) (mkApp (mkConst ``Nat.pred) major) bAbs
+        else return b
+      let test := mkApp2 (mkConst ``Nat.beq) major (mkNatLit 0)
+      return ← tr L (← mkAppM ``cond #[test, zb, sb])
     -- the parameters the recursive calls change: the answer is a function of them
     let vary ← match recPos? with
       | some p => varyingParams L p minors

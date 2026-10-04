@@ -46,37 +46,7 @@ export const instReprRecBaz$repr = (x, prec) => ({
  * @returns {D0}
  */
 export const instReprRecFooBaz$repr = (x, prec) => {
-  const { _2: f$1 } = x;
-  const k$3 = (x$2) => ({
-    tag: 6,
-    _1: {
-      tag: 4,
-      _1: 2,
-      _2: {
-        tag: 5,
-        _1: {
-          tag: 5,
-          _1: { tag: 3, _1: "{ " },
-          _2: {
-            tag: 5,
-            _1: {
-              tag: 5,
-              _1: { tag: 5, _1: { tag: 0 }, _2: { tag: 3, _1: "baz" } },
-              _2: { tag: 3, _1: " := " },
-            },
-            _2: {
-              tag: 6,
-              _1: { tag: 4, _1: 7, _2: { tag: 3, _1: String(f$1) } },
-              _2: false,
-            },
-          },
-        },
-        _2: { tag: 3, _1: " }" },
-      },
-    },
-    _2: false,
-  });
-  const x$4 = k$3(0);
+  const x$1 = String(x._2);
   return {
     tag: 6,
     _1: {
@@ -122,7 +92,47 @@ export const instReprRecFooBaz$repr = (x, prec) => {
               },
               _2: { tag: 3, _1: " := " },
             },
-            _2: { tag: 6, _1: { tag: 4, _1: 7, _2: x$4 }, _2: false },
+            _2: {
+              tag: 6,
+              _1: {
+                tag: 4,
+                _1: 7,
+                _2: {
+                  tag: 6,
+                  _1: {
+                    tag: 4,
+                    _1: 2,
+                    _2: {
+                      tag: 5,
+                      _1: {
+                        tag: 5,
+                        _1: { tag: 3, _1: "{ " },
+                        _2: {
+                          tag: 5,
+                          _1: {
+                            tag: 5,
+                            _1: {
+                              tag: 5,
+                              _1: { tag: 0 },
+                              _2: { tag: 3, _1: "baz" },
+                            },
+                            _2: { tag: 3, _1: " := " },
+                          },
+                          _2: {
+                            tag: 6,
+                            _1: { tag: 4, _1: 7, _2: { tag: 3, _1: x$1 } },
+                            _2: false,
+                          },
+                        },
+                      },
+                      _2: { tag: 3, _1: " }" },
+                    },
+                  },
+                  _2: false,
+                },
+              },
+              _2: false,
+            },
           },
         },
         _2: { tag: 3, _1: " }" },

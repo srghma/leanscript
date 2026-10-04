@@ -50,6 +50,27 @@ theorem Branch.numCalls_caseCond {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : L
       simp only
       by_cases hn : r.2.numCalls ≤ brs.numCalls
       · rw [ite_eq_left_of_eq_true _ _ (eq_true hn)]; exact hn
+      · rw [ite_eq_right_of_eq_false _ _ (eq_false hn)]
+        cases Branch.caseJoinAny? n brs with
+        | none => exact Nat.le_refl _
+        | some r' =>
+            simp only
+            by_cases hn' : r'.2.numCalls ≤ brs.numCalls
+            · rw [ite_eq_left_of_eq_true _ _ (eq_true hn')]; exact hn'
+            · rw [ite_eq_right_of_eq_false _ _ (eq_false hn')]; exact Nat.le_refl _
+
+theorem Term.numCalls_recordCaseCond {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks}
+    {fs : Fields ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat} (us : List Usage01ω)
+    (n : Neu Δ Φ Γ (.record t fs) ℓ)
+    (body : Term Δ d Φ (UCtx.annot d (t :: fs.toList) us ++ Γ) τ js o) :
+    (Term.recordCaseCond us n body).2.numCalls ≤ body.numCalls := by
+  unfold Term.recordCaseCond
+  cases Term.recordCaseOf? us body 8 (.neu n) with
+  | none => exact Nat.le_refl _
+  | some r =>
+      simp only
+      by_cases hn : r.2.numCalls ≤ body.numCalls
+      · rw [ite_eq_left_of_eq_true _ _ (eq_true hn)]; exact hn
       · rw [ite_eq_right_of_eq_false _ _ (eq_false hn)]; exact Nat.le_refl _
 
 theorem Term.numCalls_caseCondTop {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks}
@@ -63,6 +84,9 @@ theorem Term.numCalls_caseCondTop {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : 
           simp only [Term.caseCondTop, Term.numCalls, Branch.numCalls]
           exact Branch.numCalls_caseCond _ _
       | _ => exact Nat.le_refl _
+  | record_casesOn us n body =>
+      simp only [Term.caseCondTop]
+      simpa [Term.numCalls] using Term.numCalls_recordCaseCond us n body
   | _ => exact Nat.le_refl _
 
 theorem Term.numCalls_shareCase {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks}
@@ -137,7 +161,8 @@ theorem Term.numCalls_jcWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} �
       have h := Term.numCalls_shareCase u c.jcWalk b.jcWalk.2
       simp only [Term.jcWalk, Term.numCalls]; omega
   | _, _, _, _, _, _, .record_casesOn us n b => by
-      simp only [Term.jcWalk, Term.numCalls]; exact Term.numCalls_jcWalk b
+      simp only [Term.jcWalk, Term.numCalls]
+      exact Nat.le_trans (Term.numCalls_recordCaseCond us n _) (Term.numCalls_jcWalk b)
   | _, _, _, _, _, _, .branch br => by
       simp only [Term.jcWalk, Term.numCalls]; exact Branch.numCalls_jcWalk br
   | _, _, _, _, _, _, .jump _ _ => Nat.le_refl _
@@ -192,6 +217,28 @@ theorem Comp.numCalls_openCall? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ : Ty
     rfl
   · cases h
 
+theorem Term.numCalls_letOpenCall {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks}
+    {js : JCtx ks} {ℓ : Nat} {o' : Lvl} (I : OInfo Δ Φ Γ) (u : Usage1ω) (c : Comp Δ d Φ Γ σ ℓ)
+    (b : Term Δ d Φ (⟨σ, u.toUsage01ω, d⟩ :: Γ) τ js o') :
+    (Term.letOpenCall I u c b).2.numCalls ≤ c.numCalls + b.numCalls := by
+  unfold Term.letOpenCall
+  cases h : c.openCall? I with
+  | some r =>
+      simp only [Term.numCalls]
+      rw [Comp.numCalls_openCall? I _ h]; omega
+  | none =>
+      simp only
+      cases c.openCallExpr? I with
+      | none => simp [Term.numCalls]
+      | some p =>
+          simp only
+          cases hs : b.subst (D' := d) KLRen.id (USub.cons p (USub.ofRen ULRen.idL)) JRen.id with
+          | none => simp [Term.numCalls]
+          | some r =>
+              simp only
+              have := Term.numCalls_subst b hs
+              omega
+
 mutual
 theorem Val.numCalls_ocWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} →
     {o : Lvl} → (v : Val Δ d Φ Γ τ o) → (I : OInfo Δ Φ Γ) → (v.ocWalk I).numCalls ≤ v.numCalls
@@ -244,13 +291,7 @@ theorem Term.numCalls_ocWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} �
   | _, _, _, _, _, _, .letE u c b, I => by
       have hc := Comp.numCalls_ocWalk c I
       have hb := Term.numCalls_ocWalk b (I.wk1 _)
-      have hc' : ((c.ocWalk I).openCall? I |>.getD ⟨_, c.ocWalk I⟩).2.numCalls ≤
-          (c.ocWalk I).numCalls := by
-        cases h : (c.ocWalk I).openCall? I with
-        | none => exact Nat.le_refl _
-        | some r =>
-            simp only [Option.getD_some]
-            rw [Comp.numCalls_openCall? I _ h]; exact Nat.zero_le _
+      have hl := Term.numCalls_letOpenCall I u (c.ocWalk I) (b.ocWalk (I.wk1 _)).2
       simp only [Term.ocWalk, Term.numCalls]; omega
   | _, _, _, _, _, _, .record_casesOn us n b, I => by
       simp only [Term.ocWalk, Term.numCalls]; exact Term.numCalls_ocWalk b _
