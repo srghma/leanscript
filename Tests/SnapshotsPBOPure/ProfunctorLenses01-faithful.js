@@ -43,19 +43,19 @@ export const instReprRecBaz$repr = (x, prec) => ({
  * @param {nat(bigint)} prec
  * @returns {D0}
  */
-export const instReprRecFooBaz$repr = (x, prec) => {
-  const x$1 = String(x._2);
-  return {
-    tag: 6,
-    _1: {
-      tag: 4,
-      _1: 2n,
-      _2: {
+export const instReprRecFooBaz$repr = (x, prec) => ({
+  tag: 6,
+  _1: {
+    tag: 4,
+    _1: 2n,
+    _2: {
+      tag: 5,
+      _1: {
         tag: 5,
-        _1: {
+        _1: { tag: 3, _1: "{ " },
+        _2: {
           tag: 5,
-          _1: { tag: 3, _1: "{ " },
-          _2: {
+          _1: {
             tag: 5,
             _1: {
               tag: 5,
@@ -67,82 +67,75 @@ export const instReprRecFooBaz$repr = (x, prec) => {
                     tag: 5,
                     _1: {
                       tag: 5,
-                      _1: {
-                        tag: 5,
-                        _1: {
-                          tag: 5,
-                          _1: { tag: 0 },
-                          _2: { tag: 3, _1: "foo" },
-                        },
-                        _2: { tag: 3, _1: " := " },
-                      },
-                      _2: {
-                        tag: 6,
-                        _1: {
-                          tag: 4,
-                          _1: 7n,
-                          _2: { tag: 3, _1: String(x._1) },
-                        },
-                        _2: false,
-                      },
+                      _1: { tag: 5, _1: { tag: 0 }, _2: { tag: 3, _1: "foo" } },
+                      _2: { tag: 3, _1: " := " },
                     },
-                    _2: { tag: 3, _1: "," },
-                  },
-                  _2: { tag: 1 },
-                },
-                _2: { tag: 3, _1: "bar" },
-              },
-              _2: { tag: 3, _1: " := " },
-            },
-            _2: {
-              tag: 6,
-              _1: {
-                tag: 4,
-                _1: 7n,
-                _2: {
-                  tag: 6,
-                  _1: {
-                    tag: 4,
-                    _1: 2n,
                     _2: {
+                      tag: 6,
+                      _1: { tag: 4, _1: 7n, _2: { tag: 3, _1: String(x._1) } },
+                      _2: false,
+                    },
+                  },
+                  _2: { tag: 3, _1: "," },
+                },
+                _2: { tag: 1 },
+              },
+              _2: { tag: 3, _1: "bar" },
+            },
+            _2: { tag: 3, _1: " := " },
+          },
+          _2: {
+            tag: 6,
+            _1: {
+              tag: 4,
+              _1: 7n,
+              _2: {
+                tag: 6,
+                _1: {
+                  tag: 4,
+                  _1: 2n,
+                  _2: {
+                    tag: 5,
+                    _1: {
                       tag: 5,
-                      _1: {
+                      _1: { tag: 3, _1: "{ " },
+                      _2: {
                         tag: 5,
-                        _1: { tag: 3, _1: "{ " },
-                        _2: {
+                        _1: {
                           tag: 5,
                           _1: {
                             tag: 5,
-                            _1: {
-                              tag: 5,
-                              _1: { tag: 0 },
-                              _2: { tag: 3, _1: "baz" },
-                            },
-                            _2: { tag: 3, _1: " := " },
+                            _1: { tag: 0 },
+                            _2: { tag: 3, _1: "baz" },
                           },
-                          _2: {
-                            tag: 6,
-                            _1: { tag: 4, _1: 7n, _2: { tag: 3, _1: x$1 } },
-                            _2: false,
+                          _2: { tag: 3, _1: " := " },
+                        },
+                        _2: {
+                          tag: 6,
+                          _1: {
+                            tag: 4,
+                            _1: 7n,
+                            _2: { tag: 3, _1: String(x._2) },
                           },
+                          _2: false,
                         },
                       },
-                      _2: { tag: 3, _1: " }" },
                     },
+                    _2: { tag: 3, _1: " }" },
                   },
-                  _2: false,
                 },
+                _2: false,
               },
-              _2: false,
             },
+            _2: false,
           },
         },
-        _2: { tag: 3, _1: " }" },
       },
+      _2: { tag: 3, _1: " }" },
     },
-    _2: false,
-  };
-};
+  },
+  _2: false,
+});
 
 /**
  * `instReprRecFooBar.repr`

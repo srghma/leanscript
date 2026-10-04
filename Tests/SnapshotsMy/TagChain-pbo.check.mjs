@@ -59,6 +59,22 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("instInhabitedColour$default", () => M.instInhabitedColour$default, "0", false);
+check("test1(0, 0)", () => M.test1(0, 0), "0", false);
+check("test1(0, 1)", () => M.test1(0, 1), "1", false);
+check("test1(1, 0)", () => M.test1(1, 0), "1", false);
+check("test1(0, 2)", () => M.test1(0, 2), "2", false);
+check("test1(1, 1)", () => M.test1(1, 1), "2", false);
+check("test1(2, 0)", () => M.test1(2, 0), "2", false);
+check("test1(0, 5)", () => M.test1(0, 5), "5", false);
+check("test1(1, 2)", () => M.test1(1, 2), "3", false);
+check("test1(2, 1)", () => M.test1(2, 1), "3", false);
+check("test1(0, 13)", () => M.test1(0, 13), "13", false);
+check("test1(1, 5)", () => M.test1(1, 5), "6", false);
+check("test1(2, 2)", () => M.test1(2, 2), "4", false);
+check("test1(1, 13)", () => M.test1(1, 13), "14", false);
+check("test1(2, 5)", () => M.test1(2, 5), "7", false);
+check("test1(2, 13)", () => M.test1(2, 13), "15", false);
 check("test2({ tag: 0 }, 0)", () => M.test2({ tag: 0 }, 0), "0", false);
 check("test2({ tag: 0 }, 1)", () => M.test2({ tag: 0 }, 1), "1", false);
 check("test2({ tag: 1, _1: 0 }, 0)", () => M.test2({ tag: 1, _1: 0 }, 0), "0", false);

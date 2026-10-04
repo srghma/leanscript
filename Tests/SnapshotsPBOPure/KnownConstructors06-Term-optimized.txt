@@ -2,15 +2,17 @@
 
 -- instReprTest.repr : Test → Nat → Std.Format
 val k1 [1] : ((enum 4 @0) → (Nat → (data LeanScript.Ref.here 0))) := fun x2 [ω] : (enum 4 @0) => (closed)
-  val k3 [1] : (Nat → (data LeanScript.Ref.here 0)) := fun x4 [ω] : Nat => (open)
+  val k3 [1] : (Nat → (data LeanScript.Ref.here 0)) := fun x4 [1] : Nat => (open)
+    join j5 [1] (x6 [ω] : String) :=
+      ret cond(lean_nat_dec_le__Nat_decLe(1024, x4), in#0(ctor#6(in#0(ctor#4(1, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("(")), in#0(ctor#6(in#0(ctor#4(1, in#0(ctor#3(x6)))), false)))), in#0(ctor#3(")")))))), false)), in#0(ctor#6(in#0(ctor#4(2, in#0(ctor#3(x6)))), false)))
     case x2 of
     | enum#0 =>
-      ret cond(lean_nat_dec_le__Nat_decLe(1024, x4), in#0(ctor#6(in#0(ctor#4(1, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("(")), in#0(ctor#6(in#0(ctor#4(cond(lean_nat_dec_le__Nat_decLe(1024, x4), 1, 2), in#0(ctor#3("Test.Foo")))), false)))), in#0(ctor#3(")")))))), false)), in#0(ctor#6(in#0(ctor#4(cond(lean_nat_dec_le__Nat_decLe(1024, x4), 1, 2), in#0(ctor#3("Test.Foo")))), false)))
+      jump j5 "Test.Foo"
     | enum#1 =>
-      ret cond(lean_nat_dec_le__Nat_decLe(1024, x4), in#0(ctor#6(in#0(ctor#4(1, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("(")), in#0(ctor#6(in#0(ctor#4(cond(lean_nat_dec_le__Nat_decLe(1024, x4), 1, 2), in#0(ctor#3("Test.Bar")))), false)))), in#0(ctor#3(")")))))), false)), in#0(ctor#6(in#0(ctor#4(cond(lean_nat_dec_le__Nat_decLe(1024, x4), 1, 2), in#0(ctor#3("Test.Bar")))), false)))
+      jump j5 "Test.Bar"
     | enum#2 =>
-      ret cond(lean_nat_dec_le__Nat_decLe(1024, x4), in#0(ctor#6(in#0(ctor#4(1, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("(")), in#0(ctor#6(in#0(ctor#4(cond(lean_nat_dec_le__Nat_decLe(1024, x4), 1, 2), in#0(ctor#3("Test.Baz")))), false)))), in#0(ctor#3(")")))))), false)), in#0(ctor#6(in#0(ctor#4(cond(lean_nat_dec_le__Nat_decLe(1024, x4), 1, 2), in#0(ctor#3("Test.Baz")))), false)))
+      jump j5 "Test.Baz"
     | enum#3 =>
-      ret cond(lean_nat_dec_le__Nat_decLe(1024, x4), in#0(ctor#6(in#0(ctor#4(1, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("(")), in#0(ctor#6(in#0(ctor#4(cond(lean_nat_dec_le__Nat_decLe(1024, x4), 1, 2), in#0(ctor#3("Test.Qux")))), false)))), in#0(ctor#3(")")))))), false)), in#0(ctor#6(in#0(ctor#4(cond(lean_nat_dec_le__Nat_decLe(1024, x4), 1, 2), in#0(ctor#3("Test.Qux")))), false)))
+      jump j5 "Test.Qux"
   ret k3
 ret k1

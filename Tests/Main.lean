@@ -3264,7 +3264,7 @@ def knownConstructors05Spec : Spec := describe "KnownConstructors05" do
           ["throw", "let ", "._1 === "], (5 : Nat)),
         ("Tests/SnapshotsMy", "KnownCtorEnumParse",
           ["  j$1: for (", "      break j$1;"], ["  j$1: for (", "      break j$1;"],
-          ["throw"], 87),
+          ["throw"], 97),
         ("Tests/SnapshotsMy", "LoopState",
           ["  j$1: for (", "      break j$1;"], ["  j$1: for (", "      break j$1;"],
           ["acc$1.tag === 1 &&", "throw"], 41)] do
@@ -3277,6 +3277,52 @@ def knownConstructors05Spec : Spec := describe "KnownConstructors05" do
           assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
         for frag in absent do
           assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
+/-- `Tests/SnapshotsPBOPure/KnownConstructors06.lean` (the `Repr` instance that `deriving Repr`
+    writes for an enum of four constructors): the four arms differ only by the name of the
+    constructor, so they are written once (`Term.factorWalk`): a chain of `if`s picks the name,
+    then one expression builds the `Format`, the test `1024 <= prec` computed once and known
+    inside its own arms (`1` and `2` instead of `x$1 ? 1 : 2`).  Its variants
+    `Tests/SnapshotsMy/KnownCtorEnumFactor.lean` are checked against Lean. -/
+def knownConstructors06Spec : Spec := describe "KnownConstructors06" do
+  it "the arms of an enum case analysis that differ by a literal are written once (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/knownconstructors06"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at both presets, absent, (literal, occurrences), checks)
+    for (path, file, frags, absent, counts, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "KnownConstructors06",
+          ["  let x$1;\n  if (x === 0) {\n    x$1 = \"Test.Foo\";\n  } else if (x === 1) {",
+           "  } else {\n    x$1 = \"Test.Qux\";\n  }\n  return 1024",
+           "_2: { tag: 3, _1: x$1 } }"],
+          ["? 1 : 2", "? 1n : 2n", "throw"],
+          [("\"Test.Foo\"", 1), ("\"(\"", 1), ("<= prec", 1), ("_1: x$1 }", 2)], (0 : Nat)),
+        ("Tests/SnapshotsMy", "KnownCtorEnumFactor",
+          ["  return x$1 + s + \">\";", "  return { _1: x$1, _2: x$1 + s };",
+           "    x$1 = \"Color.Black\";"],
+          ["throw"],
+          [("\"<red\"", 1), ("\"Color.Red\"", 1), ("<= prec", 2)], 173)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript exit code" 0 out.exitCode
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        for (frag, n) in counts do
+          assertEq s!"{file}-{preset}: occurrences of `{frag}`" n ((js.splitOn frag).length - 1)
         let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
         assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
         assertEq s!"{file}-{preset}: number of checks" true
@@ -3331,6 +3377,7 @@ def spec : Spec := do
   knownConstructors03Spec
   knownConstructors04Spec
   knownConstructors05Spec
+  knownConstructors06Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

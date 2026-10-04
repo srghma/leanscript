@@ -8,116 +8,15 @@
  * @returns {D0}
  */
 export const instReprTest$repr = (x, prec) => {
+  let x$1;
   if (x === 0) {
-    return 1024 <= prec
-      ? {
-          tag: 6,
-          _1: {
-            tag: 4,
-            _1: 1,
-            _2: {
-              tag: 5,
-              _1: {
-                tag: 5,
-                _1: { tag: 3, _1: "(" },
-                _2: {
-                  tag: 6,
-                  _1: {
-                    tag: 4,
-                    _1: 1024 <= prec ? 1 : 2,
-                    _2: { tag: 3, _1: "Test.Foo" },
-                  },
-                  _2: false,
-                },
-              },
-              _2: { tag: 3, _1: ")" },
-            },
-          },
-          _2: false,
-        }
-      : {
-          tag: 6,
-          _1: {
-            tag: 4,
-            _1: 1024 <= prec ? 1 : 2,
-            _2: { tag: 3, _1: "Test.Foo" },
-          },
-          _2: false,
-        };
-  }
-  if (x === 1) {
-    return 1024 <= prec
-      ? {
-          tag: 6,
-          _1: {
-            tag: 4,
-            _1: 1,
-            _2: {
-              tag: 5,
-              _1: {
-                tag: 5,
-                _1: { tag: 3, _1: "(" },
-                _2: {
-                  tag: 6,
-                  _1: {
-                    tag: 4,
-                    _1: 1024 <= prec ? 1 : 2,
-                    _2: { tag: 3, _1: "Test.Bar" },
-                  },
-                  _2: false,
-                },
-              },
-              _2: { tag: 3, _1: ")" },
-            },
-          },
-          _2: false,
-        }
-      : {
-          tag: 6,
-          _1: {
-            tag: 4,
-            _1: 1024 <= prec ? 1 : 2,
-            _2: { tag: 3, _1: "Test.Bar" },
-          },
-          _2: false,
-        };
-  }
-  if (x === 2) {
-    return 1024 <= prec
-      ? {
-          tag: 6,
-          _1: {
-            tag: 4,
-            _1: 1,
-            _2: {
-              tag: 5,
-              _1: {
-                tag: 5,
-                _1: { tag: 3, _1: "(" },
-                _2: {
-                  tag: 6,
-                  _1: {
-                    tag: 4,
-                    _1: 1024 <= prec ? 1 : 2,
-                    _2: { tag: 3, _1: "Test.Baz" },
-                  },
-                  _2: false,
-                },
-              },
-              _2: { tag: 3, _1: ")" },
-            },
-          },
-          _2: false,
-        }
-      : {
-          tag: 6,
-          _1: {
-            tag: 4,
-            _1: 1024 <= prec ? 1 : 2,
-            _2: { tag: 3, _1: "Test.Baz" },
-          },
-          _2: false,
-        };
+    x$1 = "Test.Foo";
+  } else if (x === 1) {
+    x$1 = "Test.Bar";
+  } else if (x === 2) {
+    x$1 = "Test.Baz";
+  } else {
+    x$1 = "Test.Qux";
   }
   return 1024 <= prec
     ? {
@@ -132,11 +31,7 @@ export const instReprTest$repr = (x, prec) => {
               _1: { tag: 3, _1: "(" },
               _2: {
                 tag: 6,
-                _1: {
-                  tag: 4,
-                  _1: 1024 <= prec ? 1 : 2,
-                  _2: { tag: 3, _1: "Test.Qux" },
-                },
+                _1: { tag: 4, _1: 1, _2: { tag: 3, _1: x$1 } },
                 _2: false,
               },
             },
@@ -145,13 +40,5 @@ export const instReprTest$repr = (x, prec) => {
         },
         _2: false,
       }
-    : {
-        tag: 6,
-        _1: {
-          tag: 4,
-          _1: 1024 <= prec ? 1 : 2,
-          _2: { tag: 3, _1: "Test.Qux" },
-        },
-        _2: false,
-      };
+    : { tag: 6, _1: { tag: 4, _1: 2, _2: { tag: 3, _1: x$1 } }, _2: false };
 };

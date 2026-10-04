@@ -59,6 +59,30 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("instBEqTestEnum$beq(0, 0)", () => M.instBEqTestEnum$beq(0, 0), "true", false);
+check("instBEqTestEnum$beq(0, 1)", () => M.instBEqTestEnum$beq(0, 1), "false", false);
+check("instBEqTestEnum$beq(1, 0)", () => M.instBEqTestEnum$beq(1, 0), "false", false);
+check("instBEqTestEnum$beq(0, 2)", () => M.instBEqTestEnum$beq(0, 2), "false", false);
+check("instBEqTestEnum$beq(1, 1)", () => M.instBEqTestEnum$beq(1, 1), "true", false);
+check("instBEqTestEnum$beq(2, 0)", () => M.instBEqTestEnum$beq(2, 0), "false", false);
+check("instBEqTestEnum$beq(0, 3)", () => M.instBEqTestEnum$beq(0, 3), "false", false);
+check("instBEqTestEnum$beq(1, 2)", () => M.instBEqTestEnum$beq(1, 2), "false", false);
+check("instBEqTestEnum$beq(2, 1)", () => M.instBEqTestEnum$beq(2, 1), "false", false);
+check("instBEqTestEnum$beq(3, 0)", () => M.instBEqTestEnum$beq(3, 0), "false", false);
+check("instBEqTestEnum$beq(1, 3)", () => M.instBEqTestEnum$beq(1, 3), "false", false);
+check("instBEqTestEnum$beq(2, 2)", () => M.instBEqTestEnum$beq(2, 2), "true", false);
+check("instBEqTestEnum$beq(3, 1)", () => M.instBEqTestEnum$beq(3, 1), "false", false);
+check("instBEqTestEnum$beq(2, 3)", () => M.instBEqTestEnum$beq(2, 3), "false", false);
+check("instBEqTestEnum$beq(3, 2)", () => M.instBEqTestEnum$beq(3, 2), "false", false);
+check("instBEqTestEnum$beq(3, 3)", () => M.instBEqTestEnum$beq(3, 3), "true", false);
+check("test1(0)", () => M.test1(0), "false", false);
+check("test1(1)", () => M.test1(1), "false", false);
+check("test1(2)", () => M.test1(2), "true", false);
+check("test1(3)", () => M.test1(3), "false", false);
+check("test2(0)", () => M.test2(0), "false", false);
+check("test2(1)", () => M.test2(1), "false", false);
+check("test2(2)", () => M.test2(2), "true", false);
+check("test2(3)", () => M.test2(3), "false", false);
 
 console.log(`BranchSpecialization01-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

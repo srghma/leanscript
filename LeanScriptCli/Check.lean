@@ -68,6 +68,10 @@ inductive SType where
       `() => …`), or as a trailing parameter of the checked function (`(a b : Unit)`), whose run
       of `Unit` parameters is one call `()` in JavaScript (the delays collapse into one). -/
   | unit
+  /-- An enumeration: an inductive type without parameter of three or more constructors, none
+      with fields (`inductive Color | Red | Green | Blue`): a JavaScript number, the index of the
+      constructor.  `ctors` are the constructors, in order. -/
+  | enum (ctors : List Expr)
   deriving Inhabited, BEq
 
 /-- The functions `dom → cod` the checks have samples of (`SType.fn`). -/
@@ -153,6 +157,11 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
   let some (c, lvls) := e.getAppFn.const? | return none
   let some (.inductInfo ind) := (← getEnv).find? c | return none
   if let some t ← treeOf? e ind lvls then return some t
+  -- an enumeration: three or more constructors without fields
+  if ind.ctors.length ≥ 3 && ind.numParams == 0 && ind.numIndices == 0 && e.isConst then
+    let noFields ← ind.ctors.allM fun c => do
+      return (← inferType (mkConst c lvls)) == e
+    if noFields then return some (.enum (ind.ctors.map (mkConst · lvls)))
   unless ind.ctors.length == 1 && ind.numIndices == 0 && !ind.isRec &&
     e.getAppNumArgs == ind.numParams do return none
   let ctor := mkAppN (mkConst ind.ctors.head! lvls) e.getAppArgs
@@ -241,6 +250,7 @@ partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : Lis
       ⟨mkAppN ctor (picks.map (·.lean)).toArray,
        "{ " ++ ", ".intercalate (picks.zipIdx.map fun (x, j) => s!"_{j + 1}: {x.js}") ++ " }"⟩
   | .wrap _ ctor t => (samplesOf cfg t nats).map fun x => ⟨mkApp ctor x.lean, x.js⟩
+  | .enum cs => cs.zipIdx.map fun (c, i) => ⟨c, toString i⟩
   | .tree ctors =>
     -- the values of depth at most 2 (the leaves taken among their first two samples), the
     -- smallest first, at most `treeCap` of them
@@ -594,6 +604,16 @@ partial def showExpr (t : SType) (e : Expr) : MetaM Expr := do
       | q :: qs => qs.foldlM (fun acc q => do app (← app acc (toExpr ", ")) q) q
     app (← app (toExpr "{") body) (toExpr "}")
   | .wrap ind _ t => showExpr t (.proj ind 0 e)
+  | .enum cs =>
+    -- the index of the constructor, as the JavaScript number prints
+    let some (cn, lvls) := (cs.headD (mkConst ``Nat)).const? | mkAppM ``toString #[e]
+    let some (.ctorInfo cv) := (← getEnv).find? cn | mkAppM ``toString #[e]
+    let casesName := mkCasesOnName cv.induct
+    let casesInfo ← getConstInfo casesName
+    let lvls' := if casesInfo.levelParams.length == lvls.length + 1 then Level.one :: lvls else lvls
+    let motive := mkLambda `x .default (mkConst cv.induct lvls) (mkConst ``String)
+    let minors := (List.range cs.length).map fun i => toExpr (toString i)
+    return mkAppN (mkConst casesName lvls') (#[motive, e] ++ minors.toArray)
   | .tree ctors =>
     -- `i(…, …)`: the index of the constructor, then its fields (`casesOn`)
     let some (c0, _) := ctors.head? | mkAppM ``toString #[e]

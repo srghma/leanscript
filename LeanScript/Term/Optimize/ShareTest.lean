@@ -69,69 +69,6 @@ theorem LeanPrimTy.eq_of_litBEq (p : LeanPrimTy) (a b : p.denote) (h : p.litBEq 
     a = b := by
   cases p <;> simp_all [LeanPrimTy.litBEq]
 
-/-- The entries of `PreludeExtern` that take no type argument, by their constructor index
-    (`Extern.beq` does not recognise the entries of this family: some of them take one). -/
-def Extern.preludeOfIdx (ks : List Nat) :
-    Nat → Option ((σs : List (Ty ks)) × (τ : Ty ks) × Extern ks σs τ)
-  | 0 => some ⟨_, _, .preludeExtern .lean_uint32_of_nat_mk⟩
-  | 1 => some ⟨_, _, .preludeExtern .lean_uint32_dec_eq⟩
-  | 2 => some ⟨_, _, .preludeExtern .lean_uint32_dec_lt⟩
-  | 3 => some ⟨_, _, .preludeExtern .lean_nat_div⟩
-  | 4 => some ⟨_, _, .preludeExtern .lean_uint32_of_nat__UInt32_ofNatLT⟩
-  | 5 => some ⟨_, _, .preludeExtern .lean_uint32_of_nat__Char_ofNatAux⟩
-  | 7 => some ⟨_, _, .preludeExtern .lean_uint8_to_nat__UInt8_toBitVec⟩
-  | 8 => some ⟨_, _, .preludeExtern .lean_nat_dec_lt⟩
-  | 9 => some ⟨_, _, .preludeExtern .lean_nat_mod__Nat_modCore⟩
-  | 10 => some ⟨_, _, .preludeExtern .lean_nat_mod__Nat_mod⟩
-  | 12 => some ⟨_, _, .preludeExtern .lean_nat_sub⟩
-  | 13 => some ⟨_, _, .preludeExtern .lean_uint8_dec_lt⟩
-  | 14 => some ⟨_, _, .preludeExtern .lean_uint32_dec_le⟩
-  | 17 => some ⟨_, _, .preludeExtern .lean_nat_dec_eq__Nat_decEq⟩
-  | 18 => some ⟨_, _, .preludeExtern .lean_nat_dec_eq__Nat_beq⟩
-  | 21 => some ⟨_, _, .preludeExtern .lean_uint8_of_nat__UInt8_ofNat⟩
-  | 22 => some ⟨_, _, .preludeExtern .lean_uint8_of_nat__UInt8_ofNatLT⟩
-  | 23 => some ⟨_, _, .preludeExtern .lean_uint8_dec_le⟩
-  | 24 => some ⟨_, _, .preludeExtern .lean_nat_dec_le__Nat_ble⟩
-  | 25 => some ⟨_, _, .preludeExtern .lean_nat_dec_le__Nat_decLe⟩
-  | 27 => some ⟨_, _, .preludeExtern .lean_nat_add⟩
-  | 29 => some ⟨_, _, .preludeExtern .lean_uint16_to_nat__UInt16_toBitVec⟩
-  | 30 => some ⟨_, _, .preludeExtern .lean_uint16_of_nat_mk⟩
-  | 31 => some ⟨_, _, .preludeExtern .lean_uint16_dec_eq⟩
-  | 32 => some ⟨_, _, .preludeExtern .lean_string_dec_eq⟩
-  | 33 => some ⟨_, _, .preludeExtern .lean_nat_pred⟩
-  | 34 => some ⟨_, _, .preludeExtern .lean_string_mk__String_ofList⟩
-  | 35 => some ⟨_, _, .preludeExtern .lean_string_hash⟩
-  | 36 => some ⟨_, _, .preludeExtern .lean_uint64_to_nat__UInt64_toBitVec⟩
-  | 37 => some ⟨_, _, .preludeExtern .lean_uint64_of_nat_mk⟩
-  | 38 => some ⟨_, _, .preludeExtern .lean_uint32_to_nat__UInt32_toNat⟩
-  | 39 => some ⟨_, _, .preludeExtern .lean_uint32_to_nat__UInt32_toBitVec⟩
-  | 40 => some ⟨_, _, .preludeExtern .lean_uint64_dec_eq⟩
-  | 41 => some ⟨_, _, .preludeExtern .lean_uint16_of_nat__UInt16_ofNatLT⟩
-  | 42 => some ⟨_, _, .preludeExtern .lean_name_eq⟩
-  | 43 => some ⟨_, _, .preludeExtern .lean_uint8_of_nat_mk⟩
-  | 44 => some ⟨_, _, .preludeExtern .lean_uint8_dec_eq⟩
-  | 45 => some ⟨_, _, .preludeExtern .lean_nat_pow⟩
-  | 46 => some ⟨_, _, .preludeExtern .lean_nat_mul⟩
-  | 47 => some ⟨_, _, .preludeExtern .lean_string_utf8_byte_size⟩
-  | 49 => some ⟨_, _, .preludeExtern .lean_uint64_mix_hash⟩
-  | 50 => some ⟨_, _, .preludeExtern .lean_uint64_of_nat__UInt64_ofNatLT⟩
-  | _ => none
-
-/-- The constructor index of an entry of `PreludeExtern`. -/
-def Extern.preludeIdx? {σs : List (Ty ks)} {τ : Ty ks} : Extern ks σs τ → Option Nat
-  | .preludeExtern e => some e.ctorIdx
-  | _ => none
-
-theorem Extern.preludeOfIdx_eq {σs : List (Ty ks)} {τ : Ty ks} (e : Extern ks σs τ) (k : Nat)
-    (hk : e.preludeIdx? = some k) (x : (σs : List (Ty ks)) × (τ : Ty ks) × Extern ks σs τ)
-    (h : Extern.preludeOfIdx ks k = some x) : x = ⟨σs, τ, e⟩ := by
-  cases e with
-  | preludeExtern e =>
-      simp only [Extern.preludeIdx?, Option.some.injEq] at hk
-      subst hk
-      cases e <;> simp [Extern.preludeOfIdx, PreludeExtern.ctorIdx] at h <;> exact h.symm
-  | _ => simp [Extern.preludeIdx?] at hk
-
 /-- Are two calls of externs, maybe of different signatures, recognised as the same extern?
     (By `Extern.beq`, or as the same entry of `PreludeExtern` without type argument.) -/
 def Extern.hbeq {σs σs' : List (Ty ks)} {τ τ' : Ty ks} (e : Extern ks σs τ)

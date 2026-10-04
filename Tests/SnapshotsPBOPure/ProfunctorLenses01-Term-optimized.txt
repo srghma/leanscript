@@ -3,18 +3,16 @@
 -- instReprRecBaz.repr : RecBaz → Nat → Std.Format
 val k1 [1] : (Int → (Nat → (data LeanScript.Ref.here 0))) := fun x2 [ω] : Int => (closed)
   val k3 [1] : (Nat → (data LeanScript.Ref.here 0)) := fun x4 [0] : Nat => (open)
-    let x5 [ω] : String := share lean_int_repr(x2)
-    ret in#0(ctor#6(in#0(ctor#4(2, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("{ ")), in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#0()), in#0(ctor#3("baz")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(7, cond(lean_int_dec_lt(x2, 0), in#0(ctor#3(x5)), in#0(ctor#3(x5))))), false)))))), in#0(ctor#3(" }")))))), false))
+    ret in#0(ctor#6(in#0(ctor#4(2, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("{ ")), in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#0()), in#0(ctor#3("baz")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(7, in#0(ctor#3(lean_int_repr(x2))))), false)))))), in#0(ctor#3(" }")))))), false))
   ret k3
 ret k1
 
 -- instReprRecFooBaz.repr : RecFooBaz → Nat → Std.Format
 val k1 [1] : ((Int × Int) → (Nat → (data LeanScript.Ref.here 0))) := fun x2 [ω] : (Int × Int) => (closed)
   val k3 [1] : (Nat → (data LeanScript.Ref.here 0)) := fun x4 [0] : Nat => (open)
-    let ⟨f5 [1] : Int, f6 [ω] : Int⟩ := x2
+    let ⟨f5 [1] : Int, f6 [1] : Int⟩ := x2
     let ⟨f7 [0] : Int, f8 [0] : Int⟩ := x2
-    let x9 [ω] : String := share lean_int_repr(f6)
-    ret in#0(ctor#6(in#0(ctor#4(2, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("{ ")), in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#0()), in#0(ctor#3("foo")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(7, in#0(ctor#3(lean_int_repr(f5))))), false)))), in#0(ctor#3(",")))), in#0(ctor#1()))), in#0(ctor#3("bar")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(7, in#0(ctor#6(in#0(ctor#4(2, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("{ ")), in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#0()), in#0(ctor#3("baz")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(7, cond(lean_int_dec_lt(f6, 0), in#0(ctor#3(x9)), in#0(ctor#3(x9))))), false)))))), in#0(ctor#3(" }")))))), false)))), false)))))), in#0(ctor#3(" }")))))), false))
+    ret in#0(ctor#6(in#0(ctor#4(2, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("{ ")), in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#0()), in#0(ctor#3("foo")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(7, in#0(ctor#3(lean_int_repr(f5))))), false)))), in#0(ctor#3(",")))), in#0(ctor#1()))), in#0(ctor#3("bar")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(7, in#0(ctor#6(in#0(ctor#4(2, in#0(ctor#5(in#0(ctor#5(in#0(ctor#3("{ ")), in#0(ctor#5(in#0(ctor#5(in#0(ctor#5(in#0(ctor#0()), in#0(ctor#3("baz")))), in#0(ctor#3(" := ")))), in#0(ctor#6(in#0(ctor#4(7, in#0(ctor#3(lean_int_repr(f6))))), false)))))), in#0(ctor#3(" }")))))), false)))), false)))))), in#0(ctor#3(" }")))))), false))
   ret k3
 ret k1
 

@@ -26,8 +26,9 @@ a pure expression.
   condition becomes a literal is the arm it takes, and the arms of any other conditional are
   simplified knowing its condition (`c ? c : false` is `c`, `(!c) || c` is `true`,
   `c && false` is `false`); `Neu.mkCondS` rebuilds the conditional, and a conditional whose two
-  arms are written the same way is that arm (`c ? 7 : 7` is `7`) (`Neu.condSimp_eval`: the value does not
-  change).  The result may have another level, and is returned with it.
+  arms are written the same way is that arm (`c ? 7 : 7` is `7`); it goes into constructors and
+  the arguments of extern calls, so `c ? ⟨1, c ? 1 : 2⟩ : ⟨2, c ? 1 : 2⟩` is `c ? ⟨1, 1⟩ : ⟨2, 2⟩`
+  (`Neu.condSimp_eval`: the value does not change).  The result may have another level, and is returned with it.
 -/
 
 namespace LeanScript
@@ -391,12 +392,30 @@ def Neu.condSimp : {τ : Ty ks} → {ℓ : Nat} → List (BoolFact Γ) → Neu �
             (PExpr.condSimp (Neu.factsOf facts n false) b).2
         | none => ⟨_, .neu (.cond c a b)⟩
   | _, _, _, .data_out b j e => ⟨_, .neu (.data_out b j e)⟩
-  | _, _, _, .extern e args h => ⟨_, .neu (.extern e args h)⟩
-/-- `Neu.condSimp` of a pure expression (only a neutral one changes). -/
+  | _, _, facts, .extern e args h =>
+      ⟨_, .neu (Neu.mkExtern e args h (Args.condSimp facts args)).2⟩
+/-- `Neu.condSimp` of a pure expression, inside its constructors too. -/
 def PExpr.condSimp : {τ : Ty ks} → {o : Lvl} → List (BoolFact Γ) → PExpr Δ Φ Γ τ o →
     (o' : Lvl) × PExpr Δ Φ Γ τ o'
   | _, _, facts, .neu n => Neu.condSimp facts n
-  | _, _, _, e => ⟨_, e⟩
+  | _, _, _, .kvar k => ⟨_, .kvar k⟩
+  | _, _, _, .lit p v => ⟨_, .lit p v⟩
+  | _, _, _, .enum_mk sc i => ⟨_, .enum_mk sc i⟩
+  | _, _, facts, .record_mk args => ⟨_, .record_mk (Args.condSimp facts args).2⟩
+  | _, _, facts, .union_mk ix args => ⟨_, .union_mk ix (Args.condSimp facts args).2⟩
+  | _, _, facts, .array_mk es => ⟨_, .array_mk (Elems.condSimp facts es).2⟩
+  | _, _, facts, .list_mk es => ⟨_, .list_mk (Elems.condSimp facts es).2⟩
+  | _, _, facts, .data_in b j e => ⟨_, .data_in b j (PExpr.condSimp facts e).2⟩
+/-- `PExpr.condSimp` of every argument. -/
+def Args.condSimp : {σs : List (Ty ks)} → {o : Lvl} → List (BoolFact Γ) → Args Δ Φ Γ σs o →
+    (o' : Lvl) × Args Δ Φ Γ σs o'
+  | _, _, _, .nil => ⟨_, .nil⟩
+  | _, _, facts, .cons a as => ⟨_, .cons (PExpr.condSimp facts a).2 (Args.condSimp facts as).2⟩
+/-- `PExpr.condSimp` of every element. -/
+def Elems.condSimp : {t : Ty ks} → {o : Lvl} → List (BoolFact Γ) → Elems Δ Φ Γ t o →
+    (o' : Lvl) × Elems Δ Φ Γ t o'
+  | _, _, _, .nil => ⟨_, .nil⟩
+  | _, _, facts, .cons e es => ⟨_, .cons (PExpr.condSimp facts e).2 (Elems.condSimp facts es).2⟩
 end
 
 mutual
@@ -438,7 +457,9 @@ theorem Neu.condSimp_eval : {τ : Ty ks} → {ℓ : Nat} → (facts : List (Bool
           dsimp only
           exact Neu.eval_cond_ite c a b κ ρ
   | _, _, _, .data_out _ _ _, _, _, _ => rfl
-  | _, _, _, .extern _ _ _, _, _, _ => rfl
+  | _, _, facts, .extern e args h, κ, ρ, hf => by
+      simp only [Neu.condSimp, PExpr.eval]
+      exact Neu.mkExtern_eval e args h _ κ ρ (Args.condSimp_eval facts args κ ρ hf)
   termination_by structural _ _ _ n => n
 theorem PExpr.condSimp_eval : {τ : Ty ks} → {o : Lvl} → (facts : List (BoolFact Γ)) →
     (e : PExpr Δ Φ Γ τ o) → (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) → (∀ f ∈ facts, f.Holds ρ) →
@@ -447,12 +468,33 @@ theorem PExpr.condSimp_eval : {τ : Ty ks} → {o : Lvl} → (facts : List (Bool
   | _, _, _, .kvar _, _, _, _ => rfl
   | _, _, _, .lit _ _, _, _, _ => rfl
   | _, _, _, .enum_mk _ _, _, _, _ => rfl
-  | _, _, _, .record_mk _, _, _, _ => rfl
-  | _, _, _, .union_mk _ _, _, _, _ => rfl
-  | _, _, _, .array_mk _, _, _, _ => rfl
-  | _, _, _, .list_mk _, _, _, _ => rfl
-  | _, _, _, .data_in _ _ _, _, _, _ => rfl
+  | _, _, facts, .record_mk args, κ, ρ, hf => by
+      simp only [PExpr.condSimp, PExpr.eval, Args.condSimp_eval facts args κ ρ hf] <;> rfl
+  | _, _, facts, .union_mk _ args, κ, ρ, hf => by
+      simp only [PExpr.condSimp, PExpr.eval, Args.condSimp_eval facts args κ ρ hf] <;> rfl
+  | _, _, facts, .array_mk es, κ, ρ, hf => by
+      simp only [PExpr.condSimp, PExpr.eval, Elems.condSimp_eval facts es κ ρ hf] <;> rfl
+  | _, _, facts, .list_mk es, κ, ρ, hf => by
+      simp only [PExpr.condSimp, PExpr.eval, Elems.condSimp_eval facts es κ ρ hf] <;> rfl
+  | _, _, facts, .data_in _ _ e, κ, ρ, hf => by
+      simp only [PExpr.condSimp, PExpr.eval, PExpr.condSimp_eval facts e κ ρ hf] <;> rfl
   termination_by structural _ _ _ e => e
+theorem Args.condSimp_eval : {σs : List (Ty ks)} → {o : Lvl} → (facts : List (BoolFact Γ)) →
+    (as : Args Δ Φ Γ σs o) → (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) → (∀ f ∈ facts, f.Holds ρ) →
+    (as.condSimp facts).2.eval κ ρ = as.eval κ ρ
+  | _, _, _, .nil, _, _, _ => rfl
+  | _, _, facts, .cons a as, κ, ρ, hf => by
+      simp only [Args.condSimp, Args.eval, PExpr.condSimp_eval facts a κ ρ hf,
+        Args.condSimp_eval facts as κ ρ hf]
+  termination_by structural _ _ _ as => as
+theorem Elems.condSimp_eval : {t : Ty ks} → {o : Lvl} → (facts : List (BoolFact Γ)) →
+    (es : Elems Δ Φ Γ t o) → (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) → (∀ f ∈ facts, f.Holds ρ) →
+    (es.condSimp facts).2.eval κ ρ = es.eval κ ρ
+  | _, _, _, .nil, _, _, _ => rfl
+  | _, _, facts, .cons e es, κ, ρ, hf => by
+      simp only [Elems.condSimp, Elems.eval, PExpr.condSimp_eval facts e κ ρ hf,
+        Elems.condSimp_eval facts es κ ρ hf]
+  termination_by structural _ _ _ es => es
 end
 
 end CondFacts

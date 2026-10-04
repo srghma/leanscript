@@ -1,3 +1,44 @@
+# Summary of changes for run 0bb9ca33-b84b-442c-9e62-38ef114ea8f5
+The JavaScript for `KnownConstructors06` now matches the legacy purescript-backend-optimizer output, and in a few ways is better. All the changes are in the `Term → Term` optimiser, as you preferred.
+
+**What was wrong.** The derived `Repr` instance (`instReprTest.repr`) had four arms that differed only in the constructor name. Each arm built its own `Format` and tested `1024 <= prec` twice. The inner test was never recognised as the outer one, so `1024 <= prec ? 1 : 2` stayed inside it. The file was 157 lines.
+
+**Output now** (`pbo`; `faithful` is the same with `1024n`, `1n`, `2n`), 44 lines:
+```js
+export const instReprTest$repr = (x, prec) => {
+  let x$1;
+  if (x === 0) { x$1 = "Test.Foo"; } else if (x === 1) { x$1 = "Test.Bar"; }
+  else if (x === 2) { x$1 = "Test.Baz"; } else { x$1 = "Test.Qux"; }
+  return 1024 <= prec
+    ? { tag: 6, _1: { tag: 4, _1: 1, _2: { tag: 5, … { tag: 6, _1: { tag: 4, _1: 1, _2: { tag: 3, _1: x$1 } }, _2: false } … } }, _2: false }
+    : { tag: 6, _1: { tag: 4, _1: 2, _2: { tag: 3, _1: x$1 } }, _2: false };
+};
+```
+Like legacy's `show`, it is one chain of `if`s. Unlike legacy, the last arm is a plain `else` rather than `throw "UNREACHABLE"`, and the test and the `Format` expression are each written once. There are no loops or recursion here, so labelled blocks and loops don't come into it. No join point is printed as a closure.
+
+**Changes:**
+1. **Repeated `Nat` comparisons are now shared** (`ExternEq.lean`). The check that two calls use the same extern recognised nothing in the `PreludeExtern` family (`lean_nat_dec_le`, `lean_nat_add`, …), so `1024 <= prec` was never computed once. It now recognises entries without a type argument, and its correctness proof (`Extern.eq_of_beq`) still holds.
+2. **Known conditions inside constructors** (`KnownCond.lean`). In the arms of `c ? a : b`, the value of `c` is now used inside records, unions, arrays, lists and extern arguments too. So `x ? ⟨…, x ? 1 : 2⟩ : …` becomes `x ? ⟨…, 1⟩ : …`.
+3. **New pass `Term.factorWalk`** (`LeanScript/Term/Optimize/FactorArms.lean`). When the arms of a `case` on an enum all answer the same expression except for one literal, the expression is written once. The arms then only pick the literal. It runs only when the shared expression is large enough, so a `case` that just returns literals stays as it is.
+
+**Proofs** (no `sorry`):
+- **New:** `Term.factorWalk_eval` (the value is unchanged) and `Term.numCalls_factorWalk` (no call is added). Both are in the Properties table.
+- **Whole optimiser:** `Term.optimize_eval` and `Term.numCalls_optimize` still hold with the new pass included. They depend only on `propext`, `Classical.choice` and `Quot.sound`.
+
+**Tests:**
+- **No node checks for this file.** The result is a `Std.Format`, so `--check` writes no comparisons against Lean for it (0 passed, 0 failed).
+- **New variants file** `Tests/SnapshotsMy/KnownCtorEnumFactor.lean`, with 173 checks per preset, all passing.
+- **`--check` now handles enums.** It can pass enumeration arguments (three or more constructors, no fields), which this file needed. This also adds checks to `KnownCtorEnumParse` (97 instead of 87), `TagChain` and `BranchSpecialization01`.
+- **New spec** `knownConstructors06Spec` in `Tests/Main.lean`. `lake exe tests` passes 141/141.
+- **Build:** `lake build leanscript TermTests TyTests JsTerm JsSpec tests` succeeds.
+- **Snapshots:** I regenerated them and every node check reports 0 failed. The script still exits 1 because of the expected `get!` panics, as before.
+  - `ProfunctorLenses01`: one `const` is now inlined.
+  - `CaseRedBlackTree`: only the Term text changed.
+  - Nothing else changed.
+- **Plain `lake build` (all default targets) fails** at `LeanScript/Term/Syntax/UsageAlgebra.lean` ("unknown module prefix 'Mathlib'"). I didn't touch that file, so it was probably already failing.
+
+The before/after comparison and the per-variant results are in `Tests/SnapshotsPBOPure/KnownConstructors06.md`. Everything is committed.
+
 # Summary of changes for run c451a1af-2e70-4aca-b086-2552996d74bb
 `KnownConstructors05` was already on par with the purescript-backend-optimizer (legacy) output before this session, so its snapshot is unchanged. `fromString` is inlined into `test`, and each `match` case is reduced at the constructor known there. The result is the same chain of `if (a === "foo") { return 1; } …` as legacy, with no record and no tag test. The only difference is that we write the last case as `return a === "qux" ? 4 : 0;`. The full comparison is in `Tests/SnapshotsPBOPure/KnownConstructors05.md`.
 

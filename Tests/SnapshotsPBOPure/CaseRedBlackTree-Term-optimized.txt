@@ -23,16 +23,16 @@ val k1 [1] : ((data LeanScript.Ref.here 0) → (Nat × (data LeanScript.Ref.here
                 ret ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩
               | ctor#1(f11 [1] : Bool, f12 [1] : (data LeanScript.Ref.here 0), f13 [1] : Nat, f14 [1] : (data LeanScript.Ref.here 0)) =>
                 ret cond(f11, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, f4, f5, f8, f9, f12, f13, f14⟩)
-            | ctor#1(f15 [ω] : Bool, f16 [1] : (data LeanScript.Ref.here 0), f17 [1] : Nat, f18 [1] : (data LeanScript.Ref.here 0)) =>
+            | ctor#1(f15 [1] : Bool, f16 [1] : (data LeanScript.Ref.here 0), f17 [1] : Nat, f18 [1] : (data LeanScript.Ref.here 0)) =>
               if f15 then
                 case out#0(f10) of
                 | ctor#0() =>
                   ret ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩
                 | ctor#1(f19 [1] : Bool, f20 [1] : (data LeanScript.Ref.here 0), f21 [1] : Nat, f22 [1] : (data LeanScript.Ref.here 0)) =>
-                  ret cond(f19, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, f4, f5, in#0(ctor#1(f15, f16, f17, f18)), f9, f20, f21, f22⟩)
+                  ret cond(f19, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, f4, f5, in#0(ctor#1(true, f16, f17, f18)), f9, f20, f21, f22⟩)
               else
                 ret ⟨3, f4, f5, f16, f17, f18, f9, f10⟩
-      | ctor#1(f23 [ω] : Bool, f24 [ω] : (data LeanScript.Ref.here 0), f25 [1] : Nat, f26 [ω] : (data LeanScript.Ref.here 0)) =>
+      | ctor#1(f23 [1] : Bool, f24 [ω] : (data LeanScript.Ref.here 0), f25 [1] : Nat, f26 [ω] : (data LeanScript.Ref.here 0)) =>
         if f23 then
           case out#0(f6) of
           | ctor#0() =>
@@ -47,16 +47,16 @@ val k1 [1] : ((data LeanScript.Ref.here 0) → (Nat × (data LeanScript.Ref.here
                 | ctor#0() =>
                   ret ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩
                 | ctor#1(f31 [1] : Bool, f32 [1] : (data LeanScript.Ref.here 0), f33 [1] : Nat, f34 [1] : (data LeanScript.Ref.here 0)) =>
-                  ret cond(f31, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(f23, f24, f25, f26)), f5, f28, f29, f32, f33, f34⟩)
-              | ctor#1(f35 [ω] : Bool, f36 [1] : (data LeanScript.Ref.here 0), f37 [1] : Nat, f38 [1] : (data LeanScript.Ref.here 0)) =>
+                  ret cond(f31, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(true, f24, f25, f26)), f5, f28, f29, f32, f33, f34⟩)
+              | ctor#1(f35 [1] : Bool, f36 [1] : (data LeanScript.Ref.here 0), f37 [1] : Nat, f38 [1] : (data LeanScript.Ref.here 0)) =>
                 if f35 then
                   case out#0(f30) of
                   | ctor#0() =>
                     ret ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩
                   | ctor#1(f39 [1] : Bool, f40 [1] : (data LeanScript.Ref.here 0), f41 [1] : Nat, f42 [1] : (data LeanScript.Ref.here 0)) =>
-                    ret cond(f39, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(f23, f24, f25, f26)), f5, in#0(ctor#1(f35, f36, f37, f38)), f29, f40, f41, f42⟩)
+                    ret cond(f39, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(true, f24, f25, f26)), f5, in#0(ctor#1(true, f36, f37, f38)), f29, f40, f41, f42⟩)
                 else
-                  ret ⟨3, in#0(ctor#1(f23, f24, f25, f26)), f5, f36, f37, f38, f29, f30⟩
+                  ret ⟨3, in#0(ctor#1(true, f24, f25, f26)), f5, f36, f37, f38, f29, f30⟩
         else
           case out#0(f24) of
           | ctor#0() =>
@@ -76,16 +76,16 @@ val k1 [1] : ((data LeanScript.Ref.here 0) → (Nat × (data LeanScript.Ref.here
                       ret ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩
                     | ctor#1(f47 [1] : Bool, f48 [1] : (data LeanScript.Ref.here 0), f49 [1] : Nat, f50 [1] : (data LeanScript.Ref.here 0)) =>
                       ret cond(f47, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, f24, f25, f26)), f5, f44, f45, f48, f49, f50⟩)
-                  | ctor#1(f51 [ω] : Bool, f52 [1] : (data LeanScript.Ref.here 0), f53 [1] : Nat, f54 [1] : (data LeanScript.Ref.here 0)) =>
+                  | ctor#1(f51 [1] : Bool, f52 [1] : (data LeanScript.Ref.here 0), f53 [1] : Nat, f54 [1] : (data LeanScript.Ref.here 0)) =>
                     if f51 then
                       case out#0(f46) of
                       | ctor#0() =>
                         ret ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩
                       | ctor#1(f55 [1] : Bool, f56 [1] : (data LeanScript.Ref.here 0), f57 [1] : Nat, f58 [1] : (data LeanScript.Ref.here 0)) =>
-                        ret cond(f55, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, f24, f25, f26)), f5, in#0(ctor#1(f51, f52, f53, f54)), f45, f56, f57, f58⟩)
+                        ret cond(f55, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, f24, f25, f26)), f5, in#0(ctor#1(true, f52, f53, f54)), f45, f56, f57, f58⟩)
                     else
                       ret ⟨3, in#0(ctor#1(false, f24, f25, f26)), f5, f52, f53, f54, f45, f46⟩
-            | ctor#1(f59 [ω] : Bool, f60 [1] : (data LeanScript.Ref.here 0), f61 [1] : Nat, f62 [1] : (data LeanScript.Ref.here 0)) =>
+            | ctor#1(f59 [1] : Bool, f60 [1] : (data LeanScript.Ref.here 0), f61 [1] : Nat, f62 [1] : (data LeanScript.Ref.here 0)) =>
               if f59 then
                 case out#0(f6) of
                 | ctor#0() =>
@@ -100,19 +100,19 @@ val k1 [1] : ((data LeanScript.Ref.here 0) → (Nat × (data LeanScript.Ref.here
                       | ctor#0() =>
                         ret ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩
                       | ctor#1(f67 [1] : Bool, f68 [1] : (data LeanScript.Ref.here 0), f69 [1] : Nat, f70 [1] : (data LeanScript.Ref.here 0)) =>
-                        ret cond(f67, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, f24, f25, in#0(ctor#1(f59, f60, f61, f62)))), f5, f64, f65, f68, f69, f70⟩)
-                    | ctor#1(f71 [ω] : Bool, f72 [1] : (data LeanScript.Ref.here 0), f73 [1] : Nat, f74 [1] : (data LeanScript.Ref.here 0)) =>
+                        ret cond(f67, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, f24, f25, in#0(ctor#1(true, f60, f61, f62)))), f5, f64, f65, f68, f69, f70⟩)
+                    | ctor#1(f71 [1] : Bool, f72 [1] : (data LeanScript.Ref.here 0), f73 [1] : Nat, f74 [1] : (data LeanScript.Ref.here 0)) =>
                       if f71 then
                         case out#0(f66) of
                         | ctor#0() =>
                           ret ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩
                         | ctor#1(f75 [1] : Bool, f76 [1] : (data LeanScript.Ref.here 0), f77 [1] : Nat, f78 [1] : (data LeanScript.Ref.here 0)) =>
-                          ret cond(f75, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, f24, f25, in#0(ctor#1(f59, f60, f61, f62)))), f5, in#0(ctor#1(f71, f72, f73, f74)), f65, f76, f77, f78⟩)
+                          ret cond(f75, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, f24, f25, in#0(ctor#1(true, f60, f61, f62)))), f5, in#0(ctor#1(true, f72, f73, f74)), f65, f76, f77, f78⟩)
                       else
-                        ret ⟨3, in#0(ctor#1(false, f24, f25, in#0(ctor#1(f59, f60, f61, f62)))), f5, f72, f73, f74, f65, f66⟩
+                        ret ⟨3, in#0(ctor#1(false, f24, f25, in#0(ctor#1(true, f60, f61, f62)))), f5, f72, f73, f74, f65, f66⟩
               else
                 ret ⟨2, f24, f25, f60, f61, f62, f5, f6⟩
-          | ctor#1(f79 [ω] : Bool, f80 [1] : (data LeanScript.Ref.here 0), f81 [1] : Nat, f82 [1] : (data LeanScript.Ref.here 0)) =>
+          | ctor#1(f79 [1] : Bool, f80 [1] : (data LeanScript.Ref.here 0), f81 [1] : Nat, f82 [1] : (data LeanScript.Ref.here 0)) =>
             if f79 then
               case out#0(f26) of
               | ctor#0() =>
@@ -129,17 +129,17 @@ val k1 [1] : ((data LeanScript.Ref.here 0) → (Nat × (data LeanScript.Ref.here
                       | ctor#0() =>
                         ret ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩
                       | ctor#1(f87 [1] : Bool, f88 [1] : (data LeanScript.Ref.here 0), f89 [1] : Nat, f90 [1] : (data LeanScript.Ref.here 0)) =>
-                        ret cond(f87, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, in#0(ctor#1(f79, f80, f81, f82)), f25, f26)), f5, f84, f85, f88, f89, f90⟩)
-                    | ctor#1(f91 [ω] : Bool, f92 [1] : (data LeanScript.Ref.here 0), f93 [1] : Nat, f94 [1] : (data LeanScript.Ref.here 0)) =>
+                        ret cond(f87, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, in#0(ctor#1(true, f80, f81, f82)), f25, f26)), f5, f84, f85, f88, f89, f90⟩)
+                    | ctor#1(f91 [1] : Bool, f92 [1] : (data LeanScript.Ref.here 0), f93 [1] : Nat, f94 [1] : (data LeanScript.Ref.here 0)) =>
                       if f91 then
                         case out#0(f86) of
                         | ctor#0() =>
                           ret ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩
                         | ctor#1(f95 [1] : Bool, f96 [1] : (data LeanScript.Ref.here 0), f97 [1] : Nat, f98 [1] : (data LeanScript.Ref.here 0)) =>
-                          ret cond(f95, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, in#0(ctor#1(f79, f80, f81, f82)), f25, f26)), f5, in#0(ctor#1(f91, f92, f93, f94)), f85, f96, f97, f98⟩)
+                          ret cond(f95, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, in#0(ctor#1(true, f80, f81, f82)), f25, f26)), f5, in#0(ctor#1(true, f92, f93, f94)), f85, f96, f97, f98⟩)
                       else
-                        ret ⟨3, in#0(ctor#1(false, in#0(ctor#1(f79, f80, f81, f82)), f25, f26)), f5, f92, f93, f94, f85, f86⟩
-              | ctor#1(f99 [ω] : Bool, f100 [1] : (data LeanScript.Ref.here 0), f101 [1] : Nat, f102 [1] : (data LeanScript.Ref.here 0)) =>
+                        ret ⟨3, in#0(ctor#1(false, in#0(ctor#1(true, f80, f81, f82)), f25, f26)), f5, f92, f93, f94, f85, f86⟩
+              | ctor#1(f99 [1] : Bool, f100 [1] : (data LeanScript.Ref.here 0), f101 [1] : Nat, f102 [1] : (data LeanScript.Ref.here 0)) =>
                 if f99 then
                   case out#0(f6) of
                   | ctor#0() =>
@@ -154,18 +154,18 @@ val k1 [1] : ((data LeanScript.Ref.here 0) → (Nat × (data LeanScript.Ref.here
                         | ctor#0() =>
                           ret ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩
                         | ctor#1(f107 [1] : Bool, f108 [1] : (data LeanScript.Ref.here 0), f109 [1] : Nat, f110 [1] : (data LeanScript.Ref.here 0)) =>
-                          ret cond(f107, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, in#0(ctor#1(f79, f80, f81, f82)), f25, in#0(ctor#1(f99, f100, f101, f102)))), f5, f104, f105, f108, f109, f110⟩)
-                      | ctor#1(f111 [ω] : Bool, f112 [1] : (data LeanScript.Ref.here 0), f113 [1] : Nat, f114 [1] : (data LeanScript.Ref.here 0)) =>
+                          ret cond(f107, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, in#0(ctor#1(true, f80, f81, f82)), f25, in#0(ctor#1(true, f100, f101, f102)))), f5, f104, f105, f108, f109, f110⟩)
+                      | ctor#1(f111 [1] : Bool, f112 [1] : (data LeanScript.Ref.here 0), f113 [1] : Nat, f114 [1] : (data LeanScript.Ref.here 0)) =>
                         if f111 then
                           case out#0(f106) of
                           | ctor#0() =>
                             ret ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩
                           | ctor#1(f115 [1] : Bool, f116 [1] : (data LeanScript.Ref.here 0), f117 [1] : Nat, f118 [1] : (data LeanScript.Ref.here 0)) =>
-                            ret cond(f115, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, in#0(ctor#1(f79, f80, f81, f82)), f25, in#0(ctor#1(f99, f100, f101, f102)))), f5, in#0(ctor#1(f111, f112, f113, f114)), f105, f116, f117, f118⟩)
+                            ret cond(f115, ⟨0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0()), 0, in#0(ctor#0())⟩, ⟨4, in#0(ctor#1(false, in#0(ctor#1(true, f80, f81, f82)), f25, in#0(ctor#1(true, f100, f101, f102)))), f5, in#0(ctor#1(true, f112, f113, f114)), f105, f116, f117, f118⟩)
                         else
-                          ret ⟨3, in#0(ctor#1(false, in#0(ctor#1(f79, f80, f81, f82)), f25, in#0(ctor#1(f99, f100, f101, f102)))), f5, f112, f113, f114, f105, f106⟩
+                          ret ⟨3, in#0(ctor#1(false, in#0(ctor#1(true, f80, f81, f82)), f25, in#0(ctor#1(true, f100, f101, f102)))), f5, f112, f113, f114, f105, f106⟩
                 else
-                  ret ⟨2, in#0(ctor#1(f79, f80, f81, f82)), f25, f100, f101, f102, f5, f6⟩
+                  ret ⟨2, in#0(ctor#1(true, f80, f81, f82)), f25, f100, f101, f102, f5, f6⟩
             else
               ret ⟨1, f80, f81, f82, f25, f26, f5, f6⟩
     else

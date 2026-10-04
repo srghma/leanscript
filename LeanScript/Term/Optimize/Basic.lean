@@ -20,6 +20,7 @@ public import LeanScript.Term.Optimize.OpenCallEval
 public import LeanScript.Term.Optimize.DelayEtaEval
 public import LeanScript.Term.Optimize.SinkLet
 public import LeanScript.Term.Optimize.CondJumpEval
+public import LeanScript.Term.Optimize.FactorArms
 
 @[expose] public section
 
@@ -467,12 +468,13 @@ end
     its field (`Term.loopYield`), the delays that only force another
     delay replaced by it (`Term.delayEta`), the inlining in tail position with dead bindings dropped even when the
     level changes (`Term.inlineRet`), the chains of additions and multiplications
-    (`Term.arithWalk`), then dead-code elimination, and last the computations used once moved
+    (`Term.arithWalk`), the arms of a case analysis of an enum that differ only by a literal
+    written once in a join point (`Term.factorWalk`), then dead-code elimination, and last the computations used once moved
     down to their uses (`Term.sinkWalk`, on the usages that dead-code elimination has just
     counted). -/
 def Term.optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (t : Term Δ d Φ Γ τ js o) : Term Δ d Φ Γ τ js o :=
-  (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.condJump.joinCtor.condJump.loopYield.openCall.delayEta.inlineRet.arithWalk.dce.sinkWalk
+  (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.condJump.joinCtor.condJump.loopYield.openCall.delayEta.inlineRet.arithWalk.factorWalk.dce.sinkWalk
 
 /-- The optimiser, run `k` times. -/
 def Term.optimizeN {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} :
@@ -676,7 +678,7 @@ end
 theorem Term.optimize_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks}
     {o : Lvl} (t : Term Δ d Φ Γ τ js o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     t.optimize.eval κ ρ jκ = t.eval κ ρ jκ := by
-  rw [Term.optimize, Term.sinkWalk_eval, Term.dce_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.delayEta_eval, Term.openCall_eval, Term.loopYield_eval, Term.condJump_eval, Term.joinCtor_eval, Term.condJump_eval, Term.appendWalk_eval, Term.knownLits_eval, Term.mergeTestWalk_eval, Term.condWalk_eval,
+  rw [Term.optimize, Term.sinkWalk_eval, Term.dce_eval, Term.factorWalk_eval, Term.arithWalk_eval, Term.inlineRet_eval, Term.delayEta_eval, Term.openCall_eval, Term.loopYield_eval, Term.condJump_eval, Term.joinCtor_eval, Term.condJump_eval, Term.appendWalk_eval, Term.knownLits_eval, Term.mergeTestWalk_eval, Term.condWalk_eval,
     Term.hoistWalk_eval, Term.cseWalk_eval, Term.dce_eval, Term.zipTestWalk_eval, Term.shareTestWalk_eval, Term.knownSizes_eval, Term.knownTests_eval,
     Term.reuseFields_eval _ [] _ _ _ (fun _ h => nomatch h), Term.widenFields_eval,
     Term.simp_eval, Term.inlineKnown_eval]

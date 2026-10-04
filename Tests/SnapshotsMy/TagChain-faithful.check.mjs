@@ -59,6 +59,22 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("instInhabitedColour$default", () => M.instInhabitedColour$default, "0", false);
+check("test1(0, 0n)", () => M.test1(0, 0n), "0", false);
+check("test1(0, 1n)", () => M.test1(0, 1n), "1", false);
+check("test1(1, 0n)", () => M.test1(1, 0n), "1", false);
+check("test1(0, 2n)", () => M.test1(0, 2n), "2", false);
+check("test1(1, 1n)", () => M.test1(1, 1n), "2", false);
+check("test1(2, 0n)", () => M.test1(2, 0n), "2", false);
+check("test1(0, 5n)", () => M.test1(0, 5n), "5", false);
+check("test1(1, 2n)", () => M.test1(1, 2n), "3", false);
+check("test1(2, 1n)", () => M.test1(2, 1n), "3", false);
+check("test1(0, 13n)", () => M.test1(0, 13n), "13", false);
+check("test1(1, 5n)", () => M.test1(1, 5n), "6", false);
+check("test1(2, 2n)", () => M.test1(2, 2n), "4", false);
+check("test1(1, 13n)", () => M.test1(1, 13n), "14", false);
+check("test1(2, 5n)", () => M.test1(2, 5n), "7", false);
+check("test1(2, 13n)", () => M.test1(2, 13n), "15", false);
 check("test2({ tag: 0 }, 0n)", () => M.test2({ tag: 0 }, 0n), "0", false);
 check("test2({ tag: 0 }, 1n)", () => M.test2({ tag: 0 }, 1n), "1", false);
 check("test2({ tag: 1, _1: 0n }, 0n)", () => M.test2({ tag: 1, _1: 0n }, 0n), "0", false);

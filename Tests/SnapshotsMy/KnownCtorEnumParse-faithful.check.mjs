@@ -59,6 +59,7 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("instInhabitedColor$default", () => M.instInhabitedColor$default, "0", false);
 check("wildcard(\"\")", () => M.wildcard(""), "0", false);
 check("wildcard(\"a\")", () => M.wildcard("a"), "0", false);
 check("wildcard(\"hello world\")", () => M.wildcard("hello world"), "0", false);
@@ -89,11 +90,20 @@ check("thenMore((x) => 2n - x, \"hello world\")", () => M.thenMore((x) => 2n - x
 check("thenMore((x) => x + 1n, \"abcabc\")", () => M.thenMore((x) => x + 1n, "abcabc"), "11", false);
 check("thenMore((x) => 2n - x, \"héllo, wörld\")", () => M.thenMore((x) => 2n - x, "héllo, wörld"), "-8", false);
 check("thenMore((x) => 2n - x, \"abcabc\")", () => M.thenMore((x) => 2n - x, "abcabc"), "-8", false);
+check("Color$code(0)", () => M.Color$code(0), "1", false);
+check("Color$code(1)", () => M.Color$code(1), "2", false);
+check("Color$code(2)", () => M.Color$code(2), "3", false);
+check("Color$code(3)", () => M.Color$code(3), "4", false);
 check("mapGetD(\"\")", () => M.mapGetD(""), "0", false);
 check("mapGetD(\"a\")", () => M.mapGetD("a"), "0", false);
 check("mapGetD(\"hello world\")", () => M.mapGetD("hello world"), "0", false);
 check("mapGetD(\"héllo, wörld\")", () => M.mapGetD("héllo, wörld"), "0", false);
 check("mapGetD(\"abcabc\")", () => M.mapGetD("abcabc"), "0", false);
+check("getDEnum(\"\")", () => M.getDEnum(""), "3", false);
+check("getDEnum(\"a\")", () => M.getDEnum("a"), "3", false);
+check("getDEnum(\"hello world\")", () => M.getDEnum("hello world"), "3", false);
+check("getDEnum(\"héllo, wörld\")", () => M.getDEnum("héllo, wörld"), "3", false);
+check("getDEnum(\"abcabc\")", () => M.getDEnum("abcabc"), "3", false);
 check("isColor(\"\")", () => M.isColor(""), "false", false);
 check("isColor(\"a\")", () => M.isColor("a"), "false", false);
 check("isColor(\"hello world\")", () => M.isColor("hello world"), "false", false);
