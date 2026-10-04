@@ -4,7 +4,7 @@
 //   test1: LeanScript: the call List.find? (fun x => decide (x > bound)) xs is not a call of an extern: `List.find?` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 //   test2: LeanScript: the call List.find? (fun x => decide (x > bound)) xs is not a call of an extern: `List.find?` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 
-import { strMap__get_opt, bigint_nat__lean_array_get } from "../../runtime.js";
+import { strMap__get_opt } from "../../runtime.js";
 
 /**
  * `test3`
@@ -39,11 +39,7 @@ export const test5 = (n) => [{ tag: 1, _1: n }, { tag: 0 }];
  */
 export const test6 = (n, i) => {
   if (i < BigInt([{ tag: 1, _1: n }, { tag: 0 }].length)) {
-    const s$1 = bigint_nat__lean_array_get(
-      { tag: 0 },
-      [{ tag: 1, _1: n }, { tag: 0 }],
-      i,
-    );
+    const s$1 = [{ tag: 1, _1: n }, { tag: 0 }][Number(i)] ?? { tag: 0 };
     return s$1.tag === 0 ? 1n : s$1._1;
   }
   return 2n;

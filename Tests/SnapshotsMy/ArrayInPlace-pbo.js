@@ -7,7 +7,6 @@ import {
   array__lean_array_push_mutable,
   uint53__lean_nat_mul,
   uint53__lean_array_set_mutable,
-  uint53__lean_array_get,
   uint53__lean_mk_array,
   uint53__lean_nat_div,
   uint53__lean_array_swap_mutable,
@@ -44,7 +43,7 @@ export const test3 = (a0) => {
     acc$1 = uint53__lean_array_set_mutable(
       acc$1,
       i$3,
-      uint53__lean_nat_mul(uint53__lean_array_get(0, acc$1, i$3), 2),
+      uint53__lean_nat_mul(acc$1[i$3] ?? 0, 2),
     );
   }
   return acc$1;
@@ -63,7 +62,7 @@ export const test3$$mut_0 = (a0) => {
     acc$1 = uint53__lean_array_set_mutable(
       acc$1,
       i$3,
-      uint53__lean_nat_mul(uint53__lean_array_get(0, acc$1, i$3), 2),
+      uint53__lean_nat_mul(acc$1[i$3] ?? 0, 2),
     );
   }
   return acc$1;

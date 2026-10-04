@@ -417,6 +417,17 @@ inductive JsExpr (S : JsSig) : List JsTy → List JsTy → JsTy → Type where
       `lean_array_get` itself reads the default out of bounds. -/
   | index {C M : List JsTy} {A E N : JsTy} (l : JsArrayLayout A E) (nt : JsNatTy N)
       (a : JsExpr S C M A) (i : JsExpr S C M N) : JsExpr S C M E
+  /-- `a[i] ?? d`: the element at the index `i`, or the default `d` when `i` is out of bounds
+      (`a[Number(i)] ?? d` for a `BigInt` index that is not a literal).  No value of the
+      language is `undefined` or `null`, and reading an array (or a typed array) at an index
+      past its end gives `undefined`, so `??` takes the default exactly when the index is out
+      of bounds: this is `lean_array_get d a i` (`Array.get!Internal`), the runtime's
+      `(i < a.length ? a[i] : d)`, written inline.  JavaScript computes `a`, then `i`, then `d`
+      (and `d` only out of bounds): the conversion (`JsTerm.Lower.FromTerm`) only builds it from
+      a call `lean_array_get d a i` whose default is computed by no operation
+      (`JsExpr.movable`), so that computing it later, or not at all, changes nothing. -/
+  | indexOr {C M : List JsTy} {A E N : JsTy} (l : JsArrayLayout A E) (nt : JsNatTy N)
+      (a : JsExpr S C M A) (i : JsExpr S C M N) (d : JsExpr S C M E) : JsExpr S C M E
 
 /-- The arguments of an operation or the fields of a record. -/
 inductive JsArgs (S : JsSig) : List JsTy → List JsTy → List JsTy → Type where

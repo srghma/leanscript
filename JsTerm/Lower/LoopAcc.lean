@@ -82,6 +82,7 @@ partial def JsExpr.cToM {C C' M : List JsTy} (r : CToM C C' M) {τ : JsTy} :
   | .enumIndex nt e => .enumIndex nt <$> e.cToM r
   | .enumEq a b => return .enumEq (← a.cToM r) (← b.cToM r)
   | .index l nt a i => return .index l nt (← a.cToM r) (← i.cToM r)
+  | .indexOr l nt a i d => return .indexOr l nt (← a.cToM r) (← i.cToM r) (← d.cToM r)
   | .array_mk l ps => .array_mk l <$> ps.cToM r
   | .list_mk ps => .list_mk <$> ps.cToM r
   | .cond c a b => return .cond (← c.cToM r) (← a.cToM r) (← b.cToM r)

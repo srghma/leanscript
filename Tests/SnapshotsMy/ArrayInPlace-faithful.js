@@ -6,7 +6,6 @@
 import {
   array__lean_array_push_mutable,
   bigint_nat__lean_array_set_mutable,
-  bigint_nat__lean_array_get,
   bigint_nat__lean_mk_array,
   bigint_nat__lean_nat_div,
   bigint_nat__lean_array_swap_mutable,
@@ -40,7 +39,7 @@ export const test3 = (a0) => {
     acc$1 = bigint_nat__lean_array_set_mutable(
       acc$1,
       i$3,
-      bigint_nat__lean_array_get(0n, acc$1, i$3) * 2n,
+      (acc$1[Number(i$3)] ?? 0n) * 2n,
     );
   }
   return acc$1;
@@ -59,7 +58,7 @@ export const test3$$mut_0 = (a0) => {
     acc$1 = bigint_nat__lean_array_set_mutable(
       acc$1,
       i$3,
-      bigint_nat__lean_array_get(0n, acc$1, i$3) * 2n,
+      (acc$1[Number(i$3)] ?? 0n) * 2n,
     );
   }
   return acc$1;

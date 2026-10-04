@@ -42,6 +42,11 @@ array, both local to the expression being converted:
   an iteration, from values computed before any assignment (`loopNext`).  An array updated in
   place is never read again (`Own.updateInPlace`).  The default is
   only dropped when it is computed by no operation at all (`JsExpr.movable`).
+* **Accesses with a default.**  Otherwise, `a[i]!` whose default is computed by no operation is
+  `a[i] ?? d` (`JsExpr.indexOr`, `JsExpr.defaultGet?`), and so is the conditional
+  `i < a.length ? a[i] : d` of constants `a`, `i` (`a.getD i d`, `if h : i < a.size then a[i]
+  else d`; `JsExpr.condGet?`): no value of the language is `undefined` or `null`, and an array
+  read past its end gives `undefined`, so `??` takes the default exactly out of bounds.
 * **Sizes compared as numbers.**  At the `BigInt` representation of `Nat`, the size of an array
   is `BigInt(a.length)`; a comparison of sizes and literals that fit in a safe integer is done
   on the numbers themselves: `BigInt(a.length) === 2n` is `a.length === 2` (a length is below
@@ -199,6 +204,40 @@ def JsExpr.uncheckedGet? {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Opt
     if d.movable then some (.index l .uint53 a i) else none
   | .imported (.bigint_nat__lean_array_get l) (.cons d (.cons a (.cons i .nil))) =>
     if d.movable then some (.index l .bigint_nat a i) else none
+  | _ => none
+
+/-- `uint53__lean_array_get(d, a, i)` (or its `BigInt` version) as the access with a default
+    `a[i] ?? d` (`JsExpr.indexOr`), when the default `d` is computed by no operation (so that
+    computing it after `a` and `i`, and only out of bounds, changes nothing). -/
+def JsExpr.defaultGet? {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Option (JsExpr S C M τ)
+  | .imported (.uint53__lean_array_get l) (.cons d (.cons a (.cons i .nil))) =>
+    if d.movable then some (.indexOr l .uint53 a i d) else none
+  | .imported (.bigint_nat__lean_array_get l) (.cons d (.cons a (.cons i .nil))) =>
+    if d.movable then some (.indexOr l .bigint_nat a i d) else none
+  | _ => none
+
+/-- Are both expressions the same constant? -/
+def JsExpr.sameCVar {C M : List JsTy} {τ σ : JsTy} : JsExpr S C M τ → JsExpr S C M σ → Bool
+  | .cvar x, .cvar y => x.index == y.index
+  | _, _ => false
+
+/-- `i < a.length ? a[i] : d` (the shape of `a.getD i d`, and of `if h : i < a.size then a[i]
+    else d`) as `a[i] ?? d` (`JsExpr.indexOr`), when the array `a` and the index `i` are
+    constants (read in either order, they give the same values) and the default `d` is computed
+    by no operation: `??` takes the default exactly when the index is out of bounds. -/
+def JsExpr.condGet? {C M : List JsTy} {τ : JsTy} (c : JsExpr S C M (.terminal .bool))
+    (x d : JsExpr S C M τ) : Option (JsExpr S C M τ) :=
+  match x with
+  | .index l nt a i =>
+    if !d.movable then none else
+    match c with
+    | .inlined .uint53__lean_nat_dec_lt
+        (.cons i' (.cons (.inlined (.uint53__lean_array_get_size _) (.cons a' .nil)) .nil)) =>
+      if i.sameCVar i' && a.sameCVar a' then some (.indexOr l nt a i d) else none
+    | .inlined .bigint_nat__lean_nat_dec_lt
+        (.cons i' (.cons (.inlined (.bigint_nat__lean_array_get_size _) (.cons a' .nil)) .nil)) =>
+      if i.sameCVar i' && a.sameCVar a' then some (.indexOr l nt a i d) else none
+    | _ => none
   | _ => none
 
 /-- A `BigInt` natural as a `number`, when it is the size of an array (`BigInt(a.length)` is

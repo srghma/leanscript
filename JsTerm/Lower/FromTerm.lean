@@ -367,7 +367,10 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
     | ⟨_, .neu (.cond c' a' b')⟩ =>
       let ce ← castE (← cNeu c' n C M) (.terminal .bool)
       let (nt, ne) := n.splitOn c'
-      return .cond ce (← cPExpr a' nt C M) (← cPExpr b' ne C M)
+      let ae ← cPExpr a' nt C M
+      let be ← cPExpr b' ne C M
+      -- `i < a.length ? a[i] : d` is `a[i] ?? d` (`JsTerm.Lower.Bounds`)
+      return (JsExpr.condGet? ce ae be).getD (.cond ce ae be)
     | ⟨_, e'⟩ => cPExpr e' n C M
   | Neu.extern (σs := σs) (τ := τ) e args h => do
     let nm := externName e
@@ -384,6 +387,9 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
     -- `BigInt` representation is done on the numbers (`JsTerm.Lower.Bounds`)
     if (nm == "lean_array_get" || nm == "lean_array_get_borrowed") && n.getInBounds args then
       if let some r' := r.uncheckedGet? then return r'
+    -- otherwise an access whose default is computed by no operation is `a[i] ?? d`
+    if nm == "lean_array_get" || nm == "lean_array_get_borrowed" then
+      if let some r' := r.defaultGet? then return r'
     if let some r' := r.narrowCmp? then return r'
     -- an update of an array nothing else refers to is done in place; `set!` and
     -- `swapIfInBounds` otherwise update a copy in place (their answer is then always new).

@@ -97,6 +97,7 @@ partial def JsExpr.sink {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → JsEx
   | .enumIndex nt e => .enumIndex nt e.sink
   | .enumEq a b => .enumEq a.sink b.sink
   | .index l nt a i => .index l nt a.sink i.sink
+  | .indexOr l nt a i d => .indexOr l nt a.sink i.sink d.sink
   | .array_mk l ps => .array_mk l ps.sink
   | .list_mk ps => .list_mk ps.sink
   | .cond c a b => .cond c.sink a.sink b.sink

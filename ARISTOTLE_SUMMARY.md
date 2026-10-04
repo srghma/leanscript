@@ -1,3 +1,40 @@
+# Summary of changes for run cd5b1087-c21c-4134-af0d-b185508b855d
+`PrimOpArray01` now matches legacy on every function, and on `test2`/`test4` it is also correct where legacy is not.
+
+**Output** (`pbo`; `faithful` is the same, except `test1`/`test3` are `BigInt(a.length)` because `Int` is a `BigInt` there):
+
+| fn | before | now | legacy |
+|---|---|---|---|
+| `test1`, `test3` | `(a) => a.length` | same | `(a) => a.length` |
+| `test2`, `test4` | `(inst, a) => uint53__lean_array_get(inst, a, 2)` | `(inst, a) => a[2] ?? inst` | `(a) => a[2]` |
+
+- **Why `?? inst` stays:** Lean's `a[2]!` returns the `Inhabited` default when the array is too short, but legacy's `a[2]` returns `undefined`.
+- **Why `test4` keeps it too:** its `{ a // a.size > 0 }` is erased, and size > 0 doesn't make index 2 safe.
+- **Why the rewrite is exact:** no value in the generated JavaScript is `undefined` or `null`, and reading past the end of an array (or typed array) gives `undefined`. So `??` uses the default exactly when the index is out of range.
+- **Evaluation order:** JavaScript evaluates `a`, then `i`, then `d` (and `d` only when out of range). So the rewrite is only applied when the default needs no computation: a variable, a literal, or a constructor built from those.
+- **Not covered:** an array literal tested against its literal length, like `i < 3 ? [10, 20, 30][i] : 0`, keeps its ternary.
+
+**Which phase:** it couldn't go in `Term → Term`. In `Term`, the bounds proof is erased and every `a[i]` already carries a default (`Array.get!Internal`), so there is no default-free access to rewrite. It's done in `Term → JsTerm`, your second choice:
+- A new `JsTerm` node, `JsExpr.indexOr`, is printed as `a[i] ?? d`. Every pass over `JsTerm` now handles it, with the evaluation order above.
+- `JsExpr.defaultGet?` (in `JsTerm/Lower/Bounds.lean`) turns `a[i]!` into it.
+- `JsExpr.condGet?` turns `i < a.length ? a[i] : d` into the same thing, when `a` and `i` are variables. This is the shape of `a.getD i d` and `if h : i < a.size then a[i] else d`.
+
+There are no loops or recursion in this file, so labelled blocks and loops don't come into it. The `Term` optimiser and its proofs weren't touched.
+
+**Other snapshots that improved** (all their checks against Lean still pass):
+- `UnpackArray01`: `fn1(k$1[0] ?? "", k$1[2] ?? "")`.
+- `ArrayBounds`: `getD` and `getIf` are now `a[i] ?? 11` and `a[i] ?? 42`.
+- `ArrayIndexBounds`, `ArrayInPlace`, `ReadBeforeWrite` and `OptionUnbox` no longer import or call the runtime's array getter.
+
+**Tests:**
+- **New variants file** `Tests/SnapshotsMy/ArrayGetDefault.lean` covers `Bool`, `Option`, `String`, `Float`, `Int`, pairs, `ByteArray` and `UInt8` elements, two accesses in one expression, `getD` and `if h : i < a.size`. It has 176 checks against Lean per preset, all passing.
+- **`PrimOpArray01`:** 48 checks per preset, including out-of-range arrays, all passing.
+- **New spec** `primOpArray01Spec` in `Tests/Main.lean`, and the `ArrayIndexBounds` assertion is updated for the new form. `lake exe tests` passes 143/143.
+- **Build:** `lake build leanscript tests JsTerm JsSpec TermTests TyTests` succeeds.
+- **Snapshots:** after regenerating them all, no check fails. The script still exits 1, from the same expected "literal too big" and Lean index-panic messages as before.
+
+The side-by-side comparison is in `Tests/SnapshotsPBOPure/PrimOpArray01.md`. Everything is committed.
+
 # Summary of changes for run d9448eeb-aa16-49b3-83e2-a000ed3834ad
 `Object01`'s JavaScript was already on par with or better than purescript-backend-optimizer's `legacy-backend/Object01.js`, so I didn't change the compiler. Analysing it did turn up a bug in the test generator, which I fixed. Object01 now has 44 checks against Lean's own results; there were none before, and all 44 pass in both presets.
 

@@ -27,7 +27,7 @@ export const pat = (a) => {
  * @param {nat(bigint)} i
  * @returns {nat(bigint)}
  */
-export const getIf = (a, i) => (i < BigInt(a.length) ? a[Number(i)] : 42n);
+export const getIf = (a, i) => a[Number(i)] ?? 42n;
 
 /**
  * `getD`
@@ -35,7 +35,7 @@ export const getIf = (a, i) => (i < BigInt(a.length) ? a[Number(i)] : 42n);
  * @param {nat(bigint)} i
  * @returns {nat(bigint)}
  */
-export const getD = (a, i) => (i < BigInt(a.length) ? a[Number(i)] : 11n);
+export const getD = (a, i) => a[Number(i)] ?? 11n;
 
 /**
  * `getElse`

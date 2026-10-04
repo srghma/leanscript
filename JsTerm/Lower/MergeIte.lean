@@ -97,6 +97,7 @@ partial def JsExpr.mergeIte {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → 
   | .enumIndex nt e => .enumIndex nt e.mergeIte
   | .enumEq a b => .enumEq a.mergeIte b.mergeIte
   | .index l nt a i => .index l nt a.mergeIte i.mergeIte
+  | .indexOr l nt a i d => .indexOr l nt a.mergeIte i.mergeIte d.mergeIte
   | .array_mk l ps => .array_mk l ps.mergeIte
   | .list_mk ps => .list_mk ps.mergeIte
   | .cond c a b =>

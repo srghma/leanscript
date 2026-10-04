@@ -58,6 +58,8 @@ def JsExpr.renameM {m : Type → Type} [Monad m] {C M C' M' : List JsTy}
   | .enumIndex nt e => .enumIndex nt <$> e.renameM rc rm
   | .enumEq a b => return .enumEq (← a.renameM rc rm) (← b.renameM rc rm)
   | .index l nt a i => return .index l nt (← a.renameM rc rm) (← i.renameM rc rm)
+  | .indexOr l nt a i d =>
+    return .indexOr l nt (← a.renameM rc rm) (← i.renameM rc rm) (← d.renameM rc rm)
   | .array_mk l ps => .array_mk l <$> ps.renameM rc rm
   | .list_mk ps => .list_mk <$> ps.renameM rc rm
   | .cond c a b => return .cond (← c.renameM rc rm) (← a.renameM rc rm) (← b.renameM rc rm)

@@ -2494,8 +2494,10 @@ def inlineArrayIndexSpec : Spec := describe "InlineArrayIndex" do
       assertEq s!"{file}-{preset}: 5 checks" 6 (checks.splitOn "\ncheck(").length
       let file := "ArrayIndexBounds"
       let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
-      -- `getUnproved` and `getSizedUnproved` only
+      -- `getUnproved` and `getSizedUnproved` only: written `a[i] ?? d`, no call of the runtime
       assertEq s!"{file}-{preset}: two accesses check their bounds" 3
+        (js.splitOn "] ?? ").length
+      assertEq s!"{file}-{preset}: no call of the runtime's access" 1
         (js.splitOn "__lean_array_get(").length
       for frag in ["export const getLe = (i) => (", "export const getGe = (i) => (", "export const getD = (i) => ("] do
         assertEq s!"{file}-{preset}: {frag}… is one conditional" true ((js.splitOn frag).length > 1)
@@ -3371,6 +3373,52 @@ def knownConstructorsSpec : Spec := describe "KnownConstructors" do
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+/-- `Tests/SnapshotsPBOPure/PrimOpArray01.lean` (compare with `legacy-backend/PrimOpArray01.js`):
+    `a[2]!` is `a[2] ?? inst`, the access itself and the `Inhabited` default out of bounds (no
+    call of the runtime; legacy's `a[2]` answers `undefined` there).  Its variants
+    `Tests/SnapshotsMy/ArrayGetDefault.lean` (every element type, `getD`, `if h : i < a.size`)
+    are checked against Lean. -/
+def primOpArray01Spec : Spec := describe "PrimOpArray01" do
+  it "an access with a default is `a[i] ?? d` (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/primoparray01"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at the presets pbo and faithful, checks)
+    for (path, file, frags, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "PrimOpArray01",
+          [("export const test1 = (a) => a.length;", "export const test1 = (a) => BigInt(a.length);"),
+           ("export const test2 = (inst, a) => a[2] ?? inst;", "export const test2 = (inst, a) => a[2] ?? inst;"),
+           ("export const test4 = (inst, a) => a[2] ?? inst;", "export const test4 = (inst, a) => a[2] ?? inst;")],
+          (48 : Nat)),
+        ("Tests/SnapshotsMy", "ArrayGetDefault",
+          [("export const optAt = (a, i) => a[i] ?? { tag: 0 };",
+            "export const optAt = (a, i) => a[Number(i)] ?? { tag: 0 };"),
+           ("export const sumFirstTwo = (a) => uint53__lean_nat_add(a[0] ?? 0, a[1] ?? 0);",
+            "export const sumFirstTwo = (a) => (a[0] ?? 0n) + (a[1] ?? 0n);"),
+           ("export const getDAt = (a, i) => a[i] ?? 7;", "export const getDAt = (a, i) => a[Number(i)] ?? 7n;"),
+           ("export const diteAt = (a, i, d) => a[i] ?? d;", "export const diteAt = (a, i, d) => a[Number(i)] ?? d;")],
+          176)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript exit code" 0 out.exitCode
+      for (preset, pick) in [("pbo", true), ("faithful", false)] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for (fp, ff) in frags do
+          let frag := if pick then fp else ff
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        assertEq s!"{file}-{preset}: no call of the runtime's access" false
+          ((js.splitOn "__lean_array_get").length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -3422,6 +3470,7 @@ def spec : Spec := do
   knownConstructors05Spec
   knownConstructors06Spec
   knownConstructorsSpec
+  primOpArray01Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

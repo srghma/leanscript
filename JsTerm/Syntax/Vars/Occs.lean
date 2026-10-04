@@ -88,6 +88,7 @@ def JsExpr.occsAt {C M : List JsTy} {τ : JsTy} (o : OccCtx) : JsExpr S C M τ �
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.occsAt o
   | .enumEq a b => a.occsAt o ++ b.occsAt o
   | .index _ _ a i => a.occsAt o ++ i.occsAt o
+  | .indexOr _ _ a i d => a.occsAt o ++ i.occsAt o ++ d.occsAt o
   | .app f as =>
     let fo := match f with
       | .cvar x => (o.cOcc x.index).map fun oc => { oc with callee := true }
@@ -197,6 +198,7 @@ def JsExpr.noEffect {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Bool
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.noEffect
   | .enumEq a b => a.noEffect && b.noEffect
   | .index _ _ a i => a.noEffect && i.noEffect
+  | .indexOr _ _ a i d => a.noEffect && i.noEffect && d.noEffect
   | .record_mk fs => fs.noEffect
   | .union_mk _ as => as.noEffect
   | .inlined (e := .pure) _ as => as.noEffect
@@ -270,6 +272,10 @@ partial def JsExpr.readFirst {C M : List JsTy} {τ : JsTy} (strict : Bool) (x : 
   | .fold _ e | .unfold _ e | .enumIndex _ e => e.readFirst strict x bars
   | .enumEq a b => JsExpr.readFirst2 strict x bars a b
   | .index _ _ a i => JsExpr.readFirst2 strict x bars a i
+  -- `a[i] ?? d` computes `a`, then `i`, then (out of bounds) `d`
+  | .indexOr _ _ a i d =>
+    if a.mentions ⟨false, x⟩ || i.mentions ⟨false, x⟩ then JsExpr.readFirst2 strict x bars a i
+    else a.waits strict bars && i.waits strict bars && d.readFirst strict x bars
   -- JavaScript computes the function called before its arguments (`f()(g()(a))` calls `f`,
   -- then `g`): a constant read first by the function called can be computed there
   | .app f as =>

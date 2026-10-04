@@ -147,6 +147,7 @@ partial def JsExpr.calls {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → Boo
   | .enumIndex _ e => e.calls
   | .enumEq a b => a.calls || b.calls
   | .index _ _ a i => a.calls || i.calls
+  | .indexOr _ _ a i d => a.calls || i.calls || d.calls
   | .cond c a b => c.calls || a.calls || b.calls
   | .array_mk _ ps => ps.calls
   | .list_mk ps => ps.calls
@@ -201,6 +202,7 @@ partial def JsExpr.foldAdds {C M : List JsTy} (env : AddEnv) {τ : JsTy} :
   | .enumIndex nt e => .enumIndex nt (e.foldAdds env)
   | .enumEq a b => .enumEq (a.foldAdds env) (b.foldAdds env)
   | .index l nt a i => .index l nt (a.foldAdds env) (i.foldAdds env)
+  | .indexOr l nt a i d => .indexOr l nt (a.foldAdds env) (i.foldAdds env) (d.foldAdds env)
   | .array_mk l ps => .array_mk l (ps.foldAdds env)
   | .list_mk ps => .list_mk (ps.foldAdds env)
   | .cond c a b => .cond (c.foldAdds env) (a.foldAdds env) (b.foldAdds env)

@@ -180,6 +180,8 @@ partial def JsExpr.substMut {C M C' M' : List JsTy} (sc : JsMutSub S C C' M')
   | .enumIndex nt e => .enumIndex nt <$> e.substMut sc sm
   | .enumEq a b => return .enumEq (← a.substMut sc sm) (← b.substMut sc sm)
   | .index l nt a i => return .index l nt (← a.substMut sc sm) (← i.substMut sc sm)
+  | .indexOr l nt a i d =>
+    return .indexOr l nt (← a.substMut sc sm) (← i.substMut sc sm) (← d.substMut sc sm)
   | .array_mk l ps => .array_mk l <$> ps.substMut sc sm
   | .list_mk ps => .list_mk <$> ps.substMut sc sm
   | .cond c a b => return .cond (← c.substMut sc sm) (← a.substMut sc sm) (← b.substMut sc sm)

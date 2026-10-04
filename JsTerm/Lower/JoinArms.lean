@@ -179,6 +179,7 @@ partial def JsExpr.joinArms {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → 
   | .enumIndex nt e => .enumIndex nt e.joinArms
   | .enumEq a b => .enumEq a.joinArms b.joinArms
   | .index l nt a i => .index l nt a.joinArms i.joinArms
+  | .indexOr l nt a i d => .indexOr l nt a.joinArms i.joinArms d.joinArms
   | .array_mk l ps => .array_mk l ps.joinArms
   | .list_mk ps => .list_mk ps.joinArms
   | .cond c a b => .cond c.joinArms a.joinArms b.joinArms

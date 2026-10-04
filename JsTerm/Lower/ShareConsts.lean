@@ -135,6 +135,8 @@ partial def JsExpr.shareFrozen {C M : List JsTy} {τ : JsTy} (tbl : List (String
     | .enumIndex nt e => .enumIndex nt (e.shareFrozen tbl)
     | .enumEq a b => .enumEq (a.shareFrozen tbl) (b.shareFrozen tbl)
     | .index l nt a i => .index l nt (a.shareFrozen tbl) (i.shareFrozen tbl)
+    | .indexOr l nt a i d =>
+      .indexOr l nt (a.shareFrozen tbl) (i.shareFrozen tbl) (d.shareFrozen tbl)
     | .array_mk l ps => .array_mk l (ps.shareFrozen tbl)
     | .list_mk ps => .list_mk (ps.shareFrozen tbl)
     | .cond c a b => .cond (c.shareFrozen tbl) (a.shareFrozen tbl) (b.shareFrozen tbl)

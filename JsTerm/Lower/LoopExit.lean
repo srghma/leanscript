@@ -296,6 +296,7 @@ partial def JsExpr.loopExit {C M : List JsTy} {τ : JsTy} : JsExpr S C M τ → 
   | .enumIndex nt e => .enumIndex nt e.loopExit
   | .enumEq a b => .enumEq a.loopExit b.loopExit
   | .index l nt a i => .index l nt a.loopExit i.loopExit
+  | .indexOr l nt a i d => .indexOr l nt a.loopExit i.loopExit d.loopExit
   | .array_mk l ps => .array_mk l ps.loopExit
   | .list_mk ps => .list_mk ps.loopExit
   | .cond c a b => .cond c.loopExit a.loopExit b.loopExit

@@ -31,7 +31,7 @@ export const pat = (a) => {
  * @param {uint53(number)} i
  * @returns {uint53(number)}
  */
-export const getIf = (a, i) => (i < a.length ? a[i] : 42);
+export const getIf = (a, i) => a[i] ?? 42;
 
 /**
  * `getD`
@@ -39,7 +39,7 @@ export const getIf = (a, i) => (i < a.length ? a[i] : 42);
  * @param {uint53(number)} i
  * @returns {uint53(number)}
  */
-export const getD = (a, i) => (i < a.length ? a[i] : 11);
+export const getD = (a, i) => a[i] ?? 11;
 
 /**
  * `getElse`
