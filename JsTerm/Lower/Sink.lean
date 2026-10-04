@@ -131,6 +131,7 @@ partial def JsBlock.sink {C M J : List JsTy} {k : JsEnd} : JsBlock S C M J k →
   | .forRange x nt n body rest => .forRange x nt n.sink body.sink rest.sink
   | .forOf x l xs body rest => .forOf x l xs.sink body.sink rest.sink
   | .countdown x nt n base step rest => .countdown x nt n.sink base.sink step.sink rest.sink
+  | .forExit x nt n body done rest => .forExit x nt n.sink body.sink done.sink rest.sink
   | .tick nt j base rest => .tick nt j base.sink rest.sink
   | .natCase x nt n zero succ => .natCase x nt n.sink zero.sink succ.sink
   | .funs hints defs rest => .funs hints defs.sink rest.sink

@@ -78,6 +78,19 @@ abbrev Branch.enumList {d : Nat} {s : LeanEnumSchema} {τ : Ty ks} {js : JCtx ks
     Branch Δ d Φ Γ τ js (Lvl.meetL ℓ (Lvl.meetFin s.nOfConstructors (fun i => (brs.getD i.val dflt).1))) :=
   .enum_casesOn e (fun i => (brs.getD i.val dflt).2)
 
+/-- `Branch.enumList` with its level named by an implicit argument `m`, fixed by the proof `h`
+    (written `rfl`).  The result type of `Branch.enumList` mentions its explicit arguments
+    (the branches), so the elaborator does not propagate the expected type into it, and the
+    branches are elaborated before their contexts are known; a branch that binds a closure
+    then gets stuck.  Here the result type mentions only implicit arguments, so the expected
+    type, and with it the contexts, are known when the branches are elaborated. -/
+abbrev Branch.enumListAt {d : Nat} {s : LeanEnumSchema} {τ : Ty ks} {js : JCtx ks} {ℓ m : Nat}
+    (e : Neu Δ Φ Γ (.enum s) ℓ) (brs : List ((o : Lvl) × Term Δ d Φ Γ τ js o))
+    (dflt : (o : Lvl) × Term Δ d Φ Γ τ js o)
+    (h : Lvl.meetL ℓ (Lvl.meetFin s.nOfConstructors (fun i => (brs.getD i.val dflt).1)) = m) :
+    Branch Δ d Φ Γ τ js m :=
+  h ▸ Branch.enumList e brs dflt
+
 /-- The fold of block `b`, its branches given as pairs of a level and a body. -/
 abbrev Comp.dataRecS {d : Nat} (b : BRef ks) (ρ : Fin ((Δ.block b).k + 1) → Ty ks)
     (us : Fin ((Δ.block b).k + 1) → Usage01ω)
@@ -103,12 +116,18 @@ abbrev Comp.dataBrecS {d : Nat} (b : BRef ks) (ρ : Fin ((Δ.block b).k + 1) →
 
 end
 
-/-- The side condition `m ≤ d` of an open body (`Body.opened`). -/
+/-- The side condition `m ≤ d` of an open body (`Body.opened`).  The last alternative is for
+    a body containing a case analysis of an enum (`Branch.enumList`): its level is a
+    `Lvl.meetFin` over the listed branches, which is unfolded (the number of constructors is a
+    numeral) and then decided. -/
 macro "ls_lvl" : tactic =>
   `(tactic| first
     | decide
     | omega
-    | (simp only [LeanScript.Lvl.meetL, LeanScript.Lvl.meet, Nat.min_def]; split <;> omega))
+    | (simp only [LeanScript.Lvl.meetL, LeanScript.Lvl.meet, Nat.min_def]; split <;> omega)
+    | (simp only [LeanScript.LeanEnumSchema.nOfConstructors, LeanScript.Lvl.meetFin,
+          LeanScript.Lvl.meetL, LeanScript.Lvl.meet, Fin.val_zero, Fin.val_succ,
+          List.getD_cons_zero, List.getD_cons_succ, List.getD_nil]; decide))
 
 end LeanScript
 

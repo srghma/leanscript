@@ -176,6 +176,9 @@ partial def JsBlock.shareFrozen {C M J : List JsTy} {k : JsEnd} (tbl : List (Str
   | .countdown x nt n base step rest =>
     .countdown x nt (n.shareFrozen tbl) (base.shareFrozen tbl) (step.shareFrozen tbl)
       (rest.shareFrozen tbl)
+  | .forExit x nt n body done rest =>
+    .forExit x nt (n.shareFrozen tbl) (body.shareFrozen tbl) (done.shareFrozen tbl)
+      (rest.shareFrozen tbl)
   | .tick nt j base rest => .tick nt j (base.shareFrozen tbl) (rest.shareFrozen tbl)
   | .natCase x nt n zero succ =>
     .natCase x nt (n.shareFrozen tbl) (zero.shareFrozen tbl) (succ.shareFrozen tbl)

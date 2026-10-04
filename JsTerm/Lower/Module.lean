@@ -71,6 +71,8 @@ partial def JsBlock.runtimeNames {C M J : List JsTy} {k : JsEnd} (acc : Array St
   | .forOf _ _ xs b rest => rest.runtimeNames (b.runtimeNames (xs.runtimeNames acc))
   | .countdown _ _ n b s rest =>
     rest.runtimeNames (s.runtimeNames (b.runtimeNames (n.runtimeNames acc)))
+  | .forExit _ _ n b d rest =>
+    rest.runtimeNames (d.runtimeNames (b.runtimeNames (n.runtimeNames acc)))
   | .tick _ _ b rest => rest.runtimeNames (b.runtimeNames acc)
   | .natCase _ _ n z s => s.runtimeNames (z.runtimeNames (n.runtimeNames acc))
   | .funs _ defs rest => rest.runtimeNames (defs.runtimeNames acc)

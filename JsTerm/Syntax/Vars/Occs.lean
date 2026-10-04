@@ -128,6 +128,8 @@ def JsBlock.occsAt {C M J : List JsTy} {k : JsEnd} (o : OccCtx) : JsBlock S C M 
   | .forOf _ _ xs b rest => xs.occsAt o ++ b.occsAt (o.loop 1) ++ rest.occsAt o
   | .countdown _ _ n b s rest =>
     n.occsAt o ++ b.occsAt o.countLoop ++ s.occsAt o.countLoop ++ rest.occsAt (o.under 1 0)
+  | .forExit _ _ n b d rest =>
+    n.occsAt o ++ b.occsAt (o.loop 1) ++ d.occsAt o ++ rest.occsAt (o.under 1 0)
   | .tick _ j b rest => o.mOcc j.index ++ o.mOcc j.index true ++ b.occsAt o ++ rest.occsAt o
   | .natCase _ _ n z s => n.occsAt o ++ z.occsAt o ++ s.occsAt (o.under 1 0)
   | .funs (τs := τs) _ defs rest =>

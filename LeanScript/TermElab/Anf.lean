@@ -378,7 +378,7 @@ partial def branchOn (sv : Sem) (s : Src) (sc : Scope) (p : Pos) (K : Kont) : Te
           let o := outs[enumSel pats (.enum (some i) default) |>.getD (outs.size - 1)]!
           `(⟨_, $(o.stx)⟩)
         let lv := outs.foldl (fun o r => lmeet o r.lv) sv.lv
-        return { stx := ← `(LeanScript.Branch.enumList $ns [$listed,*] ⟨_, $(dflt.stx)⟩), lv }
+        return { stx := ← `(LeanScript.Branch.enumListAt $ns [$listed,*] ⟨_, $(dflt.stx)⟩ rfl), lv }
     | .unionCases _ _ brs =>
         let outs ← brs.mapM fun (n, b) =>
           stmt b (sc.pushAll (unknowns n c.du c.depth)) { core := { c with du := c.du + n } } K

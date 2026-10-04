@@ -361,6 +361,31 @@ partial def blockToMini {C M J : List JsTy} {k : JsEnd} (sc : Scope) (tl : Tail)
     let r ← blockToMini sc tl rest
     return pre ++ .for_ (.decl .let_ ⟨⟨.ident (nes i), some (natLitOf nt 0)⟩, []⟩)
       (some (.binary (ident i) .lt n)) (some (.postfix (ident i) .incr)) (.block b) :: r
+  | .forExit hint nt n body done rest => do
+    let (pre, n) ← bindSubject sc "n" n
+    -- `return x` of what the loop passes: every exit is `return e;`, and no label is needed
+    let direct := match rest with
+      | .ret (.cvar .zero) => true
+      | _ => false
+    let read := rest.mentions ⟨false, 0⟩
+    let x ← if direct then pure "" else if read then freshName "r" else pure unreadJoinVar
+    let label ← if direct then pure "" else freshLabel
+    let i ← freshName hint
+    let b ← blockToMini { c := ident i :: sc.c, m := sc.m, joins := [(label, x)], loop := .cont }
+      { loop := true } body
+    let d ← blockToMini { c := sc.c, m := sc.m, joins := [(label, x)] } { join := true } done
+    let loop : MiniStatement :=
+      .for_ (.decl .let_ ⟨⟨.ident (nes i), some (natLitOf nt 0)⟩, []⟩)
+        (some (.binary (ident i) .lt n)) (some (.postfix (ident i) .incr)) (.block b)
+    if direct then return pre ++ loop :: d
+    let r ← blockToMini { sc with c := ident x :: sc.c } tl rest
+    let decl : List MiniStatement :=
+      if read then [.decl .let_ ⟨⟨.ident (nes x), none⟩, []⟩] else []
+    -- nothing after the loop in the labelled block: the label is the loop's
+    let labelled : MiniStatement :=
+      if d.isEmpty then .labelled (nes label) loop
+      else .labelled (nes label) (.block (loop :: d))
+    return pre ++ decl ++ labelled :: r
   | .countdown hint nt n base step rest => do
     let n ← exprToMini sc n
     let j ← freshName hint

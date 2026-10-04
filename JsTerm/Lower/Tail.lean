@@ -50,6 +50,7 @@ partial def JsBlock.retToNext {C M J : List JsTy} {α : JsTy} (acc : JsMem M α)
   | .forRange x nt n b rest => .forRange x nt n b (rest.retToNext acc)
   | .forOf x l xs b rest => .forOf x l xs b (rest.retToNext acc)
   | .countdown x nt n b s rest => .countdown x nt n b s (rest.retToNext acc)
+  | .forExit x nt n b d rest => .forExit x nt n b d (rest.retToNext acc)
   | .tick nt j b rest => .tick nt j (b.retToNext acc) (rest.retToNext acc)
   | .natCase x nt n z s => .natCase x nt n (z.retToNext acc) (s.retToNext acc)
   | .funs xs defs rest => .funs xs defs (rest.retToNext acc)
@@ -98,6 +99,7 @@ partial def JsBlock.retToJump {C M J : List JsTy} {τ : JsTy} {k : JsEnd} :
   | .forRange x nt n b rest => .forRange x nt n b rest.retToJump
   | .forOf x l xs b rest => .forOf x l xs b rest.retToJump
   | .countdown x nt n b s rest => .countdown x nt n b s rest.retToJump
+  | .forExit x nt n b d rest => .forExit x nt n b d rest.retToJump
   | .tick nt j b rest => .tick nt j b.retToJump rest.retToJump
   | .natCase x nt n z s => .natCase x nt n z.retToJump s.retToJump
   | .funs xs defs rest => .funs xs defs rest.retToJump
@@ -157,6 +159,7 @@ partial def JsBlock.tailToLoop {C M J : List JsTy} {τ : JsTy} (acc : Nat)
   | .forRange x nt n b rest => (.forRange x nt n b ·) <$> rest.tailToLoop acc emit
   | .forOf x l xs b rest => (.forOf x l xs b ·) <$> rest.tailToLoop acc emit
   | .countdown x nt n b s rest => (.countdown x nt n b s ·) <$> rest.tailToLoop (acc + 1) emit
+  | .forExit x nt n b d rest => (.forExit x nt n b d ·) <$> rest.tailToLoop (acc + 1) emit
   | .tick nt j b rest => return .tick nt j (← b.tailToLoop acc emit) (← rest.tailToLoop acc emit)
   | .natCase x nt n z s =>
     return .natCase x nt n (← z.tailToLoop acc emit) (← s.tailToLoop (acc + 1) emit)

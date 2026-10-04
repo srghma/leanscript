@@ -83,9 +83,10 @@ export const minMaxSum = (n) => {
  */
 export const firstAbove = (n, k) => {
   let acc$1 = { tag: 1, _1: 0 };
-  for (let i$2 = 0; i$2 < n; i$2++) {
-    if (acc$1.tag === 1 && k < uint53__lean_nat_mul(i$2, i$2)) {
+  j$1: for (let i$2 = 0; i$2 < n; i$2++) {
+    if (k < uint53__lean_nat_mul(i$2, i$2)) {
       acc$1 = { tag: 0, _1: i$2 };
+      break j$1;
     }
   }
   return acc$1._1;

@@ -137,6 +137,9 @@ def JsBlock.substG {C M C' M' J : List JsTy} (rc : JsSubG C C') (rm : JsRenM Opt
   | .countdown x nt n b s rest =>
     return .countdown x nt (← n.substG rc rm) (← b.substG rc (JsRenM.lift rm))
       (← s.substG rc (JsRenM.lift rm)) (← rest.substG rc.lift rm)
+  | .forExit x nt n b d rest =>
+    return .forExit x nt (← n.substG rc rm) (← b.substG rc.lift rm) (← d.substG rc rm)
+      (← rest.substG rc.lift rm)
   | .tick nt j b rest => return .tick nt (← rm j) (← b.substG rc rm) (← rest.substG rc rm)
   | .natCase x nt n z s =>
     return .natCase x nt (← n.substG rc rm) (← z.substG rc rm) (← s.substG rc.lift rm)
@@ -293,6 +296,8 @@ partial def JsBlock.linkFuns {C M J : List JsTy} {k : JsEnd}
   | .forOf x l xs body rest => .forOf x l (xs.linkFuns tbl) (body.linkFuns tbl) (rest.linkFuns tbl)
   | .countdown x nt n base step rest =>
     .countdown x nt (n.linkFuns tbl) (base.linkFuns tbl) (step.linkFuns tbl) (rest.linkFuns tbl)
+  | .forExit x nt n body done rest =>
+    .forExit x nt (n.linkFuns tbl) (body.linkFuns tbl) (done.linkFuns tbl) (rest.linkFuns tbl)
   | .tick nt j base rest => .tick nt j (base.linkFuns tbl) (rest.linkFuns tbl)
   | .natCase x nt n zero succ => .natCase x nt (n.linkFuns tbl) (zero.linkFuns tbl) (succ.linkFuns tbl)
   | b@(.funs hints defs rest) =>

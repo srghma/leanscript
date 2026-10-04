@@ -135,6 +135,8 @@ partial def JsBlock.mergeIte {C M J : List JsTy} {k : JsEnd} : JsBlock S C M J k
   | .forOf x l xs body rest => .forOf x l xs.mergeIte body.mergeIte rest.mergeIte
   | .countdown x nt n base step rest =>
     .countdown x nt n.mergeIte base.mergeIte step.mergeIte rest.mergeIte
+  | .forExit x nt n body done rest =>
+    .forExit x nt n.mergeIte body.mergeIte done.mergeIte rest.mergeIte
   | .tick nt j base rest => .tick nt j base.mergeIte rest.mergeIte
   | .natCase x nt n zero succ => .natCase x nt n.mergeIte zero.mergeIte succ.mergeIte
   | .funs hints defs rest => .funs hints defs.mergeIte rest.mergeIte

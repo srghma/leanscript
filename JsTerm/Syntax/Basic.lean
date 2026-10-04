@@ -418,6 +418,16 @@ inductive JsBlock (S : JsSig) : List JsTy → List JsTy → List JsTy → JsEnd 
   | countdown {C M J : List JsTy} {N τ : JsTy} {k : JsEnd} (hint : String) (nt : JsNatTy N)
       (n : JsExpr S C M N) (base step : JsBlock S C (N :: M) [τ] .loop)
       (rest : JsBlock S (τ :: C) M J k) : JsBlock S C M J k
+  /-- A counting loop with an exit: `let x; L: { for (let i = 0; i < n; i++) { body } done }`
+      and the rest.  The body reads the counter as its innermost constant; an iteration ends by
+      going on (`next`) or by jumping to the join point `0` (`x = e; break L;`), which ends the
+      loop.  When the loop runs to its end, `done` runs, and ends by jumping to the join point
+      `0` too.  `rest` reads the value passed as its innermost constant `x`.  (Built by
+      `JsTerm.Lower.LoopExit` from a loop whose state stops changing once it reaches some
+      constructors: the loop is left at the first such iteration.) -/
+  | forExit {C M J : List JsTy} {N τ : JsTy} {k : JsEnd} (hint : String) (nt : JsNatTy N)
+      (n : JsExpr S C M N) (body : JsBlock S (N :: C) M [τ] .loop) (done : JsBlock S C M [τ] .loop)
+      (rest : JsBlock S (τ :: C) M J k) : JsBlock S C M J k
   /-- A test of the counter `j` of an enclosing counting-down loop in the middle of its step
       (`JsTerm.Lower.Unroll`: a step running several iterations of the loop): `if (j === 0)
       { base } j--;` and the rest.  `base` ends the iteration (it never falls through). -/

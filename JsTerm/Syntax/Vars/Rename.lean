@@ -106,6 +106,9 @@ def JsBlock.renameM {m : Type → Type} [Monad m] {C M C' M' J : List JsTy}
   | .countdown x nt n b s rest =>
     return .countdown x nt (← n.renameM rc rm) (← b.renameM rc (JsRenM.lift rm))
       (← s.renameM rc (JsRenM.lift rm)) (← rest.renameM (JsRenM.lift rc) rm)
+  | .forExit x nt n b d rest =>
+    return .forExit x nt (← n.renameM rc rm) (← b.renameM (JsRenM.lift rc) rm)
+      (← d.renameM rc rm) (← rest.renameM (JsRenM.lift rc) rm)
   | .tick nt j b rest => return .tick nt (← rm j) (← b.renameM rc rm) (← rest.renameM rc rm)
   | .natCase x nt n z s =>
     return .natCase x nt (← n.renameM rc rm) (← z.renameM rc rm) (← s.renameM (JsRenM.lift rc) rm)

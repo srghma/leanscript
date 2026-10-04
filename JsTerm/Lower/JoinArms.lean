@@ -125,6 +125,7 @@ partial def JsBlock.assignJumps {C M J : List JsTy} {σ : JsTy} {k : JsEnd} (jv 
   | .forRange x nt n body rest => (.forRange x nt n body) <$> rest.assignJumps jv m
   | .forOf x l xs body rest => (.forOf x l xs body) <$> rest.assignJumps jv m
   | .countdown x nt n base step rest => (.countdown x nt n base step) <$> rest.assignJumps jv m
+  | .forExit x nt n body done rest => (.forExit x nt n body done) <$> rest.assignJumps jv m
   | .tick nt j base rest => do
     return .tick nt j (← base.assignJumps jv m) (← rest.assignJumps jv m)
   | .natCase x nt n zero succ => do
@@ -213,6 +214,8 @@ partial def JsBlock.joinArms {C M J : List JsTy} {k : JsEnd} : JsBlock S C M J k
   | .forOf x l xs body rest => .forOf x l xs.joinArms body.joinArms rest.joinArms
   | .countdown x nt n base step rest =>
     .countdown x nt n.joinArms base.joinArms step.joinArms rest.joinArms
+  | .forExit x nt n body done rest =>
+    .forExit x nt n.joinArms body.joinArms done.joinArms rest.joinArms
   | .tick nt j base rest => .tick nt j base.joinArms rest.joinArms
   | .natCase x nt n zero succ => .natCase x nt n.joinArms zero.joinArms succ.joinArms
   | .funs hints defs rest => .funs hints defs.joinArms rest.joinArms

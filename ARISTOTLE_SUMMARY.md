@@ -1,3 +1,18 @@
+# Summary of changes for run c451a1af-2e70-4aca-b086-2552996d74bb
+`KnownConstructors05` was already on par with the purescript-backend-optimizer (legacy) output before this session, so its snapshot is unchanged. `fromString` is inlined into `test`, and each `match` case is reduced at the constructor known there. The result is the same chain of `if (a === "foo") { return 1; } …` as legacy, with no record and no tag test. The only difference is that we write the last case as `return a === "qux" ? 4 : 0;`. The full comparison is in `Tests/SnapshotsPBOPure/KnownConstructors05.md`.
+
+To look for gaps around this pattern, I added the variants file `Tests/SnapshotsMy/KnownCtorEnumParse.lean` (12 functions). It turned up three problems, now fixed:
+
+1. **Elaboration failure: "omega could not prove the goal"** (fixed in `Term`). This happened for a case analysis on an enum with 3 or more constructors whose arms call outer variables. The `ls_lvl` tactic in `LeanScript/Term/Build.lean` now has a fallback that unfolds the level computation and closes it with `decide`.
+2. **Elaboration failure: "expected type must not contain metavariables"** (fixed in `Term`). This happened in the same kind of case analysis when an arm contains a closure. I added `Branch.enumListAt`, which the elaborator in `LeanScript/TermElab/Anf.lean` now produces. These two fixes also let `TagChain.test1` and `PrimOpBooleanNotRegression.test` translate.
+3. **A loop that kept testing its state** (improved in `JsTerm → JsTerm`). In a `for` over a range whose state becomes final partway through (`firstBad`, `firstAbove`, `loopBreak`), every iteration tested `acc.tag`. The loop is now labelled and exits with `break`: `j$1: for (…) { if (cond) { acc$1 = …; break j$1; } }`. This only shows up after loops become mutable JavaScript state, so it couldn't go in `Term → Term` or in the conversion. It is the new pass `JsTerm/Lower/LoopExit.lean`, which uses a new block form `JsBlock.forExit`. When code follows the loop, it prints as a labelled loop or a labelled block, so it uses no recursion or extra stack.
+
+**Tests:** `knownConstructors05Spec` is new in `Tests/Main.lean`. It runs leanscript on `KnownConstructors05`, `KnownCtorEnumParse` and `LoopState`, checks code fragments, and runs the generated node checks (5, 87 and 41 per preset). I updated one expectation in the `KnownConstructors01` spec, because its `KnownCtorOption.loopBreak` output now uses `break` instead of the tag test. `lake build leanscript TermTests TyTests JsTerm JsSpec tests` succeeds, `lake exe tests` passes 140/140, and the snapshot run has 0 failed node checks. Its non-zero exit is caused only by the expected `get!`/index panics, as before. All regenerated snapshots are committed.
+
+**Caveats:**
+- The `JsTerm` passes, including the new one, have no correctness proofs. They are checked only by the node checks, which compare against Lean's evaluation. The `Term` proofs, including that the optimiser preserves `eval`, are unaffected.
+- One further step is not done: at each `break`, the code after the loop could be specialised to the value just written. For example, `firstBad` could `return i$2` directly instead of building `{ tag: 0, _1: i$2 }`. Legacy has no such loops, so this would go beyond legacy rather than catch up with it.
+
 # Summary of changes for run 1acbac3d-24c3-41e8-a88a-b5996c6029bd
 Our JavaScript for `KnownConstructors04` now matches the purescript-backend-optimizer output for `test1` and `test2`, and beats it for `test3`. All the changes are in the `Term → Term` optimiser, as you preferred.
 

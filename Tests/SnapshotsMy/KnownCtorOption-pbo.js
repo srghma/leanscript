@@ -133,9 +133,10 @@ export const loopPair = (n) => {
  */
 export const loopBreak = (n, k) => {
   let acc$1 = { tag: 1, _1: 0 };
-  for (let i$2 = 0; i$2 < n; i$2++) {
-    if (acc$1.tag === 1 && k < i$2) {
+  j$1: for (let i$2 = 0; i$2 < n; i$2++) {
+    if (k < i$2) {
       acc$1 = { tag: 0, _1: i$2 };
+      break j$1;
     }
   }
   return acc$1._1;

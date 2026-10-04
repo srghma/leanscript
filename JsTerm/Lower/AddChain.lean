@@ -263,6 +263,9 @@ partial def JsBlock.foldAdds {C M J : List JsTy} {k : JsEnd} (env : AddEnv) :
   | .countdown x nt n base step rest =>
     .countdown x nt (n.foldAdds env) (base.foldAdds env.dropMut) (step.foldAdds env.dropMut)
       (rest.foldAdds env.dropMut)
+  | .forExit x nt n body done rest =>
+    .forExit x nt (n.foldAdds env) (body.foldAdds env.dropMut) (done.foldAdds env.dropMut)
+      (rest.foldAdds env.dropMut)
   | .tick nt j base rest =>
     .tick nt j (base.foldAdds env) (rest.foldAdds (env.kill (M.length - 1 - j.index)))
   | .natCase x nt n zero succ =>

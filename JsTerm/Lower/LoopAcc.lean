@@ -129,6 +129,9 @@ partial def JsBlock.cToM {C C' M J : List JsTy} (r : CToM C C' M) (acc : Nat) {k
   | .countdown x nt n b s rest =>
     return .countdown x nt (← n.cToM r) (← b.cToM r.liftM (acc + 1))
       (← s.cToM r.liftM (acc + 1)) (← rest.cToM r.liftC acc)
+  | .forExit x nt n b d rest =>
+    return .forExit x nt (← n.cToM r) (← b.cToM r.liftC acc) (← d.cToM r acc)
+      (← rest.cToM r.liftC acc)
   | .tick nt j b rest => return .tick nt j (← b.cToM r acc) (← rest.cToM r acc)
   | .natCase x nt n z s =>
     return .natCase x nt (← n.cToM r) (← z.cToM r acc) (← s.cToM r.liftC acc)

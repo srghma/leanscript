@@ -113,6 +113,7 @@ partial def JsBlock.renJ {C M J J' : List JsTy} {k : JsEnd} (rj : JsRenM Id J J'
   | .forRange x nt n body rest => .forRange x nt n body (rest.renJ rj)
   | .forOf x l xs body rest => .forOf x l xs body (rest.renJ rj)
   | .countdown x nt n base step rest => .countdown x nt n base step (rest.renJ rj)
+  | .forExit x nt n body done rest => .forExit x nt n body done (rest.renJ rj)
   | .tick nt j base rest => .tick nt j (base.renJ rj) (rest.renJ rj)
   | .natCase x nt n z s => .natCase x nt n (z.renJ rj) (s.renJ rj)
   | .funs hints defs rest => .funs hints defs (rest.renJ rj)
@@ -252,6 +253,7 @@ partial def JsBlock.tailsBelow {R MR C M J : List JsTy} {k : JsEnd} (rc : JsRenM
   | .forRange _ _ _ _ rest | .forOf _ _ _ _ rest | .tick _ _ _ rest =>
     rest.tails rc rm false acc
   | .countdown _ _ _ _ _ rest => rest.tails (JsRenM.forget rc) rm false acc
+  | .forExit _ _ _ _ _ rest => rest.tails (JsRenM.forget rc) rm false acc
   | .natCase _ _ _ z s => s.tails (JsRenM.forget rc) rm false (z.tails rc rm false acc)
   | .funs (τs := τs) _ _ rest => rest.tails (JsRenM.forgetAll τs rc) rm false acc
   | .ret _ | .next | .jump .. | .throw _ | .raise _ => acc
@@ -354,6 +356,9 @@ partial def JsBlock.shareStep {R MR C M J J' : List JsTy} {k : JsEnd} (dump : Fa
   | .forOf x l xs body rest => return .forOf x l xs body (← rest.shareGo dump tgt rj at_)
   | .countdown x nt n base step rest =>
     return .countdown x nt n base step
+      (← rest.shareGo dump tgt rj { at_ with rc := JsRenM.forget at_.rc })
+  | .forExit x nt n body done rest =>
+    return .forExit x nt n body done
       (← rest.shareGo dump tgt rj { at_ with rc := JsRenM.forget at_.rc })
   | .tick nt j base rest =>
     return .tick nt j (← base.shareGo dump tgt rj at_) (← rest.shareGo dump tgt rj at_)
@@ -461,6 +466,8 @@ partial def JsBlock.shareTails {C M J : List JsTy} {k : JsEnd} (cost : BlockCost
       | .forOf x l xs body rest => .forOf x l xs (body.shareTails cost) (rest.shareTails cost)
       | .countdown x nt n base step rest =>
         .countdown x nt n (base.shareTails cost) (step.shareTails cost) (rest.shareTails cost)
+      | .forExit x nt n body done rest =>
+        .forExit x nt n (body.shareTails cost) (done.shareTails cost) (rest.shareTails cost)
       | .tick nt j base rest => .tick nt j (base.shareTails cost) (rest.shareTails cost)
       | .natCase x nt n z s => .natCase x nt n (z.shareTails cost) (s.shareTails cost)
       | .funs hints defs rest => .funs hints defs (rest.shareTails cost)
