@@ -2,7 +2,17 @@
 -- not translated:
 --   test1: LeanScript: the call List.find? (fun x => decide (x > bound)) xs is not a call of an extern: `List.find?` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 --   test2: LeanScript: the call List.find? (fun x => decide (x > bound)) xs is not a call of an extern: `List.find?` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
---   test3: LeanScript: the recursive type Std.DHashMap.Internal.AssocList String fun x => Nat is not declared in any signature; declare it with `leanscript_signature`
+
+-- test3 : Std.HashMap String Nat → String → Nat
+val k1 [ω] : ((Std.HashMap String Nat) → (String → Nat)) := fun x2 [ω] : (Std.HashMap String Nat) => (closed)
+  val k3 [ω] : (String → Nat) := fun x4 [ω] : String => (open)
+    case lean_str_map_get_opt(x2, x4) of
+    | ctor#0() =>
+      ret 0
+    | ctor#1(f5 [ω] : Nat) =>
+      ret f5
+  ret k3
+ret k1
 
 -- test4 : Bool → String
 val k1 [ω] : (Bool → String) := fun x2 [ω] : Bool => (closed)

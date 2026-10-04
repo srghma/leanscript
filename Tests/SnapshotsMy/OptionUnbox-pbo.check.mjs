@@ -59,6 +59,34 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test3({  }, \"\")", () => M.test3({  }, ""), "0", false);
+check("test3({  }, \"a\")", () => M.test3({  }, "a"), "0", false);
+check("test3({ [\"foo\"]: 1 }, \"\")", () => M.test3({ ["foo"]: 1 }, ""), "0", false);
+check("test3({  }, \"hello world\")", () => M.test3({  }, "hello world"), "0", false);
+check("test3({ [\"foo\"]: 1 }, \"a\")", () => M.test3({ ["foo"]: 1 }, "a"), "0", false);
+check("test3({ [\"foo.bar\"]: 5, [\"a\"]: 2, [\"wat\"]: 13 }, \"\")", () => M.test3({ ["foo.bar"]: 5, ["a"]: 2, ["wat"]: 13 }, ""), "0", false);
+check("test3({  }, \"héllo, wörld\")", () => M.test3({  }, "héllo, wörld"), "0", false);
+check("test3({ [\"foo\"]: 1 }, \"hello world\")", () => M.test3({ ["foo"]: 1 }, "hello world"), "0", false);
+check("test3({ [\"foo.bar\"]: 5, [\"a\"]: 2, [\"wat\"]: 13 }, \"a\")", () => M.test3({ ["foo.bar"]: 5, ["a"]: 2, ["wat"]: 13 }, "a"), "2", false);
+check("test3({ [\"\"]: 1, [\"hello world\"]: 5, [\"foo\"]: 0, [\"abcabc\"]: 13, [\"toString\"]: 2 }, \"\")", () => M.test3({ [""]: 1, ["hello world"]: 5, ["foo"]: 0, ["abcabc"]: 13, ["toString"]: 2 }, ""), "1", false);
+check("test3({  }, \"abcabc\")", () => M.test3({  }, "abcabc"), "0", false);
+check("test3({ [\"foo\"]: 1 }, \"héllo, wörld\")", () => M.test3({ ["foo"]: 1 }, "héllo, wörld"), "0", false);
+check("test3({ [\"foo.bar\"]: 5, [\"a\"]: 2, [\"wat\"]: 13 }, \"hello world\")", () => M.test3({ ["foo.bar"]: 5, ["a"]: 2, ["wat"]: 13 }, "hello world"), "0", false);
+check("test3({ [\"\"]: 1, [\"hello world\"]: 5, [\"foo\"]: 0, [\"abcabc\"]: 13, [\"toString\"]: 2 }, \"a\")", () => M.test3({ [""]: 1, ["hello world"]: 5, ["foo"]: 0, ["abcabc"]: 13, ["toString"]: 2 }, "a"), "0", false);
+check("test3({  }, \"toString\")", () => M.test3({  }, "toString"), "0", false);
+check("test3({ [\"foo\"]: 1 }, \"abcabc\")", () => M.test3({ ["foo"]: 1 }, "abcabc"), "0", false);
+check("test3({ [\"foo.bar\"]: 5, [\"a\"]: 2, [\"wat\"]: 13 }, \"héllo, wörld\")", () => M.test3({ ["foo.bar"]: 5, ["a"]: 2, ["wat"]: 13 }, "héllo, wörld"), "0", false);
+check("test3({ [\"\"]: 1, [\"hello world\"]: 5, [\"foo\"]: 0, [\"abcabc\"]: 13, [\"toString\"]: 2 }, \"hello world\")", () => M.test3({ [""]: 1, ["hello world"]: 5, ["foo"]: 0, ["abcabc"]: 13, ["toString"]: 2 }, "hello world"), "5", false);
+check("test3({  }, \"__proto__\")", () => M.test3({  }, "__proto__"), "0", false);
+check("test3({ [\"foo\"]: 1 }, \"toString\")", () => M.test3({ ["foo"]: 1 }, "toString"), "0", false);
+check("test3({ [\"foo.bar\"]: 5, [\"a\"]: 2, [\"wat\"]: 13 }, \"abcabc\")", () => M.test3({ ["foo.bar"]: 5, ["a"]: 2, ["wat"]: 13 }, "abcabc"), "0", false);
+check("test3({ [\"\"]: 1, [\"hello world\"]: 5, [\"foo\"]: 0, [\"abcabc\"]: 13, [\"toString\"]: 2 }, \"héllo, wörld\")", () => M.test3({ [""]: 1, ["hello world"]: 5, ["foo"]: 0, ["abcabc"]: 13, ["toString"]: 2 }, "héllo, wörld"), "0", false);
+check("test3({ [\"foo\"]: 1 }, \"__proto__\")", () => M.test3({ ["foo"]: 1 }, "__proto__"), "0", false);
+check("test3({ [\"foo.bar\"]: 5, [\"a\"]: 2, [\"wat\"]: 13 }, \"toString\")", () => M.test3({ ["foo.bar"]: 5, ["a"]: 2, ["wat"]: 13 }, "toString"), "0", false);
+check("test3({ [\"\"]: 1, [\"hello world\"]: 5, [\"foo\"]: 0, [\"abcabc\"]: 13, [\"toString\"]: 2 }, \"abcabc\")", () => M.test3({ [""]: 1, ["hello world"]: 5, ["foo"]: 0, ["abcabc"]: 13, ["toString"]: 2 }, "abcabc"), "13", false);
+check("test3({ [\"foo.bar\"]: 5, [\"a\"]: 2, [\"wat\"]: 13 }, \"__proto__\")", () => M.test3({ ["foo.bar"]: 5, ["a"]: 2, ["wat"]: 13 }, "__proto__"), "0", false);
+check("test3({ [\"\"]: 1, [\"hello world\"]: 5, [\"foo\"]: 0, [\"abcabc\"]: 13, [\"toString\"]: 2 }, \"toString\")", () => M.test3({ [""]: 1, ["hello world"]: 5, ["foo"]: 0, ["abcabc"]: 13, ["toString"]: 2 }, "toString"), "2", false);
+check("test3({ [\"\"]: 1, [\"hello world\"]: 5, [\"foo\"]: 0, [\"abcabc\"]: 13, [\"toString\"]: 2 }, \"__proto__\")", () => M.test3({ [""]: 1, ["hello world"]: 5, ["foo"]: 0, ["abcabc"]: 13, ["toString"]: 2 }, "__proto__"), "0", false);
 check("test4(false)", () => M.test4(false), "none", false);
 check("test4(true)", () => M.test4(true), "0", false);
 check("test6(0, 0)", () => M.test6(0, 0), "0", false);

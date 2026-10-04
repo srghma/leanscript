@@ -59,6 +59,50 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test1({  })", () => M.test1({  }), "0", false);
+check("test1({ [\"foo\"]: -1 })", () => M.test1({ ["foo"]: -1 }), "-1", false);
+check("test1({ [\"foo.bar\"]: 1, [\"a\"]: 0, [\"wat\"]: 2 })", () => M.test1({ ["foo.bar"]: 1, ["a"]: 0, ["wat"]: 2 }), "0", false);
+check("test1({ [\"\"]: -1, [\"hello world\"]: 1, [\"foo\"]: -7, [\"abcabc\"]: 2, [\"toString\"]: 0 })", () => M.test1({ [""]: -1, ["hello world"]: 1, ["foo"]: -7, ["abcabc"]: 2, ["toString"]: 0 }), "-7", false);
+check("test2({  })", () => M.test2({  }), "0", false);
+check("test2({ [\"foo\"]: -1 })", () => M.test2({ ["foo"]: -1 }), "0", false);
+check("test2({ [\"foo.bar\"]: 1, [\"a\"]: 0, [\"wat\"]: 2 })", () => M.test2({ ["foo.bar"]: 1, ["a"]: 0, ["wat"]: 2 }), "1", false);
+check("test2({ [\"\"]: -1, [\"hello world\"]: 1, [\"foo\"]: -7, [\"abcabc\"]: 2, [\"toString\"]: 0 })", () => M.test2({ [""]: -1, ["hello world"]: 1, ["foo"]: -7, ["abcabc"]: 2, ["toString"]: 0 }), "0", false);
+check("test3({  }, \"\")", () => M.test3({  }, ""), "0", false);
+check("test3({  }, \"a\")", () => M.test3({  }, "a"), "0", false);
+check("test3({ [\"foo\"]: -1 }, \"\")", () => M.test3({ ["foo"]: -1 }, ""), "0", false);
+check("test3({  }, \"hello world\")", () => M.test3({  }, "hello world"), "0", false);
+check("test3({ [\"foo\"]: -1 }, \"a\")", () => M.test3({ ["foo"]: -1 }, "a"), "0", false);
+check("test3({ [\"foo.bar\"]: 1, [\"a\"]: 0, [\"wat\"]: 2 }, \"\")", () => M.test3({ ["foo.bar"]: 1, ["a"]: 0, ["wat"]: 2 }, ""), "0", false);
+check("test3({  }, \"héllo, wörld\")", () => M.test3({  }, "héllo, wörld"), "0", false);
+check("test3({ [\"foo\"]: -1 }, \"hello world\")", () => M.test3({ ["foo"]: -1 }, "hello world"), "0", false);
+check("test3({ [\"foo.bar\"]: 1, [\"a\"]: 0, [\"wat\"]: 2 }, \"a\")", () => M.test3({ ["foo.bar"]: 1, ["a"]: 0, ["wat"]: 2 }, "a"), "0", false);
+check("test3({ [\"\"]: -1, [\"hello world\"]: 1, [\"foo\"]: -7, [\"abcabc\"]: 2, [\"toString\"]: 0 }, \"\")", () => M.test3({ [""]: -1, ["hello world"]: 1, ["foo"]: -7, ["abcabc"]: 2, ["toString"]: 0 }, ""), "-1", false);
+check("test3({  }, \"abcabc\")", () => M.test3({  }, "abcabc"), "0", false);
+check("test3({ [\"foo\"]: -1 }, \"héllo, wörld\")", () => M.test3({ ["foo"]: -1 }, "héllo, wörld"), "0", false);
+check("test3({ [\"foo.bar\"]: 1, [\"a\"]: 0, [\"wat\"]: 2 }, \"hello world\")", () => M.test3({ ["foo.bar"]: 1, ["a"]: 0, ["wat"]: 2 }, "hello world"), "0", false);
+check("test3({ [\"\"]: -1, [\"hello world\"]: 1, [\"foo\"]: -7, [\"abcabc\"]: 2, [\"toString\"]: 0 }, \"a\")", () => M.test3({ [""]: -1, ["hello world"]: 1, ["foo"]: -7, ["abcabc"]: 2, ["toString"]: 0 }, "a"), "0", false);
+check("test3({  }, \"toString\")", () => M.test3({  }, "toString"), "0", false);
+check("test3({ [\"foo\"]: -1 }, \"abcabc\")", () => M.test3({ ["foo"]: -1 }, "abcabc"), "0", false);
+check("test3({ [\"foo.bar\"]: 1, [\"a\"]: 0, [\"wat\"]: 2 }, \"héllo, wörld\")", () => M.test3({ ["foo.bar"]: 1, ["a"]: 0, ["wat"]: 2 }, "héllo, wörld"), "0", false);
+check("test3({ [\"\"]: -1, [\"hello world\"]: 1, [\"foo\"]: -7, [\"abcabc\"]: 2, [\"toString\"]: 0 }, \"hello world\")", () => M.test3({ [""]: -1, ["hello world"]: 1, ["foo"]: -7, ["abcabc"]: 2, ["toString"]: 0 }, "hello world"), "1", false);
+check("test3({  }, \"__proto__\")", () => M.test3({  }, "__proto__"), "0", false);
+check("test3({ [\"foo\"]: -1 }, \"toString\")", () => M.test3({ ["foo"]: -1 }, "toString"), "0", false);
+check("test3({ [\"foo.bar\"]: 1, [\"a\"]: 0, [\"wat\"]: 2 }, \"abcabc\")", () => M.test3({ ["foo.bar"]: 1, ["a"]: 0, ["wat"]: 2 }, "abcabc"), "0", false);
+check("test3({ [\"\"]: -1, [\"hello world\"]: 1, [\"foo\"]: -7, [\"abcabc\"]: 2, [\"toString\"]: 0 }, \"héllo, wörld\")", () => M.test3({ [""]: -1, ["hello world"]: 1, ["foo"]: -7, ["abcabc"]: 2, ["toString"]: 0 }, "héllo, wörld"), "0", false);
+check("test3({ [\"foo\"]: -1 }, \"__proto__\")", () => M.test3({ ["foo"]: -1 }, "__proto__"), "0", false);
+check("test3({ [\"foo.bar\"]: 1, [\"a\"]: 0, [\"wat\"]: 2 }, \"toString\")", () => M.test3({ ["foo.bar"]: 1, ["a"]: 0, ["wat"]: 2 }, "toString"), "0", false);
+check("test3({ [\"\"]: -1, [\"hello world\"]: 1, [\"foo\"]: -7, [\"abcabc\"]: 2, [\"toString\"]: 0 }, \"abcabc\")", () => M.test3({ [""]: -1, ["hello world"]: 1, ["foo"]: -7, ["abcabc"]: 2, ["toString"]: 0 }, "abcabc"), "2", false);
+check("test3({ [\"foo.bar\"]: 1, [\"a\"]: 0, [\"wat\"]: 2 }, \"__proto__\")", () => M.test3({ ["foo.bar"]: 1, ["a"]: 0, ["wat"]: 2 }, "__proto__"), "0", false);
+check("test3({ [\"\"]: -1, [\"hello world\"]: 1, [\"foo\"]: -7, [\"abcabc\"]: 2, [\"toString\"]: 0 }, \"toString\")", () => M.test3({ [""]: -1, ["hello world"]: 1, ["foo"]: -7, ["abcabc"]: 2, ["toString"]: 0 }, "toString"), "0", false);
+check("test3({ [\"\"]: -1, [\"hello world\"]: 1, [\"foo\"]: -7, [\"abcabc\"]: 2, [\"toString\"]: 0 }, \"__proto__\")", () => M.test3({ [""]: -1, ["hello world"]: 1, ["foo"]: -7, ["abcabc"]: 2, ["toString"]: 0 }, "__proto__"), "0", false);
+check("test4({  })", () => M.test4({  }), "#[]", false);
+check("test4({ [\"foo\"]: -1 })", () => M.test4({ ["foo"]: -1 }), "#[foo]", false);
+check("test4({ [\"foo.bar\"]: 1, [\"a\"]: 0, [\"wat\"]: 2 })", () => M.test4({ ["foo.bar"]: 1, ["a"]: 0, ["wat"]: 2 }), "#[foo.bar, a, wat]", false);
+check("test4({ [\"\"]: -1, [\"hello world\"]: 1, [\"foo\"]: -7, [\"abcabc\"]: 2, [\"toString\"]: 0 })", () => M.test4({ [""]: -1, ["hello world"]: 1, ["foo"]: -7, ["abcabc"]: 2, ["toString"]: 0 }), "#[, hello world, foo, abcabc, toString]", false);
+check("test5({  })", () => M.test5({  }), "false", false);
+check("test5({ [\"foo\"]: -1 })", () => M.test5({ ["foo"]: -1 }), "false", false);
+check("test5({ [\"foo.bar\"]: 1, [\"a\"]: 0, [\"wat\"]: 2 })", () => M.test5({ ["foo.bar"]: 1, ["a"]: 0, ["wat"]: 2 }), "true", false);
+check("test5({ [\"\"]: -1, [\"hello world\"]: 1, [\"foo\"]: -7, [\"abcabc\"]: 2, [\"toString\"]: 0 })", () => M.test5({ [""]: -1, ["hello world"]: 1, ["foo"]: -7, ["abcabc"]: 2, ["toString"]: 0 }), "false", false);
 
 console.log(`Object01-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

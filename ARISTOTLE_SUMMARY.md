@@ -1,3 +1,37 @@
+# Summary of changes for run d9448eeb-aa16-49b3-83e2-a000ed3834ad
+`Object01`'s JavaScript was already on par with or better than purescript-backend-optimizer's `legacy-backend/Object01.js`, so I didn't change the compiler. Analysing it did turn up a bug in the test generator, which I fixed. Object01 now has 44 checks against Lean's own results; there were none before, and all 44 pass in both presets.
+
+**`Object01-pbo.js` compared with legacy** (`faithful` is the same with `0n`):
+
+| fn | ours | legacy |
+|---|---|---|
+| `test1` | `(a) => a.foo ?? 0` | `(a) => a.foo` |
+| `test2` | `(a) => a["foo.bar"] ?? 0` | `(a) => a["foo.bar"]` |
+| `test3` | `(a, b) => (Object.hasOwn(a, b) ? a[b] : 0)` | `(a) => (b) => a[b]` |
+| `test4` | `(a) => Object.keys(a)` | same |
+| `test5` | `(a) => Object.hasOwn(a, "wat")` | same |
+
+- **`test4`, `test5`:** identical.
+- **`test1`, `test2`:** the extra `?? 0` is required. Lean's `get!` gives the default (`0`) when the key is missing, while legacy gives `undefined`. No other cost is added.
+- **`test3`:** ours takes both arguments at once instead of one at a time (legacy is curried), and it is correct where legacy is not. With a dynamic key, `a[b]` finds properties every JavaScript object inherits: `a["toString"]` is a function and `a["__proto__"]` is an object, and I confirmed this with node. Even `a[b] ?? 0` would be wrong for that reason. The `Object.hasOwn` test is the cheapest correct form.
+
+A literal key such as `"foo"` cannot be an inherited name, so `test1`/`test2` keep the cheap `?? 0` form. No labeled blocks or loops come into it, because none of these functions branch or loop.
+
+**The bug:** the committed `Object01-*.check.mjs` files contained no checks at all. The generator builds sample maps for `Std.HashMap String _` parameters, but it gave the equality instance it uses for them the wrong universe level. Lean rejected every sample, and the error was silently swallowed. The fix is in `LeanScriptCli/Check.lean`:
+- I corrected the level (`instBEqOfDecidableEq [.zero]`), so functions with string-keyed map parameters get checks again.
+- When a function takes both such a map and a `String`, the generator now also tries the keys `"toString"` and `"__proto__"`, and allows 48 cases instead of 24. Eight of the `test3` checks look up these inherited names on maps that don't have them, so `test3`'s correct handling of them is now tested.
+
+**Regenerated snapshots:** the `leanscript` executable rebuilds cleanly.
+- `Object01`: 44 checks per preset, all passing.
+- `OptionUnbox`: the old snapshot was out of date. Its `test3` is now translated, and its checks pass (43 per preset).
+- `HashContainers`: also out of date. Only the "not translated" messages changed, and it still has nothing to check.
+
+The theorem statements and proofs were not touched.
+
+## Suggested follow-up
+
+One possible further improvement, related but not in `Object01`: `OptionUnbox.test3` (`(m[k]?).getD 0`) currently becomes `const s$1 = strMap__get_opt(m, k); return s$1.tag === 0 ? 0 : s$1._1;`. That builds an option object and then takes it apart. A rewrite in the Term→Term optimiser could turn a match on `lean_str_map_get_opt` whose `some` branch just returns the value into `lean_str_map_get_d`. The output would then be `Object.hasOwn(m, k) ? m[k] : 0`, and the rewrite would come with a proof that `eval` is unchanged. I can implement that if you'd like.
+
 # Summary of changes for run a672cb30-fe36-45fb-a96f-2dc642791c94
 
 

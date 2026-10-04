@@ -59,6 +59,34 @@ function check(label, thunk, expected, isFloat) {
   }
 }
 
+check("test3({  }, \"\")", () => M.test3({  }, ""), "0", false);
+check("test3({  }, \"a\")", () => M.test3({  }, "a"), "0", false);
+check("test3({ [\"foo\"]: 1n }, \"\")", () => M.test3({ ["foo"]: 1n }, ""), "0", false);
+check("test3({  }, \"hello world\")", () => M.test3({  }, "hello world"), "0", false);
+check("test3({ [\"foo\"]: 1n }, \"a\")", () => M.test3({ ["foo"]: 1n }, "a"), "0", false);
+check("test3({ [\"foo.bar\"]: 5n, [\"a\"]: 2n, [\"wat\"]: 13n }, \"\")", () => M.test3({ ["foo.bar"]: 5n, ["a"]: 2n, ["wat"]: 13n }, ""), "0", false);
+check("test3({  }, \"héllo, wörld\")", () => M.test3({  }, "héllo, wörld"), "0", false);
+check("test3({ [\"foo\"]: 1n }, \"hello world\")", () => M.test3({ ["foo"]: 1n }, "hello world"), "0", false);
+check("test3({ [\"foo.bar\"]: 5n, [\"a\"]: 2n, [\"wat\"]: 13n }, \"a\")", () => M.test3({ ["foo.bar"]: 5n, ["a"]: 2n, ["wat"]: 13n }, "a"), "2", false);
+check("test3({ [\"\"]: 1n, [\"hello world\"]: 5n, [\"foo\"]: 0n, [\"abcabc\"]: 13n, [\"toString\"]: 2n }, \"\")", () => M.test3({ [""]: 1n, ["hello world"]: 5n, ["foo"]: 0n, ["abcabc"]: 13n, ["toString"]: 2n }, ""), "1", false);
+check("test3({  }, \"abcabc\")", () => M.test3({  }, "abcabc"), "0", false);
+check("test3({ [\"foo\"]: 1n }, \"héllo, wörld\")", () => M.test3({ ["foo"]: 1n }, "héllo, wörld"), "0", false);
+check("test3({ [\"foo.bar\"]: 5n, [\"a\"]: 2n, [\"wat\"]: 13n }, \"hello world\")", () => M.test3({ ["foo.bar"]: 5n, ["a"]: 2n, ["wat"]: 13n }, "hello world"), "0", false);
+check("test3({ [\"\"]: 1n, [\"hello world\"]: 5n, [\"foo\"]: 0n, [\"abcabc\"]: 13n, [\"toString\"]: 2n }, \"a\")", () => M.test3({ [""]: 1n, ["hello world"]: 5n, ["foo"]: 0n, ["abcabc"]: 13n, ["toString"]: 2n }, "a"), "0", false);
+check("test3({  }, \"toString\")", () => M.test3({  }, "toString"), "0", false);
+check("test3({ [\"foo\"]: 1n }, \"abcabc\")", () => M.test3({ ["foo"]: 1n }, "abcabc"), "0", false);
+check("test3({ [\"foo.bar\"]: 5n, [\"a\"]: 2n, [\"wat\"]: 13n }, \"héllo, wörld\")", () => M.test3({ ["foo.bar"]: 5n, ["a"]: 2n, ["wat"]: 13n }, "héllo, wörld"), "0", false);
+check("test3({ [\"\"]: 1n, [\"hello world\"]: 5n, [\"foo\"]: 0n, [\"abcabc\"]: 13n, [\"toString\"]: 2n }, \"hello world\")", () => M.test3({ [""]: 1n, ["hello world"]: 5n, ["foo"]: 0n, ["abcabc"]: 13n, ["toString"]: 2n }, "hello world"), "5", false);
+check("test3({  }, \"__proto__\")", () => M.test3({  }, "__proto__"), "0", false);
+check("test3({ [\"foo\"]: 1n }, \"toString\")", () => M.test3({ ["foo"]: 1n }, "toString"), "0", false);
+check("test3({ [\"foo.bar\"]: 5n, [\"a\"]: 2n, [\"wat\"]: 13n }, \"abcabc\")", () => M.test3({ ["foo.bar"]: 5n, ["a"]: 2n, ["wat"]: 13n }, "abcabc"), "0", false);
+check("test3({ [\"\"]: 1n, [\"hello world\"]: 5n, [\"foo\"]: 0n, [\"abcabc\"]: 13n, [\"toString\"]: 2n }, \"héllo, wörld\")", () => M.test3({ [""]: 1n, ["hello world"]: 5n, ["foo"]: 0n, ["abcabc"]: 13n, ["toString"]: 2n }, "héllo, wörld"), "0", false);
+check("test3({ [\"foo\"]: 1n }, \"__proto__\")", () => M.test3({ ["foo"]: 1n }, "__proto__"), "0", false);
+check("test3({ [\"foo.bar\"]: 5n, [\"a\"]: 2n, [\"wat\"]: 13n }, \"toString\")", () => M.test3({ ["foo.bar"]: 5n, ["a"]: 2n, ["wat"]: 13n }, "toString"), "0", false);
+check("test3({ [\"\"]: 1n, [\"hello world\"]: 5n, [\"foo\"]: 0n, [\"abcabc\"]: 13n, [\"toString\"]: 2n }, \"abcabc\")", () => M.test3({ [""]: 1n, ["hello world"]: 5n, ["foo"]: 0n, ["abcabc"]: 13n, ["toString"]: 2n }, "abcabc"), "13", false);
+check("test3({ [\"foo.bar\"]: 5n, [\"a\"]: 2n, [\"wat\"]: 13n }, \"__proto__\")", () => M.test3({ ["foo.bar"]: 5n, ["a"]: 2n, ["wat"]: 13n }, "__proto__"), "0", false);
+check("test3({ [\"\"]: 1n, [\"hello world\"]: 5n, [\"foo\"]: 0n, [\"abcabc\"]: 13n, [\"toString\"]: 2n }, \"toString\")", () => M.test3({ [""]: 1n, ["hello world"]: 5n, ["foo"]: 0n, ["abcabc"]: 13n, ["toString"]: 2n }, "toString"), "2", false);
+check("test3({ [\"\"]: 1n, [\"hello world\"]: 5n, [\"foo\"]: 0n, [\"abcabc\"]: 13n, [\"toString\"]: 2n }, \"__proto__\")", () => M.test3({ [""]: 1n, ["hello world"]: 5n, ["foo"]: 0n, ["abcabc"]: 13n, ["toString"]: 2n }, "__proto__"), "0", false);
 check("test4(false)", () => M.test4(false), "none", false);
 check("test4(true)", () => M.test4(true), "0", false);
 check("test6(0n, 0n)", () => M.test6(0n, 0n), "0", false);

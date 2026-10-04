@@ -3,9 +3,19 @@
 // not translated:
 //   test1: LeanScript: the call List.find? (fun x => decide (x > bound)) xs is not a call of an extern: `List.find?` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
 //   test2: LeanScript: the call List.find? (fun x => decide (x > bound)) xs is not a call of an extern: `List.find?` is not the Lean function of an entry of the catalogue of externs (`LeanInitPureExtern`), and its definition cannot be unfolded
-//   test3: LeanScript: the recursive type Std.DHashMap.Internal.AssocList String fun x => Nat is not declared in any signature; declare it with `leanscript_signature`
 
-import { uint53__lean_array_get } from "../../runtime.js";
+import { strMap__get_opt, uint53__lean_array_get } from "../../runtime.js";
+
+/**
+ * `test3`
+ * @param {Object<string, uint53(number)>} m
+ * @param {string} k
+ * @returns {uint53(number)}
+ */
+export const test3 = (m, k) => {
+  const s$1 = strMap__get_opt(m, k);
+  return s$1.tag === 0 ? 0 : s$1._1;
+};
 
 /**
  * `test4`

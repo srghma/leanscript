@@ -268,7 +268,7 @@ partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : Lis
             (mkApp4 (mkConst ``Prod.mk [.zero, .zero]) (mkConst ``String) (elemTy t) (toExpr k)
               x.lean) acc)
         (mkApp (mkConst ``List.nil [.zero]) pairTy)
-      let beq := mkApp2 (mkConst ``instBEqOfDecidableEq [.succ .zero]) (mkConst ``String)
+      let beq := mkApp2 (mkConst ``instBEqOfDecidableEq [.zero]) (mkConst ``String)
         (mkConst ``instDecidableEqString)
       let lean := mkApp5 (mkConst ``Std.HashMap.ofList [.zero, .zero]) (mkConst ``String)
         (elemTy t) beq (mkConst ``instHashableString) l
@@ -728,8 +728,13 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
   let jsCall (name : String) (arity : Nat) (js : List String) : String :=
     jsCall name arity (js.take nArgs) ++ (if hasUnit then "()" else "")
   let mut out : Array CheckCase := #[]
-  let cap := if ps.any (· matches .tree _) then 48 else 24
-  let strs ← if ps.contains .string then stringLitsOf n else pure []
+  let hasMap := ps.any (· matches .strMap _)
+  let cap := if ps.any (· matches .tree _) || hasMap then 48 else 24
+  -- a key looked up in a hash map with string keys may be one every object inherits
+  -- (`objectProtoNames`): the lookup must not find it on a map that does not have it
+  let strs ← if ps.contains .string then
+      pure ((← stringLitsOf n) ++ (if hasMap then ["toString", "__proto__"] else []))
+    else pure []
   let nats ← if ps.any (· matches .tree _) then natLitsOf n else pure []
   for args in combos cfg ps cap strs nats do
     let app := mkAppN (mkConst n (ci.levelParams.map fun _ => .zero)) (leanArgs (args.map (·.lean)))
