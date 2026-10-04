@@ -189,7 +189,7 @@ def «cands_lean_uint32_of_nat_mk» : List Cand :=
 
 /-- The operations of `lean_uint32_shift_left`. -/
 def «cands_lean_uint32_shift_left» : List Cand :=
-  [⟨_, _, _, _, .imported .uint32__lean_uint32_shift_left⟩]
+  [⟨_, _, _, _, .inlined .uint32__lean_uint32_shift_left⟩]
 
 /-- The operations of `lean_uint32_shift_right`. -/
 def «cands_lean_uint32_shift_right» : List Cand :=
@@ -285,11 +285,11 @@ def «cands_lean_uint64_neg» : List Cand :=
 
 /-- The operations of `lean_uint64_of_nat__UInt64_ofNat`. -/
 def «cands_lean_uint64_of_nat__UInt64_ofNat» : List Cand :=
-  [⟨_, _, _, _, .imported .bigint_nat__lean_uint64_of_nat__UInt64_ofNat⟩, ⟨_, _, _, _, .imported .bigint_nat__uint53__lean_uint64_of_nat__UInt64_ofNat⟩, ⟨_, _, _, _, .imported .uint53__bigint_nat__lean_uint64_of_nat__UInt64_ofNat⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_of_nat__UInt64_ofNat⟩]
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_uint64_of_nat__UInt64_ofNat⟩, ⟨_, _, _, _, .imported .bigint_nat__uint53__lean_uint64_of_nat__UInt64_ofNat⟩, ⟨_, _, _, _, .imported .uint53__bigint_nat__lean_uint64_of_nat__UInt64_ofNat⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_of_nat__UInt64_ofNat⟩]
 
 /-- The operations of `lean_uint64_of_nat__UInt64_ofNatLT`. -/
 def «cands_lean_uint64_of_nat__UInt64_ofNatLT» : List Cand :=
-  [⟨_, _, _, _, .imported .bigint_nat__lean_uint64_of_nat__UInt64_ofNat⟩, ⟨_, _, _, _, .imported .bigint_nat__uint53__lean_uint64_of_nat__UInt64_ofNat⟩, ⟨_, _, _, _, .imported .uint53__bigint_nat__lean_uint64_of_nat__UInt64_ofNatLT⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_of_nat__UInt64_ofNatLT⟩]
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_uint64_of_nat__UInt64_ofNat⟩, ⟨_, _, _, _, .imported .bigint_nat__uint53__lean_uint64_of_nat__UInt64_ofNat⟩, ⟨_, _, _, _, .imported .uint53__bigint_nat__lean_uint64_of_nat__UInt64_ofNatLT⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_of_nat__UInt64_ofNatLT⟩]
 
 /-- The operations of `lean_uint64_of_nat_mk`. -/
 def «cands_lean_uint64_of_nat_mk» : List Cand :=
@@ -297,11 +297,11 @@ def «cands_lean_uint64_of_nat_mk» : List Cand :=
 
 /-- The operations of `lean_uint64_shift_left`. -/
 def «cands_lean_uint64_shift_left» : List Cand :=
-  [⟨_, _, _, _, .imported .bigint_nat__lean_uint64_shift_left⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_shift_left⟩]
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_uint64_shift_left⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_shift_left⟩]
 
 /-- The operations of `lean_uint64_shift_right`. -/
 def «cands_lean_uint64_shift_right» : List Cand :=
-  [⟨_, _, _, _, .imported .bigint_nat__lean_uint64_shift_right⟩, ⟨_, _, _, _, .imported .uint53__lean_uint64_shift_right⟩]
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_uint64_shift_right⟩, ⟨_, _, _, _, .inlined .uint53__lean_uint64_shift_right⟩]
 
 /-- The operations of `lean_uint64_sub`. -/
 def «cands_lean_uint64_sub» : List Cand :=

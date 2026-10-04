@@ -2,6 +2,7 @@ module
 
 public import JsTerm.Lower.DataRec
 public import JsTerm.Lower.Bounds
+public import JsTerm.Lower.Shift
 public import LeanScript.Term.Optimize.KnownCond
 
 @[expose] public section
@@ -370,7 +371,10 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
       let ae ← cPExpr a' nt C M
       let be ← cPExpr b' ne C M
       -- `i < a.length ? a[i] : d` is `a[i] ?? d` (`JsTerm.Lower.Bounds`)
-      return (JsExpr.condGet? ce ae be).getD (.cond ce ae be)
+      if let some r := JsExpr.condGet? ce ae be then return r
+      -- a shift of `BitVec 64` (`y < 64 ? x <<< y : 0`) without the mask of its count
+      -- (`JsTerm.Lower.Shift`)
+      return (JsExpr.condShift? ce ae be).getD (.cond ce ae be)
     | ⟨_, e'⟩ => cPExpr e' n C M
   | Neu.extern (σs := σs) (τ := τ) e args h => do
     let nm := externName e
@@ -391,6 +395,8 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
     if nm == "lean_array_get" || nm == "lean_array_get_borrowed" then
       if let some r' := r.defaultGet? then return r'
     if let some r' := r.narrowCmp? then return r'
+    -- a shift of `UInt64` by a literal count without the mask of its count (`JsTerm.Lower.Shift`)
+    if let some r' := r.litShift? then return r'
     -- an update of an array nothing else refers to is done in place; `set!` and
     -- `swapIfInBounds` otherwise update a copy in place (their answer is then always new).
     -- An append onto an array literal is better written as one literal (below).

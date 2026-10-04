@@ -99,6 +99,7 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .bigint_nat__lean_nat_lxor => .bin "^" (.arg 0) (.arg 1)
   | .bigint_nat__lean_nat_shiftl => .bin "<<" (.arg 0) (.arg 1)
   | .bigint_nat__lean_nat_shiftr => .bin ">>" (.arg 0) (.arg 1)
+  | .uint53__lean_nat_shiftr => .call "Math.floor" [.bin "/" (.arg 0) (.bin "**" (.num 2) (.arg 1))]
   | .bigint_nat__lean_nat_land => .bin "&" (.arg 0) (.arg 1)
   | .bigint_nat__lean_nat_lor => .bin "|" (.arg 0) (.arg 1)
   | .bigint_nat__lean_uint64_to_nat__UInt64_toNat => .arg 0
@@ -115,6 +116,7 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .uint53__lean_uint8_to_uint64 => .arg 0
   | .bigint_nat__lean_uint8_to_nat__UInt8_toNat => .call "BigInt" [.arg 0]
   | .uint53__lean_uint8_to_nat__UInt8_toNat => .arg 0
+  | .bigint_nat__lean_uint64_of_nat__UInt64_ofNat => .call "BigInt.asUintN" [.num 64, .arg 0]
   | .uint8__lean_uint8_to_uint32 => .arg 0
   | .bigint_nat__lean_uint16_to_uint64 => .call "BigInt" [.arg 0]
   | .uint53__lean_uint16_to_uint64 => .arg 0
@@ -141,9 +143,13 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .uint32__lean_uint32_neg => .bin ">>>" (.un "-" (.arg 0)) (.num 0)
   | .uint32__lean_uint32_lor => .bin ">>>" (.bin "|" (.arg 0) (.arg 1)) (.num 0)
   | .uint32__lean_uint32_xor => .bin ">>>" (.bin "^" (.arg 0) (.arg 1)) (.num 0)
+  | .uint32__lean_uint32_shift_left => .bin ">>>" (.bin "<<" (.arg 0) (.arg 1)) (.num 0)
   | .uint32__lean_uint32_mul => .bin ">>>" (.call "Math.imul" [.arg 0, .arg 1]) (.num 0)
   | .uint32__lean_uint32_land => .bin ">>>" (.bin "&" (.arg 0) (.arg 1)) (.num 0)
   | .uint32__lean_uint32_complement => .bin ">>>" (.un "~" (.arg 0)) (.num 0)
+  | .bigint_nat__lean_uint64_shift_left => .call "BigInt.asUintN" [.num 64, .bin "<<" (.arg 0) (.bin "&" (.arg 1) (.big 63))]
+  | .bigint_nat__lean_uint64_shift_right => .bin ">>" (.arg 0) (.bin "&" (.arg 1) (.big 63))
+  | .uint53__lean_uint64_shift_right => .call "Math.floor" [.bin "/" (.arg 0) (.bin "**" (.num 2) (.bin "%" (.arg 1) (.num 64)))]
   | .bigint_nat__lean_uint64_complement => .call "BigInt.asUintN" [.num 64, .un "~" (.arg 0)]
   | .bigint_nat__lean_uint64_add => .call "BigInt.asUintN" [.num 64, .bin "+" (.arg 0) (.arg 1)]
   | .bigint_nat__lean_uint64_lor => .bin "|" (.arg 0) (.arg 1)

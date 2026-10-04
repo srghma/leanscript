@@ -3449,7 +3449,7 @@ def primOpBitVec01Spec : Spec := describe "PrimOpBitVec01Configurable" do
             "export const TestBitVec64$neg = (a) => BigInt.asUintN(64, -a);"),
            ("export const TestBitVec64$le = (a, b) => a <= b;",
             "export const TestBitVec64$le = (a, b) => a <= b;")],
-          ((313 : Nat), (372 : Nat))),
+          ((1432 : Nat), (1638 : Nat))),
         ("Tests/SnapshotsMy", "BitVecArith",
           [("export const BV8$add = (a, b) => (a + b) & 255;",
             "export const BV8$add = (a, b) => (a + b) & 255;"),
@@ -3459,7 +3459,7 @@ def primOpBitVec01Spec : Spec := describe "PrimOpBitVec01Configurable" do
            ("export const BV64$isZero = (a) => a === 0;", "export const BV64$isZero = (a) => a === 0n;"),
            ("export const BV64$lor = (a, b) => uint53__lean_uint64_lor(a, b);",
             "export const BV64$lor = (a, b) => a | b;")],
-          (435, 468))] do
+          (1858, 1959))] do
       let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
       let out ← IO.Process.output { cmd := bin.toString, args }
       assertEq s!"{file}: leanscript exit code" 0 out.exitCode
@@ -3472,6 +3472,59 @@ def primOpBitVec01Spec : Spec := describe "PrimOpBitVec01Configurable" do
           assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
         -- no copy of a bit vector read as an integer (`const x$1 = a;`)
         assertEq s!"{file}-{preset}: no copy" false ((js.splitOn "const x$1 = a;").length > 1)
+        let n := if pick then nChecks.1 else nChecks.2
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{n} passed, 0 failed").length > 1)
+
+def primOpBitVec02Spec : Spec := describe "PrimOpBitVec02Configurable" do
+  it "the bitwise operations and shifts of `BitVec 32`/`BitVec 64` are inline (needs node and leanscript)"
+      (timeoutMs? := some 120000) do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/primopbitvec02"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at the presets pbo and faithful, checks at pbo and faithful)
+    for (path, file, frags, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "PrimOpBitVec02Configurable",
+          [("export const TestBitVec32$shiftLeft = (a, b) => (b < 32 ? (a << b) >>> 0 : 0);",
+            "export const TestBitVec32$shiftLeft = (a, b) => (b < 32 ? (a << b) >>> 0 : 0);"),
+           ("export const TestBitVec32$shiftRight = (a, b) => (b < 32 ? a >>> b : 0);",
+            "export const TestBitVec32$shiftRight = (a, b) => (b < 32 ? a >>> b : 0);"),
+           ("export const TestBitVec64$shiftLeft = (a, b) =>\n  b < 64 ? uint53__lean_uint64_shift_left(a, b) : 0;",
+            "export const TestBitVec64$shiftLeft = (a, b) =>\n  b < 64n ? BigInt.asUintN(64, a << b) : 0n;"),
+           ("export const TestBitVec64$shiftRight = (a, b) => Math.floor(a / 2 ** b);",
+            "export const TestBitVec64$shiftRight = (a, b) => a >> b;"),
+           ("export const TestBitVec32$complement = (a) => ~a >>> 0;",
+            "export const TestBitVec32$complement = (a) => ~a >>> 0;")],
+          ((712 : Nat), (792 : Nat))),
+        ("Tests/SnapshotsMy", "BitVecShift",
+          [("export const BitVecShift$shl32Lit = (a) => (a << 3) >>> 0;",
+            "export const BitVecShift$shl32Lit = (a) => (a << 3) >>> 0;"),
+           ("export const BitVecShift$shl32Big = (a) => 0;", "export const BitVecShift$shl32Big = (a) => 0;"),
+           ("export const BitVecShift$shr64Lit = (a) => Math.floor(a / 2 ** 60);",
+            "export const BitVecShift$shr64Lit = (a) => a >> 60n;"),
+           ("const x$1 = (32 - k) >>> 0;", "const x$1 = (32 - k) >>> 0;")],
+          (946, 981))] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript exit code" 0 out.exitCode
+      for (preset, pick) in [("pbo", true), ("faithful", false)] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        assertEq s!"{file}-{preset}: every function translated" false
+          ((js.splitOn "not translated").length > 1)
+        for (fp, ff) in frags do
+          let frag := if pick then fp else ff
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        -- the count of a shift of `UInt64` is masked only where it is not tested
+        assertEq s!"{file}-{preset}: no mask under the test" false
+          ((js.splitOn "64n ? BigInt.asUintN(64, a << (b & 63n))").length > 1)
         let n := if pick then nChecks.1 else nChecks.2
         let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
         assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
@@ -3531,6 +3584,7 @@ def spec : Spec := do
   knownConstructorsSpec
   primOpArray01Spec
   primOpBitVec01Spec
+  primOpBitVec02Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

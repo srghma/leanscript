@@ -20,6 +20,16 @@ bit vector *is* that integer (`UInt32` is a structure around a `BitVec 32`, and 
 * a decision `x = y`, `x < y`, `x ≤ y` of `BitVec w` as the one of
   `UIntW.ofBitVec x` and `UIntW.ofBitVec y` (`lean_uint32_dec_eq`, …).
 
+and (`bitvecShiftCall?`, `bitvecToNatCall?`)
+
+* `x.toNat` as `(UIntW.ofBitVec x).toNat`;
+* a shift `x <<< y`, `x >>> y` by a bit vector of the same width (`x <<< y.toNat`) as
+  `if UIntW.ofBitVec y < w then (UIntW.ofBitVec x <<< UIntW.ofBitVec y).toBitVec else 0`: the
+  shift of `UIntW` takes its count modulo `w`, the one of `BitVec w` answers `0` from `w` on;
+* a shift by a natural number `n` as `if n < w then (UIntW.ofBitVec x <<< .ofNat n).toBitVec
+  else 0`, and by a literal `k` as `(UIntW.ofBitVec x <<< k).toBitVec` when `k < w`, as `0`
+  otherwise.
+
 This file proves each of these readings equal to the original, at each width.
 -/
 
@@ -111,6 +121,186 @@ theorem bitvec64_eq : decide (x = y) = decide (UInt64.ofBitVec x = UInt64.ofBitV
   · intro h; exact congrArg UInt64.toBitVec h
 theorem bitvec64_beq : (x == y) = decide (UInt64.ofBitVec x = UInt64.ofBitVec y) := by
   rw [← bitvec64_eq]; rfl
+end
+
+section
+variable (x y : BitVec 8) (n : Nat)
+theorem bitvec8_toNat : x.toNat = (UInt8.ofBitVec x).toNat := rfl
+theorem bitvec8_shiftLeft :
+    x <<< y = if UInt8.ofBitVec y < 8 then (UInt8.ofBitVec x <<< UInt8.ofBitVec y).toBitVec else 0 := by
+  split
+  · rename_i h
+    have h' : y.toNat < 8 := h
+    show x <<< y.toNat = x <<< (y % 8).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h']
+  · rename_i h
+    have h' : ¬ y.toNat < 8 := h
+    exact BitVec.shiftLeft_eq_zero (by omega)
+theorem bitvec8_shiftRight :
+    x >>> y = if UInt8.ofBitVec y < 8 then (UInt8.ofBitVec x >>> UInt8.ofBitVec y).toBitVec else 0 := by
+  split
+  · rename_i h
+    have h' : y.toNat < 8 := h
+    show x >>> y.toNat = x >>> (y % 8).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h']
+  · rename_i h
+    have h' : ¬ y.toNat < 8 := h
+    exact BitVec.ushiftRight_eq_zero (by omega)
+theorem bitvec8_shiftLeft_nat :
+    x <<< n = if n < 8 then (UInt8.ofBitVec x <<< UInt8.ofNat n).toBitVec else 0 := by
+  split
+  · rename_i h
+    show x <<< n = x <<< ((BitVec.ofNat 8 n) % 8).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h]
+  · exact BitVec.shiftLeft_eq_zero (by omega)
+theorem bitvec8_shiftRight_nat :
+    x >>> n = if n < 8 then (UInt8.ofBitVec x >>> UInt8.ofNat n).toBitVec else 0 := by
+  split
+  · rename_i h
+    show x >>> n = x >>> ((BitVec.ofNat 8 n) % 8).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h]
+  · exact BitVec.ushiftRight_eq_zero (by omega)
+theorem bitvec8_shiftLeft_lit (h : n < 8) : x <<< n = (UInt8.ofBitVec x <<< UInt8.ofNat n).toBitVec := by
+  rw [bitvec8_shiftLeft_nat]; simp [h]
+theorem bitvec8_shiftRight_lit (h : n < 8) : x >>> n = (UInt8.ofBitVec x >>> UInt8.ofNat n).toBitVec := by
+  rw [bitvec8_shiftRight_nat]; simp [h]
+theorem bitvec8_shiftLeft_big (h : 8 ≤ n) : x <<< n = 0 := BitVec.shiftLeft_eq_zero h
+theorem bitvec8_shiftRight_big (h : 8 ≤ n) : x >>> n = 0 := BitVec.ushiftRight_eq_zero h
+end
+
+section
+variable (x y : BitVec 16) (n : Nat)
+theorem bitvec16_toNat : x.toNat = (UInt16.ofBitVec x).toNat := rfl
+theorem bitvec16_shiftLeft :
+    x <<< y = if UInt16.ofBitVec y < 16 then (UInt16.ofBitVec x <<< UInt16.ofBitVec y).toBitVec else 0 := by
+  split
+  · rename_i h
+    have h' : y.toNat < 16 := h
+    show x <<< y.toNat = x <<< (y % 16).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h']
+  · rename_i h
+    have h' : ¬ y.toNat < 16 := h
+    exact BitVec.shiftLeft_eq_zero (by omega)
+theorem bitvec16_shiftRight :
+    x >>> y = if UInt16.ofBitVec y < 16 then (UInt16.ofBitVec x >>> UInt16.ofBitVec y).toBitVec else 0 := by
+  split
+  · rename_i h
+    have h' : y.toNat < 16 := h
+    show x >>> y.toNat = x >>> (y % 16).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h']
+  · rename_i h
+    have h' : ¬ y.toNat < 16 := h
+    exact BitVec.ushiftRight_eq_zero (by omega)
+theorem bitvec16_shiftLeft_nat :
+    x <<< n = if n < 16 then (UInt16.ofBitVec x <<< UInt16.ofNat n).toBitVec else 0 := by
+  split
+  · rename_i h
+    show x <<< n = x <<< ((BitVec.ofNat 16 n) % 16).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h]
+  · exact BitVec.shiftLeft_eq_zero (by omega)
+theorem bitvec16_shiftRight_nat :
+    x >>> n = if n < 16 then (UInt16.ofBitVec x >>> UInt16.ofNat n).toBitVec else 0 := by
+  split
+  · rename_i h
+    show x >>> n = x >>> ((BitVec.ofNat 16 n) % 16).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h]
+  · exact BitVec.ushiftRight_eq_zero (by omega)
+theorem bitvec16_shiftLeft_lit (h : n < 16) : x <<< n = (UInt16.ofBitVec x <<< UInt16.ofNat n).toBitVec := by
+  rw [bitvec16_shiftLeft_nat]; simp [h]
+theorem bitvec16_shiftRight_lit (h : n < 16) : x >>> n = (UInt16.ofBitVec x >>> UInt16.ofNat n).toBitVec := by
+  rw [bitvec16_shiftRight_nat]; simp [h]
+theorem bitvec16_shiftLeft_big (h : 16 ≤ n) : x <<< n = 0 := BitVec.shiftLeft_eq_zero h
+theorem bitvec16_shiftRight_big (h : 16 ≤ n) : x >>> n = 0 := BitVec.ushiftRight_eq_zero h
+end
+
+section
+variable (x y : BitVec 32) (n : Nat)
+theorem bitvec32_toNat : x.toNat = (UInt32.ofBitVec x).toNat := rfl
+theorem bitvec32_shiftLeft :
+    x <<< y = if UInt32.ofBitVec y < 32 then (UInt32.ofBitVec x <<< UInt32.ofBitVec y).toBitVec else 0 := by
+  split
+  · rename_i h
+    have h' : y.toNat < 32 := h
+    show x <<< y.toNat = x <<< (y % 32).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h']
+  · rename_i h
+    have h' : ¬ y.toNat < 32 := h
+    exact BitVec.shiftLeft_eq_zero (by omega)
+theorem bitvec32_shiftRight :
+    x >>> y = if UInt32.ofBitVec y < 32 then (UInt32.ofBitVec x >>> UInt32.ofBitVec y).toBitVec else 0 := by
+  split
+  · rename_i h
+    have h' : y.toNat < 32 := h
+    show x >>> y.toNat = x >>> (y % 32).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h']
+  · rename_i h
+    have h' : ¬ y.toNat < 32 := h
+    exact BitVec.ushiftRight_eq_zero (by omega)
+theorem bitvec32_shiftLeft_nat :
+    x <<< n = if n < 32 then (UInt32.ofBitVec x <<< UInt32.ofNat n).toBitVec else 0 := by
+  split
+  · rename_i h
+    show x <<< n = x <<< ((BitVec.ofNat 32 n) % 32).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h]
+  · exact BitVec.shiftLeft_eq_zero (by omega)
+theorem bitvec32_shiftRight_nat :
+    x >>> n = if n < 32 then (UInt32.ofBitVec x >>> UInt32.ofNat n).toBitVec else 0 := by
+  split
+  · rename_i h
+    show x >>> n = x >>> ((BitVec.ofNat 32 n) % 32).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h]
+  · exact BitVec.ushiftRight_eq_zero (by omega)
+theorem bitvec32_shiftLeft_lit (h : n < 32) : x <<< n = (UInt32.ofBitVec x <<< UInt32.ofNat n).toBitVec := by
+  rw [bitvec32_shiftLeft_nat]; simp [h]
+theorem bitvec32_shiftRight_lit (h : n < 32) : x >>> n = (UInt32.ofBitVec x >>> UInt32.ofNat n).toBitVec := by
+  rw [bitvec32_shiftRight_nat]; simp [h]
+theorem bitvec32_shiftLeft_big (h : 32 ≤ n) : x <<< n = 0 := BitVec.shiftLeft_eq_zero h
+theorem bitvec32_shiftRight_big (h : 32 ≤ n) : x >>> n = 0 := BitVec.ushiftRight_eq_zero h
+end
+
+section
+variable (x y : BitVec 64) (n : Nat)
+theorem bitvec64_toNat : x.toNat = (UInt64.ofBitVec x).toNat := rfl
+theorem bitvec64_shiftLeft :
+    x <<< y = if UInt64.ofBitVec y < 64 then (UInt64.ofBitVec x <<< UInt64.ofBitVec y).toBitVec else 0 := by
+  split
+  · rename_i h
+    have h' : y.toNat < 64 := h
+    show x <<< y.toNat = x <<< (y % 64).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h']
+  · rename_i h
+    have h' : ¬ y.toNat < 64 := h
+    exact BitVec.shiftLeft_eq_zero (by omega)
+theorem bitvec64_shiftRight :
+    x >>> y = if UInt64.ofBitVec y < 64 then (UInt64.ofBitVec x >>> UInt64.ofBitVec y).toBitVec else 0 := by
+  split
+  · rename_i h
+    have h' : y.toNat < 64 := h
+    show x >>> y.toNat = x >>> (y % 64).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h']
+  · rename_i h
+    have h' : ¬ y.toNat < 64 := h
+    exact BitVec.ushiftRight_eq_zero (by omega)
+theorem bitvec64_shiftLeft_nat :
+    x <<< n = if n < 64 then (UInt64.ofBitVec x <<< UInt64.ofNat n).toBitVec else 0 := by
+  split
+  · rename_i h
+    show x <<< n = x <<< ((BitVec.ofNat 64 n) % 64).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h]
+  · exact BitVec.shiftLeft_eq_zero (by omega)
+theorem bitvec64_shiftRight_nat :
+    x >>> n = if n < 64 then (UInt64.ofBitVec x >>> UInt64.ofNat n).toBitVec else 0 := by
+  split
+  · rename_i h
+    show x >>> n = x >>> ((BitVec.ofNat 64 n) % 64).toNat
+    rw [BitVec.toNat_umod]; simp [Nat.mod_eq_of_lt h]
+  · exact BitVec.ushiftRight_eq_zero (by omega)
+theorem bitvec64_shiftLeft_lit (h : n < 64) : x <<< n = (UInt64.ofBitVec x <<< UInt64.ofNat n).toBitVec := by
+  rw [bitvec64_shiftLeft_nat]; simp [h]
+theorem bitvec64_shiftRight_lit (h : n < 64) : x >>> n = (UInt64.ofBitVec x >>> UInt64.ofNat n).toBitVec := by
+  rw [bitvec64_shiftRight_nat]; simp [h]
+theorem bitvec64_shiftLeft_big (h : 64 ≤ n) : x <<< n = 0 := BitVec.shiftLeft_eq_zero h
+theorem bitvec64_shiftRight_big (h : 64 ≤ n) : x >>> n = 0 := BitVec.ushiftRight_eq_zero h
 end
 
 end LeanScript.Gen

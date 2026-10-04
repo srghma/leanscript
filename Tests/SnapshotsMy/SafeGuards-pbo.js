@@ -5,7 +5,6 @@ import {
   uint53__lean_nat_div,
   uint53__lean_nat_mul,
   uint53__lean_nat_add,
-  uint53__lean_nat_shiftr,
   uint53__lean_string_length__String_Internal_length,
   uint53__lean_nat_land,
   uint53__lean_nat_sub,
@@ -32,7 +31,7 @@ export const test2 = (a, b) =>
  * @param {Array<uint53(number)>} a
  * @returns {uint53(number)}
  */
-export const test3 = (a) => uint53__lean_nat_shiftr(a.length, 1);
+export const test3 = (a) => Math.floor(a.length / 2 ** 1);
 
 /**
  * `test4`

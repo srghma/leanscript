@@ -248,6 +248,52 @@ def bitvecOpCall? (c : Name) (args : Array Expr) : MetaM (Option Expr) := do
   unless xs.size == (if c == ``BitVec.neg || c == ``BitVec.not then 1 else 2) do return none
   return some (mkApp (mkConst (u ++ `toBitVec)) (mkAppN (mkConst f) xs))
 
+/-- A shift of `BitVec w` (`BitVec.shiftLeft x n`, `BitVec.ushiftRight x n`, by a natural
+    number `n`) at a width `w` of a fixed-width integer `U`, read as the shift of `U`, which
+    takes its count modulo `w` where the bit vector's answers `0` from `w` on
+    (`LeanScript/TermElab/ToTerm/BitVecOps.lean`, `bitvec32_shiftLeft`, …):
+
+* by a bit vector `y` of the same width (`x <<< y` is `x <<< y.toNat`):
+  `if U.ofBitVec y < w then (U.ofBitVec x <<< U.ofBitVec y).toBitVec else 0`;
+* by a literal `k`: `(U.ofBitVec x <<< k).toBitVec` when `k < w`, `0` otherwise;
+* by any other `n`: `if n < w then (U.ofBitVec x <<< U.ofNat n).toBitVec else 0`. -/
+def bitvecShiftCall? (c : Name) (args : Array Expr) : MetaM (Option Expr) := do
+  let op ← if c == ``BitVec.shiftLeft then pure `shiftLeft
+    else if c == ``BitVec.ushiftRight then pure `shiftRight else return none
+  unless args.size == 3 do return none
+  let some w ← natLit? args[0]! | return none
+  let some u := uintOfWidth? w | return none
+  let uTy := Lean.mkConst u
+  let x := mkApp (mkConst (u ++ `ofBitVec)) args[1]!
+  let n := args[2]!
+  let zero ← mkNumeral (mkApp (mkConst ``BitVec) args[0]!) 0
+  let wU ← mkNumeral uTy w
+  let shift (k : Expr) : Expr := mkApp (mkConst (u ++ `toBitVec)) (mkApp2 (mkConst (u ++ op)) x k)
+  -- the count is read twice (by the test and by the shift): one that is computed is bound
+  -- first (`let c := 32 - k; if c < 32 then … else 0`)
+  let share (v : Expr) (k : Expr → MetaM Expr) : MetaM Expr := do
+    if v.isFVar || v.isConst || v.isLit || v.hasLooseBVars then k v
+    else withLetDecl `c (← inferType v) v fun f => do mkLetFVars #[f] (← k f)
+  let n' ← instantiateMVars n
+  if n'.isAppOfArity ``BitVec.toNat 2 then
+    if (← natLit? n'.appFn!.appArg!) == some w then
+      return some (← share n'.appArg! fun yb => do
+        let y := mkApp (mkConst (u ++ `ofBitVec)) yb
+        mkAppM ``ite #[← mkAppM ``LT.lt #[y, wU], shift y, zero])
+  if let some k ← natLit? n then
+    if k < w then return some (shift (← mkNumeral uTy k)) else return some zero
+  let wN := mkNatLit w
+  return some (← share n fun n => do
+    mkAppM ``ite #[← mkAppM ``LT.lt #[n, wN], shift (mkApp (mkConst (u ++ `ofNat)) n), zero])
+
+/-- `BitVec.toNat x` at a width `w` of a fixed-width integer `U`: `(U.ofBitVec x).toNat`
+    (`bitvec32_toNat`, …), an extern of the catalogue. -/
+def bitvecToNatCall? (c : Name) (args : Array Expr) : MetaM (Option Expr) := do
+  unless c == ``BitVec.toNat && args.size == 2 do return none
+  let some w ← natLit? args[0]! | return none
+  let some u := uintOfWidth? w | return none
+  return some (mkApp (mkConst (u ++ `toNat)) (mkApp (mkConst (u ++ `ofBitVec)) args[1]!))
+
 /-- A decision of `BitVec w` at a width of a fixed-width integer (`instDecidableLtBitVec x y`
     at width `32`): `decide` of the decision of the integer, on the bit vectors read as
     integers (`decide (UInt32.ofBitVec x < .ofBitVec y)` by `UInt32.decLt`, proved equal by
@@ -282,6 +328,8 @@ partial def trExtern (L : Loc) (e fn : Expr) (args : Array Expr) : TM Src := do
   let .const c _ := fn | fail m!"cannot translate the application{indentExpr e}"
   -- an operation of `BitVec w` at the width of a fixed-width integer is the integer's
   if let some e' ← bitvecOpCall? c args then return ← tr L e'
+  if let some e' ← bitvecShiftCall? c args then return ← tr L e'
+  if let some e' ← bitvecToNatCall? c args then return ← tr L e'
   if let some entry := externTable.find? c then
     if isStrMapEntry entry && !(← strKeyedHashMapCall args) then
       if let some e' ← unfoldCall? e then return ← tr L e'

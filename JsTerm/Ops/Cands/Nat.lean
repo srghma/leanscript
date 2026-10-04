@@ -165,7 +165,7 @@ def «cands_lean_nat_shiftl» : List Cand :=
 
 /-- The operations of `lean_nat_shiftr`. -/
 def «cands_lean_nat_shiftr» : List Cand :=
-  [⟨_, _, _, _, .inlined .bigint_nat__lean_nat_shiftr⟩, ⟨_, _, _, _, .imported .uint53__lean_nat_shiftr⟩]
+  [⟨_, _, _, _, .inlined .bigint_nat__lean_nat_shiftr⟩, ⟨_, _, _, _, .inlined .uint53__lean_nat_shiftr⟩]
 
 /-- The operations of `lean_nat_sub`. -/
 def «cands_lean_nat_sub» : List Cand :=

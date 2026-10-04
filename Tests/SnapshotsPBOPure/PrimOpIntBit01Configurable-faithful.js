@@ -16,8 +16,6 @@
 //   TestInt.complement: LeanScript: `Int` is a leaf of the language: its values are literals, not constructor applications
 
 import {
-  bigint_nat__lean_uint64_shift_left,
-  bigint_nat__lean_uint64_shift_right,
   bigint_int__lean_int64_land,
   bigint_int__lean_int64_lor,
   bigint_int__lean_int64_shift_left,
@@ -49,7 +47,7 @@ export const TestUInt64$lor = (a, b) => a | b;
  * @returns {nat(bigint)}
  */
 export const TestUInt64$shiftLeft = (a, b) =>
-  bigint_nat__lean_uint64_shift_left(a, b);
+  BigInt.asUintN(64, a << (b & 63n));
 
 /**
  * `TestUInt64.shiftRight`
@@ -57,8 +55,7 @@ export const TestUInt64$shiftLeft = (a, b) =>
  * @param {nat(bigint)} b
  * @returns {nat(bigint)}
  */
-export const TestUInt64$shiftRight = (a, b) =>
-  bigint_nat__lean_uint64_shift_right(a, b);
+export const TestUInt64$shiftRight = (a, b) => a >> (b & 63n);
 
 /**
  * `TestUInt64.xor`

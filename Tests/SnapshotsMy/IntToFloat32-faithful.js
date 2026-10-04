@@ -6,7 +6,6 @@ import {
   int32__lean_int32_add,
   bigint_int__lean_int32_of_int,
   bigint_nat__lean_uint64_to_float32,
-  bigint_nat__lean_uint64_of_nat__UInt64_ofNat,
   bigint_int__lean_int64_to_float32,
   bigint_int__lean_int64_add,
   bigint_int__lean_int64_of_int,
@@ -39,10 +38,7 @@ export const i32ToF32 = (i) =>
  */
 export const u64ToF32 = (n) =>
   bigint_nat__lean_uint64_to_float32(
-    BigInt.asUintN(
-      64,
-      bigint_nat__lean_uint64_of_nat__UInt64_ofNat(n) + 16777216n,
-    ),
+    BigInt.asUintN(64, BigInt.asUintN(64, n) + 16777216n),
   );
 
 /**

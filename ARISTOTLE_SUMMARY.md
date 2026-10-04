@@ -1,3 +1,38 @@
+# Summary of changes for run 009cfc17-02a4-4902-8fe7-27e3a7b91762
+All 12 functions in `Tests/SnapshotsPBOPure/PrimOpBitVec02Configurable.lean` now translate, and each one's JavaScript is on par with the purescript-backend-optimizer references (`-num.js` / `-bigint.js`) or better. Before this run, the four shifts failed with "`BitVec 32` is a leaf of the language". The function-by-function comparison is in `Tests/SnapshotsPBOPure/PrimOpBitVec02Configurable.md`.
+
+**Shifts now** (`pbo` / `faithful`):
+- `BitVec 32` shift left: `(a, b) => (b < 32 ? (a << b) >>> 0 : 0)` at both presets.
+- `BitVec 32` shift right: `(b < 32 ? a >>> b : 0)` at both presets.
+- `BitVec 64` shift left: `b < 64 ? uint53__lean_uint64_shift_left(a, b) : 0` / `b < 64n ? BigInt.asUintN(64, a << b) : 0n`. At `pbo` it still calls the runtime, because the result must throw when it isn't a safe integer.
+- `BitVec 64` shift right: `Math.floor(a / 2 ** b)` / `a >> b`, with no test at all.
+
+The reference makes two runtime calls per shift, e.g. `BitVec_shiftLeft(64n, v0, BitVec_toNat(64n, v1))`. The other operations were already inline, except the 64-bit bitwise operations on numbers at `pbo`, which call the runtime just as the reference does.
+
+**What changed, in your order of preference:**
+1. **Lean → Term (elaborator):** a `BitVec w` shift at widths 8/16/32/64 is read as Lean's `UIntW` shift under the test `count < w`, and `0` otherwise. This also covers literal counts (`x <<< 3`, and `x <<< 40` becomes `0`), natural-number counts and counts of another width. A computed count is bound once rather than duplicated. `x.toNat` is now translated too. Each reading is proved equal to Lean's definition in `LeanScript/TermElab/ToTerm/BitVecOps.lean`.
+2. **Term → JsTerm (conversion):**
+   - New inline templates replace runtime calls for `UInt32.shiftLeft`, the `BigInt` `UInt64.shiftLeft`/`shiftRight`/`ofNat`, and the number forms of `UInt64.shiftRight` and `Nat.shiftRight`.
+   - A new rewrite in `JsTerm/Lower/Shift.lean` removes the count mask under the test `b < 64` or when the count is a literal below 64. For a right shift it removes the test too.
+   - The templates and the facts this rewrite relies on are proved in `RuntimeSpec/InlineShift.lean`, within the project's model of JavaScript integers. The rewrite code itself is not formally verified; the snapshot checks back it up.
+   - This step couldn't go in `Term → Term`: Lean's `UInt64` shift, the only shift the language has, takes its count modulo 64.
+3. **JsTerm optimiser:** unchanged. The file has no loops or recursion, so labelled blocks and loops don't come into it.
+
+**Checks:**
+- The check generator now also samples the shift counts `w-1`, `w` and `w+36`, and tries every pair of bit vectors. Before this, no check shifted by the width or more.
+- Very large bit-vector values are only passed as the first argument of functions that shift. Lean's own evaluation of a shift by a huge count crashes the generator ("Nat.shiftl exponent is too big").
+- New snapshot `Tests/SnapshotsMy/BitVecShift.lean`.
+
+**Results:**
+- `PrimOpBitVec02Configurable`: 712 / 792 checks pass.
+- `BitVecShift`: 946 / 981 pass.
+- I regenerated all snapshots, and none reports a failing check. Other improved snapshots include `PrimOpIntBit01`'s `UInt32.shiftLeft`, now `(a << b) >>> 0`.
+- A new `primOpBitVec02Spec` is in `Tests/Main.lean`. The `PrimOpBitVec01`/`BitVecArith` check counts were raised to match the new samples.
+- `tests --timeout 180` passes 145/145.
+- `leanscript`, `tests`, `JsTerm`, `JsSpec`, `TermTests`, `TyTests`, `OpsSpec`, `RuntimeSpec` and `BitVecOps` build, and the new proofs contain no `sorry`.
+
+**Not done:** nested masks are still not merged, e.g. `BigInt.asUintN(64, BigInt.asUintN(64, n) + …)` in `IntToFloat32`. Everything is committed.
+
 # Summary of changes for run 2390be09-36cc-4ee1-bd42-68f300c04158
 I compared `Tests/SnapshotsPBOPure/PrimOpBitVec01Configurable.lean` and its outputs against the purescript-backend-optimizer references. Our output is now on par with them or better, and the changes are committed. The full comparison is in `Tests/SnapshotsPBOPure/PrimOpBitVec01Configurable.md`.
 

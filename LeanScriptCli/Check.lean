@@ -247,7 +247,8 @@ partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : Lis
   -- where it is exact in JavaScript (a number below 2^53, or a `BigInt`)
   | .bitvec w =>
     let big := 53 < w && cfg.bitvecRepr == .bigint
-    let ns : List Nat := ([0, 1, 2, 5, 13].filter (· < 2 ^ w)) ++
+    -- and the shift counts around the width (`x <<< y` is `0` from `y = w` on)
+    let ns : List Nat := ([0, 1, 2, 5, 13, w - 1, w, w + 36].eraseDups.filter (· < 2 ^ w)) ++
       (if w ≤ 53 || big then [2 ^ w - 1] else [])
     ns.map fun n => ⟨mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) (mkNatLit n), intLit big n⟩
   | .sint b =>
@@ -479,6 +480,20 @@ def natLitsOf (n : Name) (max : Nat := 4) : MetaM (List Nat) := do
   for c in aux do
     if let some (.defnInfo a) := env.find? c then acc := natLitsAux a.value acc
   return (acc.toList.filter (· < 2 ^ 32)).take max
+
+/-- Does the definition `n` (or one of its auxiliary definitions) shift (`<<<`, `>>>`)?  Lean
+    computes `x <<< y` on a bit vector as `(x.toNat <<< y.toNat) % 2 ^ w`: a count of `2 ^ 32`
+    or more builds a natural of that many bits (and one of `2 ^ 63` or more aborts). -/
+def usesShift (n : Name) : MetaM Bool := do
+  let env ← getEnv
+  let some (.defnInfo d) := env.find? n | return false
+  let aux := d.value.getUsedConstants.filter fun c => n.isPrefixOf c && c != n
+  let shifts := [``HShiftLeft.hShiftLeft, ``HShiftRight.hShiftRight, ``BitVec.shiftLeft,
+    ``BitVec.ushiftRight]
+  let mut cs := d.value.getUsedConstants
+  for c in aux do
+    if let some (.defnInfo a) := env.find? c then cs := cs ++ a.value.getUsedConstants
+  return cs.any shifts.contains
 
 /-- A check: the JavaScript call and the answer Lean gives, printed. -/
 structure CheckCase where
@@ -743,14 +758,25 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
     jsCall name arity (js.take nArgs) ++ (if hasUnit then "()" else "")
   let mut out : Array CheckCase := #[]
   let hasMap := ps.any (· matches .strMap _)
-  let cap := if ps.any (· matches .tree _) || hasMap then 48 else 24
+  -- every pair of bit vectors (the samples of a shift count must meet every shifted value)
+  let cap := if ps.any (· matches .tree _) || hasMap then 48
+    else if ps.any (· matches .bitvec _) then 96 else 24
   -- a key looked up in a hash map with string keys may be one every object inherits
   -- (`objectProtoNames`): the lookup must not find it on a map that does not have it
   let strs ← if ps.contains .string then
       pure ((← stringLitsOf n) ++ (if hasMap then ["toString", "__proto__"] else []))
     else pure []
   let nats ← if ps.any (· matches .tree _) then natLitsOf n else pure []
+  -- a function that shifts is not called with a huge bit vector after its first parameter (a
+  -- shift count, as Lean computes it, `usesShift`)
+  let shifty ← usesShift n
+  let huge (a : Sample) : Bool :=
+    match (a.js.dropSuffix "n").toString.toNat? with
+    | some k => k ≥ 2 ^ 20
+    | none => false
   for args in combos cfg ps cap strs nats do
+    if shifty && ((ps.zip args).drop 1).any (fun (t, a) => t matches .bitvec _ && huge a) then
+      continue
     let app := mkAppN (mkConst n (ci.levelParams.map fun _ => .zero)) (leanArgs (args.map (·.lean)))
     let shown ← showExpr res app
     let thunkTy := mkForall `u .default (mkConst ``Unit) (mkConst ``String)

@@ -19,13 +19,11 @@ import {
   uint53__lean_uint64_land,
   uint53__lean_uint64_lor,
   uint53__lean_uint64_shift_left,
-  uint53__lean_uint64_shift_right,
   uint53__lean_uint64_xor,
   uint53__lean_uint64_complement,
   uint53__lean_nat_land,
   uint53__lean_nat_lor,
   uint53__lean_nat_shiftl,
-  uint53__lean_nat_shiftr,
   uint53__lean_nat_lxor,
   int53__lean_int64_land,
   int53__lean_int64_lor,
@@ -66,8 +64,7 @@ export const TestUInt64$shiftLeft = (a, b) =>
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestUInt64$shiftRight = (a, b) =>
-  uint53__lean_uint64_shift_right(a, b);
+export const TestUInt64$shiftRight = (a, b) => Math.floor(a / 2 ** (b % 64));
 
 /**
  * `TestUInt64.xor`
@@ -114,7 +111,7 @@ export const TestNat$shiftLeft = (a, b) => uint53__lean_nat_shiftl(a, b);
  * @param {uint53(number)} b
  * @returns {uint53(number)}
  */
-export const TestNat$shiftRight = (a, b) => uint53__lean_nat_shiftr(a, b);
+export const TestNat$shiftRight = (a, b) => Math.floor(a / 2 ** b);
 
 /**
  * `TestNat.xor`

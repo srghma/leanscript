@@ -6,7 +6,6 @@ import {
   uint8__lean_uint8_shift_right,
   uint16__lean_uint16_shift_left,
   uint16__lean_uint16_shift_right,
-  uint32__lean_uint32_shift_left,
   int8__lean_int8_land,
   int8__lean_int8_lor,
   int8__lean_int8_shift_left,
@@ -144,8 +143,7 @@ export const TestUInt32$lor = (a, b) => (a | b) >>> 0;
  * @param {uint32} b
  * @returns {uint32}
  */
-export const TestUInt32$shiftLeft = (a, b) =>
-  uint32__lean_uint32_shift_left(a, b);
+export const TestUInt32$shiftLeft = (a, b) => (a << b) >>> 0;
 
 /**
  * `TestUInt32.shiftRight`

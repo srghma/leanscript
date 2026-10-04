@@ -176,6 +176,8 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | bigint_nat__lean_nat_shiftl : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- `a >> b` (Nat.shiftRight) -/
   | bigint_nat__lean_nat_shiftr : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
+  /-- `Math.floor(a / 2 ** b)` (Nat.shiftRight) -/
+  | uint53__lean_nat_shiftr : JsOpInlinable .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- `a & b` (Nat.land) -/
   | bigint_nat__lean_nat_land : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- `a | b` (Nat.lor) -/
@@ -208,6 +210,8 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | bigint_nat__lean_uint8_to_nat__UInt8_toNat : JsOpInlinable .pure .doesntThrow [(.terminal .uint8)] (.terminal .bigint_nat)
   /-- `a` (UInt8.toNat) -/
   | uint53__lean_uint8_to_nat__UInt8_toNat : JsOpInlinable .pure .doesntThrow [(.terminal .uint8)] (.terminal .uint53)
+  /-- `BigInt.asUintN(64, a)` (UInt64.ofNat) -/
+  | bigint_nat__lean_uint64_of_nat__UInt64_ofNat : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- `a` (UInt8.toUInt32) -/
   | uint8__lean_uint8_to_uint32 : JsOpInlinable .pure .doesntThrow [(.terminal .uint8)] (.terminal .uint32)
   /-- `BigInt(a)` (UInt16.toUInt64) -/
@@ -260,12 +264,20 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | uint32__lean_uint32_lor : JsOpInlinable .pure .doesntThrow [(.terminal .uint32), (.terminal .uint32)] (.terminal .uint32)
   /-- `a ^ b >>> 0` (UInt32.xor) -/
   | uint32__lean_uint32_xor : JsOpInlinable .pure .doesntThrow [(.terminal .uint32), (.terminal .uint32)] (.terminal .uint32)
+  /-- `a << b >>> 0` (UInt32.shiftLeft) -/
+  | uint32__lean_uint32_shift_left : JsOpInlinable .pure .doesntThrow [(.terminal .uint32), (.terminal .uint32)] (.terminal .uint32)
   /-- `Math.imul(a, b) >>> 0` (UInt32.mul) -/
   | uint32__lean_uint32_mul : JsOpInlinable .pure .doesntThrow [(.terminal .uint32), (.terminal .uint32)] (.terminal .uint32)
   /-- `a & b >>> 0` (UInt32.land) -/
   | uint32__lean_uint32_land : JsOpInlinable .pure .doesntThrow [(.terminal .uint32), (.terminal .uint32)] (.terminal .uint32)
   /-- `~a >>> 0` (UInt32.complement) -/
   | uint32__lean_uint32_complement : JsOpInlinable .pure .doesntThrow [(.terminal .uint32)] (.terminal .uint32)
+  /-- `BigInt.asUintN(64, a << b & 63n)` (UInt64.shiftLeft) -/
+  | bigint_nat__lean_uint64_shift_left : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
+  /-- `a >> b & 63n` (UInt64.shiftRight) -/
+  | bigint_nat__lean_uint64_shift_right : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
+  /-- `Math.floor(a / 2 ** b % 64)` (UInt64.shiftRight) -/
+  | uint53__lean_uint64_shift_right : JsOpInlinable .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- `BigInt.asUintN(64, ~a)` (UInt64.complement) -/
   | bigint_nat__lean_uint64_complement : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- `BigInt.asUintN(64, a + b)` (UInt64.add) -/

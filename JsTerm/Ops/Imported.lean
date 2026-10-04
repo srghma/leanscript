@@ -268,8 +268,6 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | uint53__lean_nat_lxor : JsOpImported .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- Nat.shiftLeft -/
   | uint53__lean_nat_shiftl : JsOpImported .pure .mayThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
-  /-- Nat.shiftRight -/
-  | uint53__lean_nat_shiftr : JsOpImported .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- Nat.land -/
   | uint53__lean_nat_land : JsOpImported .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- Nat.lor -/
@@ -341,8 +339,6 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   /-- UInt16.toUInt8 -/
   | uint16__lean_uint16_to_uint8 : JsOpImported .pure .doesntThrow [(.terminal .uint16)] (.terminal .uint8)
   /-- UInt64.ofNat -/
-  | bigint_nat__lean_uint64_of_nat__UInt64_ofNat : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat)] (.terminal .bigint_nat)
-  /-- UInt64.ofNat -/
   | bigint_nat__uint53__lean_uint64_of_nat__UInt64_ofNat : JsOpImported .pure .mayThrow [(.terminal .bigint_nat)] (.terminal .uint53)
   /-- UInt64.ofNat -/
   | uint53__bigint_nat__lean_uint64_of_nat__UInt64_ofNat : JsOpImported .pure .doesntThrow [(.terminal .uint53)] (.terminal .bigint_nat)
@@ -386,16 +382,8 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | bool__lean_bool_to_uint32 : JsOpImported .pure .doesntThrow [(.terminal .bool)] (.terminal .uint32)
   /-- UInt32.div -/
   | uint32__lean_uint32_div : JsOpImported .pure .doesntThrow [(.terminal .uint32), (.terminal .uint32)] (.terminal .uint32)
-  /-- UInt32.shiftLeft -/
-  | uint32__lean_uint32_shift_left : JsOpImported .pure .doesntThrow [(.terminal .uint32), (.terminal .uint32)] (.terminal .uint32)
-  /-- UInt64.shiftLeft -/
-  | bigint_nat__lean_uint64_shift_left : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
   /-- UInt64.shiftLeft -/
   | uint53__lean_uint64_shift_left : JsOpImported .pure .mayThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
-  /-- UInt64.shiftRight -/
-  | bigint_nat__lean_uint64_shift_right : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
-  /-- UInt64.shiftRight -/
-  | uint53__lean_uint64_shift_right : JsOpImported .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- UInt64.complement -/
   | uint53__lean_uint64_complement : JsOpImported .pure .mayThrow [(.terminal .uint53)] (.terminal .uint53)
   /-- UInt64.add -/
