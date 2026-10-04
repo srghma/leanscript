@@ -1,3 +1,51 @@
+# Summary of changes for run 1acbac3d-24c3-41e8-a88a-b5996c6029bd
+Our JavaScript for `KnownConstructors04` now matches the purescript-backend-optimizer output for `test1` and `test2`, and beats it for `test3`. All the changes are in the `Term → Term` optimiser, as you preferred.
+
+**What was wrong.** Each function built the `Option` as a record (`{ tag: 1, _1: "Hello" }`) and checked its tag once per `get!`. The optimiser could only take apart a "conditional of constructors" that was used once. Here the option is used twice.
+
+**Output now** (`pbo`; `faithful` is the same with `42n`):
+```js
+export const test1 = (x) =>
+  42 < x ? ["Hello, World", "Hello, Universe"] : [", World", ", Universe"];
+export const test2 = (f, x) => {
+  const x$1 = 42 < x;
+  return f(x$1 ? "Hello, World" : ", World", x$1 ? "Hello, Universe" : ", Universe");
+};
+export const test3 = (x) => false;
+```
+- **Records and tests:** no records are built, and each function makes at most one comparison. `test3` is constant because `a.get! && !a.get!` is false whichever way the test goes.
+- **No `throw`:** where the legacy output throws `UNREACHABLE`, ours keeps Lean's behaviour. `none.get!` returns the default value (`""` or `false`).
+- **Why `test2` keeps the test inside the arguments:** writing `x > 42 ? f(…) : f(…)` would copy the call to `f`, and the optimiser is proved never to add calls.
+
+**Changes:**
+1. **New pass `Term.condJump`** (`LeanScript/Term/Optimize/CondJump.lean`), run before and after `Term.joinCtor`. It does three rewrites:
+   - A shared conditional `let x := share (c ? a : b)` is written where it is used. This happens when `x` is used once, or only as the subject of `match`es. Each `match` then becomes an `if`.
+   - `if c then jump j a else jump j b` becomes `jump j (c ? a : b)`.
+   - A join point reached by a single jump is inlined.
+2. **New rules in `CondFold.lean`**, applied by `Term.arithWalk`:
+   - A call whose arguments are constants or conditionals of constants on one condition is folded on each side, so `(c ? "Hello" : "") ++ ", World"` becomes `c ? "Hello, World" : ", World"`.
+   - A literal with two or more such conditional operands becomes one conditional of two literals. I added the "two or more" limit after this rule made `KnownConstructors06` worse.
+3. **Hoisting now looks inside call arguments**, so the repeated `42 < x` in `test2` is computed once.
+
+**Proofs** (no `sorry`):
+- **New:** `Term.condJump_eval`, `Term.numCalls_condJump`, `PExpr.liftCond_eval` and `Neu.condFold_eval`. The existing hoisting proofs were extended to the new case.
+- **Whole optimiser:** `Term.optimize_eval` and `Term.numCalls_optimize` still hold. They depend only on `propext`, `Classical.choice` and `Quot.sound`.
+
+No changes were needed in `Term → JsTerm` or `JsTerm → JsTerm`. The file has no loops or recursion, so labeled blocks and loops don't come into it, and no join point is printed as a closure.
+
+**Tests:**
+- **New variants file** `Tests/SnapshotsMy/KnownCtorShared.lean`, with 8 cases and 85 node checks per preset.
+  - Seven are now free of records: `threeUses`, `exceptTwice`, `boolTwice` (it becomes `true`) and the others.
+  - `alsoReturned`: the option is also part of the result, so it is still built once.
+  - `twoMatchCalls`: it still has two `if (x$1)` statements. Merging them would copy code.
+- **New spec** `knownConstructors04Spec` in `Tests/Main.lean`. `lake exe tests` passes 139/139.
+- **Build:** `lake build leanscript TermTests TyTests JsTerm JsSpec tests` succeeds.
+- **Snapshots:** I regenerated them and every node check reports 0 failed.
+  - `usedTwice`, the gap left open from `KnownConstructors03`, is fixed, and `KnownConstructors.test4` and `CaseGuardedSweep` are simpler.
+  - The script still exits 1 because of the `UInt64` "literal too big" errors in `PrimOpInt02Configurable` and `PrimOpInt03Configurable` at the `pbo` preset. Their outputs didn't change.
+
+The full comparison, with before and after code, is in `Tests/SnapshotsPBOPure/KnownConstructors04.md`. Everything is committed.
+
 # Summary of changes for run 57933e6c-0b5d-4956-b7fb-abafdb8f6439
 **KnownConstructors03.** Our JS for `test` already beat purescript-backend-optimizer before this work started, and it is unchanged:
 `export const test = (x) => (42 < x ? "Hello, World!" : "");`

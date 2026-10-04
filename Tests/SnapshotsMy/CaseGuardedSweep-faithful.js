@@ -86,13 +86,14 @@ export const sweep1 = (lo) => {
   let acc$1 = "";
   for (let i$2 = 0n; i$2 < 110n; i$2++) {
     const x$3 = lo + i$2;
-    let x$4;
-    if (x$3 < 1n) {
-      x$4 = "n: " + x$3;
-    } else {
-      x$4 = 1n < x$3 && x$3 < 100n ? "1 < x < 100: " + x$3 : "catch";
-    }
-    acc$1 = acc$1 + x$4 + ";";
+    acc$1 =
+      acc$1 +
+      (x$3 < 1n
+        ? "n: " + x$3
+        : 1n < x$3 && x$3 < 100n
+          ? "1 < x < 100: " + x$3
+          : "catch") +
+      ";";
   }
   return acc$1;
 };

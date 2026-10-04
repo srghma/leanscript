@@ -7,47 +7,42 @@ val k1 [1] : (Nat → (Bool → ((Array Int) → (Array Int)))) := fun x2 [ω] :
     val k5 [1] : ((Array Int) → (Array Int)) := fun x6 [1] : (Array Int) => (open)
       val k7 [1] : ((Array Int) → (Array Int)) := fun x8 [1] : (Array Int) => (closed)
         ret x8
-      let x21 [1] : ((Array Int) → (Array Int)) := nat_rec x2 k7 fun acc9 i10 => (open)
+      let x19 [1] : ((Array Int) → (Array Int)) := nat_rec x2 k7 fun acc9 i10 => (open)
         val k11 [1] : ((Array Int) → (Array Int)) := fun x12 [ω] : (Array Int) => (open)
-          join j13 [1] (x14 [1] : (• | [Int])) :=
-            case x14 of
-            | ctor#0() =>
+          if lean_nat_dec_lt(0, lean_array_get_size(x12)) then
+            let x13 [ω] : Int := share lean_array_get(0, x12, 0)
+            if lean_int_dec_eq(x13, 1) then
               case lean_array_back_opt(x12) of
               | ctor#0() =>
-                ret x12
-              | ctor#1(f15 [1] : Int) =>
-                ret lean_array_push(x12, f15)
-            | ctor#1(f16 [ω] : Int) =>
-              if lean_int_dec_eq(f16, 1) then
-                case lean_array_back_opt(x12) of
-                | ctor#0() =>
-                  ret lean_array_push(x12, 1)
-                | ctor#1(f17 [ω] : Int) =>
-                  if lean_int_dec_eq(f17, 2) then
-                    ret x12
-                  else
-                    if x4 then
-                      ret #[]
-                    else
-                      let x18 [1] : (Array Int) := acc9 lean_array_append(#[f17, 1, 3, f17, 5, 6, 7, 8, 9, 10, 1, 12, 13, 14, 15, 16, 17], x12)
-                      ret x18
-              else
-                case lean_array_back_opt(x12) of
-                | ctor#0() =>
-                  ret lean_array_push(x12, f16)
-                | ctor#1(f19 [ω] : Int) =>
+                ret lean_array_push(x12, 1)
+              | ctor#1(f14 [ω] : Int) =>
+                if lean_int_dec_eq(f14, 2) then
+                  ret x12
+                else
                   if x4 then
                     ret #[]
                   else
-                    let x20 [1] : (Array Int) := acc9 lean_array_append(#[f19, f16, 3, f19, 5, 6, 7, 8, 9, 10, f16, 12, 13, 14, 15, 16, 17], x12)
-                    ret x20
-          if lean_nat_dec_lt(0, lean_array_get_size(x12)) then
-            jump j13 ctor#1(lean_array_get(0, x12, 0))
+                    let x15 [1] : (Array Int) := acc9 lean_array_append(#[f14, 1, 3, f14, 5, 6, 7, 8, 9, 10, 1, 12, 13, 14, 15, 16, 17], x12)
+                    ret x15
+            else
+              case lean_array_back_opt(x12) of
+              | ctor#0() =>
+                ret lean_array_push(x12, x13)
+              | ctor#1(f16 [ω] : Int) =>
+                if x4 then
+                  ret #[]
+                else
+                  let x17 [1] : (Array Int) := acc9 lean_array_append(#[f16, x13, 3, f16, 5, 6, 7, 8, 9, 10, x13, 12, 13, 14, 15, 16, 17], x12)
+                  ret x17
           else
-            jump j13 ctor#0()
+            case lean_array_back_opt(x12) of
+            | ctor#0() =>
+              ret x12
+            | ctor#1(f18 [1] : Int) =>
+              ret lean_array_push(x12, f18)
         ret k11
-      let x22 [1] : (Array Int) := x21 x6
-      ret x22
+      let x20 [1] : (Array Int) := x19 x6
+      ret x20
     ret k5
   ret k3
 ret k1
@@ -58,46 +53,41 @@ val k1 [1] : (Bool → ((Array Int) → (Array Int))) := fun x2 [ω] : Bool => (
   val k3 [1] : ((Array Int) → (Array Int)) := fun x4 [1] : (Array Int) => (open)
     val k5 [1] : ((Array Int) → (Array Int)) := fun x6 [1] : (Array Int) => (closed)
       ret x6
-    let x19 [1] : ((Array Int) → (Array Int)) := nat_rec 1000000 k5 fun acc7 i8 => (open)
+    let x17 [1] : ((Array Int) → (Array Int)) := nat_rec 1000000 k5 fun acc7 i8 => (open)
       val k9 [1] : ((Array Int) → (Array Int)) := fun x10 [ω] : (Array Int) => (open)
-        join j11 [1] (x12 [1] : (• | [Int])) :=
-          case x12 of
-          | ctor#0() =>
+        if lean_nat_dec_lt(0, lean_array_get_size(x10)) then
+          let x11 [ω] : Int := share lean_array_get(0, x10, 0)
+          if lean_int_dec_eq(x11, 1) then
             case lean_array_back_opt(x10) of
             | ctor#0() =>
-              ret x10
-            | ctor#1(f13 [1] : Int) =>
-              ret lean_array_push(x10, f13)
-          | ctor#1(f14 [ω] : Int) =>
-            if lean_int_dec_eq(f14, 1) then
-              case lean_array_back_opt(x10) of
-              | ctor#0() =>
-                ret lean_array_push(x10, 1)
-              | ctor#1(f15 [ω] : Int) =>
-                if lean_int_dec_eq(f15, 2) then
-                  ret x10
-                else
-                  if x2 then
-                    ret #[]
-                  else
-                    let x16 [1] : (Array Int) := acc7 lean_array_append(#[f15, 1, 3, f15, 5, 6, 7, 8, 9, 10, 1, 12, 13, 14, 15, 16, 17], x10)
-                    ret x16
-            else
-              case lean_array_back_opt(x10) of
-              | ctor#0() =>
-                ret lean_array_push(x10, f14)
-              | ctor#1(f17 [ω] : Int) =>
+              ret lean_array_push(x10, 1)
+            | ctor#1(f12 [ω] : Int) =>
+              if lean_int_dec_eq(f12, 2) then
+                ret x10
+              else
                 if x2 then
                   ret #[]
                 else
-                  let x18 [1] : (Array Int) := acc7 lean_array_append(#[f17, f14, 3, f17, 5, 6, 7, 8, 9, 10, f14, 12, 13, 14, 15, 16, 17], x10)
-                  ret x18
-        if lean_nat_dec_lt(0, lean_array_get_size(x10)) then
-          jump j11 ctor#1(lean_array_get(0, x10, 0))
+                  let x13 [1] : (Array Int) := acc7 lean_array_append(#[f12, 1, 3, f12, 5, 6, 7, 8, 9, 10, 1, 12, 13, 14, 15, 16, 17], x10)
+                  ret x13
+          else
+            case lean_array_back_opt(x10) of
+            | ctor#0() =>
+              ret lean_array_push(x10, x11)
+            | ctor#1(f14 [ω] : Int) =>
+              if x2 then
+                ret #[]
+              else
+                let x15 [1] : (Array Int) := acc7 lean_array_append(#[f14, x11, 3, f14, 5, 6, 7, 8, 9, 10, x11, 12, 13, 14, 15, 16, 17], x10)
+                ret x15
         else
-          jump j11 ctor#0()
+          case lean_array_back_opt(x10) of
+          | ctor#0() =>
+            ret x10
+          | ctor#1(f16 [1] : Int) =>
+            ret lean_array_push(x10, f16)
       ret k9
-    let x20 [1] : (Array Int) := x19 x4
-    ret x20
+    let x18 [1] : (Array Int) := x17 x4
+    ret x18
   ret k3
 ret k1

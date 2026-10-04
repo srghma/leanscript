@@ -38,12 +38,7 @@ export const test3 = (x) =>
  * @returns {string}
  */
 export const test4 = (f, x) => {
-  let x$1;
-  if (42 < x) {
-    x$1 = "Hello";
-  } else {
-    x$1 = "Default";
-  }
+  const x$1 = 42 < x ? "Hello" : "Default";
   return f(x$1 + ", World", x$1 + ", Universe");
 };
 

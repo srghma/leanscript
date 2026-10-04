@@ -165,26 +165,8 @@ ret k1
 
 -- usedTwice : Int → Int
 val k1 [1] : (Int → Int) := fun x2 [ω] : Int => (closed)
-  let x3 [ω] : (• | [Int]) := share cond(lean_int_dec_lt(0, x2), ctor#1(x2), ctor#0())
-  join j4 [1] (x5 [1] : Int) :=
-    join j6 [1] (x7 [1] : (• | [Int])) :=
-      join j8 [1] (x9 [1] : Int) :=
-        ret lean_int_add(x5, x9)
-      case x7 of
-      | ctor#0() =>
-        jump j8 1
-      | ctor#1(f10 [1] : Int) =>
-        jump j8 f10
-    case x3 of
-    | ctor#0() =>
-      jump j6 ctor#0()
-    | ctor#1(f11 [1] : Int) =>
-      jump j6 ctor#1(lean_int_mul(f11, 2))
-  case x3 of
-  | ctor#0() =>
-    jump j4 0
-  | ctor#1(f12 [1] : Int) =>
-    jump j4 f12
+  let x3 [ω] : Bool := share lean_int_dec_lt(0, x2)
+  ret lean_int_add(cond(x3, x2, 0), cond(x3, lean_int_mul(x2, 2), 1))
 ret k1
 
 -- pairBool : Int → Int

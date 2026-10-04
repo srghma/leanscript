@@ -6,22 +6,8 @@
  * @param {int53(number)} x
  * @returns {Array<string>}
  */
-export const test1 = (x) => {
-  const x$1 = 42 < x ? { tag: 1, _1: "Hello" } : { tag: 0 };
-  let x$2;
-  if (x$1.tag === 0) {
-    x$2 = "";
-  } else {
-    x$2 = x$1._1;
-  }
-  let x$3;
-  if (x$1.tag === 0) {
-    x$3 = "";
-  } else {
-    x$3 = x$1._1;
-  }
-  return [x$2 + ", World", x$3 + ", Universe"];
-};
+export const test1 = (x) =>
+  42 < x ? ["Hello, World", "Hello, Universe"] : [", World", ", Universe"];
 
 /**
  * `test2`
@@ -30,21 +16,11 @@ export const test1 = (x) => {
  * @returns {string}
  */
 export const test2 = (f, x) => {
-  const x$1 = 42 < x ? { tag: 1, _1: "Hello" } : { tag: 0 };
-  let x$2;
-  if (x$1.tag === 0) {
-    x$2 = "";
-  } else {
-    x$2 = x$1._1;
-  }
-  const x$3 = x$2 + ", World";
-  let x$4;
-  if (x$1.tag === 0) {
-    x$4 = "";
-  } else {
-    x$4 = x$1._1;
-  }
-  return f(x$3, x$4 + ", Universe");
+  const x$1 = 42 < x;
+  return f(
+    x$1 ? "Hello, World" : ", World",
+    x$1 ? "Hello, Universe" : ", Universe",
+  );
 };
 
 /**
@@ -52,22 +28,4 @@ export const test2 = (f, x) => {
  * @param {int53(number)} x
  * @returns {boolean}
  */
-export const test3 = (x) => {
-  const x$1 = 42 < x ? { tag: 1, _1: true } : { tag: 0 };
-  let x$2;
-  if (x$1.tag === 0) {
-    x$2 = false;
-  } else {
-    x$2 = x$1._1;
-  }
-  if (x$2) {
-    let x$3;
-    if (x$1.tag === 0) {
-      x$3 = false;
-    } else {
-      x$3 = x$1._1;
-    }
-    return !x$3;
-  }
-  return false;
-};
+export const test3 = (x) => false;

@@ -69,15 +69,10 @@ ret k1
 
 -- sweep1 : Int → String
 val k1 [1] : (Int → String) := fun x2 [ω] : Int => (closed)
-  let x8 [1] : String := nat_rec 110 "" fun acc3 i4 => (open)
+  let x6 [1] : String := nat_rec 110 "" fun acc3 i4 => (open)
     let x5 [ω] : Int := share lean_int_add(x2, lean_nat_to_int(i4))
-    join j6 [1] (x7 [1] : String) :=
-      ret lean_string_append__String_append(lean_string_append__String_append(acc3, x7), ";")
-    if lean_int_dec_lt(x5, 1) then
-      jump j6 lean_string_append__String_append("n: ", lean_int_repr(x5))
-    else
-      jump j6 cond(cond(lean_int_dec_lt(1, x5), lean_int_dec_lt(x5, 100), false), lean_string_append__String_append("1 < x < 100: ", lean_int_repr(x5)), "catch")
-  ret x8
+    ret lean_string_append__String_append(lean_string_append__String_append(acc3, cond(lean_int_dec_lt(x5, 1), lean_string_append__String_append("n: ", lean_int_repr(x5)), cond(cond(lean_int_dec_lt(1, x5), lean_int_dec_lt(x5, 100), false), lean_string_append__String_append("1 < x < 100: ", lean_int_repr(x5)), "catch"))), ";")
+  ret x6
 ret k1
 
 -- sweep4 : Int → Int

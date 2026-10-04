@@ -19,8 +19,8 @@ set_option autoImplicit false
 * **occurs at least twice** in `t` at its depth (`Term.occ`),
 
 then `t` becomes `let x := s; t[x/s]`: the call is computed once, in front, and every
-occurrence of it at the same depth — in answers, jumps, conditions, scrutinees and shared
-expressions (`let y := share s` is dropped, `y` renamed to `x`) — is replaced by `x`
+occurrence of it at the same depth — in answers, jumps, conditions, scrutinees, shared
+expressions, the operands of calls (`let y := share s` is dropped, `y` renamed to `x`) — is replaced by `x`
 (`Term.abstr`).  No path computes more than before (each already computed `s`), and the code
 is shorter.  This shares
 
@@ -57,6 +57,10 @@ def Term.abstrLetE {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ' τ : Ty ks} {js 
       | some b' => ⟨_, b'⟩
       | none => ⟨_, .letE u (.share (m.abstr x s).2) r.2⟩
     else ⟨_, .letE u (.share (m.abstr x s).2) r.2⟩
+  | .app f a h =>
+    match Lvl.some? (Lvl.meet (f.abstr x s).1 (a.abstr x s).1) with
+    | some h' => ⟨_, .letE u (.app (f.abstr x s).2 (a.abstr x s).2 h'.2) r.2⟩
+    | none => ⟨_, .letE u (.app f a h) r.2⟩
   | c => ⟨_, .letE u c r.2⟩
 
 theorem Term.abstrLetE_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ' τ : Ty ks}
@@ -82,6 +86,13 @@ theorem Term.abstrLetE_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ' τ : Ty
       · simp only [Term.eval, Comp.eval, Neu.abstr_eval x s κ ρ hx m]; exact hr
     · rw [dite_eq_right h]
       simp only [Term.eval, Comp.eval, Neu.abstr_eval x s κ ρ hx m]; exact hr
+  | app f a h =>
+    simp only [Comp.eval] at hr
+    simp only [Term.abstrLetE]
+    split
+    · simp only [Term.eval, Comp.eval, PExpr.abstr_eval x s κ ρ hx f,
+        PExpr.abstr_eval x s κ ρ hx a]; exact hr
+    · simp only [Term.eval, Comp.eval]; exact hr
   | _ => simp only [Term.abstrLetE, Term.eval]; exact hr
 
 mutual
@@ -211,18 +222,21 @@ def Fin.concatL {α : Type} : (n : Nat) → (Fin n → List α) → List α
 def Comp.occS {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} (s : ENeu Φ Γ σ) :
     Comp Δ d Φ Γ τ ℓ → Nat
   | .share m => m.occ s
+  | .app f a _ => f.occ s + a.occ s
   | _ => 0
 
 /-- Does the computation compute the call `s` (in a shared expression)? -/
 def Comp.alwaysS {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} (s : ENeu Φ Γ σ) :
     Comp Δ d Φ Γ τ ℓ → Bool
   | .share m => m.always s
+  | .app f a _ => f.always s || a.always s
   | _ => false
 
 /-- The calls of externs on atoms in a shared expression. -/
 def Comp.candsS {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} :
     Comp Δ d Φ Γ τ ℓ → List (SomeNeu Δ Φ Γ)
   | .share m => m.cands
+  | .app f a _ => f.cands ++ a.cands
   | _ => []
 
 mutual
@@ -517,6 +531,9 @@ theorem Term.numCalls_abstrLetE {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ' τ 
         rw [Term.numCalls_rename _ hb']; simp only [Comp.numCalls]; omega
       · simp only [Term.numCalls, Comp.numCalls]; omega
     · rw [dite_eq_right h]; simp only [Term.numCalls, Comp.numCalls]; omega
+  | app f a h =>
+    simp only [Term.abstrLetE]
+    split <;> simp only [Term.numCalls, Comp.numCalls] <;> omega
   | _ => simp only [Term.abstrLetE, Term.numCalls]; omega
 
 mutual

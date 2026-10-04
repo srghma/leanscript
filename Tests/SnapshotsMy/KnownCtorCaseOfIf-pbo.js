@@ -211,26 +211,8 @@ export const isSomeIf = (x) => 0 < x;
  * @returns {int53(number)}
  */
 export const usedTwice = (x) => {
-  const x$1 = 0 < x ? { tag: 1, _1: x } : { tag: 0 };
-  let x$2;
-  if (x$1.tag === 0) {
-    x$2 = 0;
-  } else {
-    x$2 = x$1._1;
-  }
-  let x$3;
-  if (x$1.tag === 0) {
-    x$3 = { tag: 0 };
-  } else {
-    x$3 = { tag: 1, _1: int53__lean_int_mul(x$1._1, 2) };
-  }
-  let x$4;
-  if (x$3.tag === 0) {
-    x$4 = 1;
-  } else {
-    x$4 = x$3._1;
-  }
-  return int53__lean_int_add(x$2, x$4);
+  const x$1 = 0 < x;
+  return int53__lean_int_add(x$1 ? x : 0, x$1 ? int53__lean_int_mul(x, 2) : 1);
 };
 
 /**

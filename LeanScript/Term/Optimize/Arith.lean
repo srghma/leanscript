@@ -3,6 +3,7 @@ module
 public import LeanScript.Term.Optimize.ArithPow
 public import LeanScript.Term.Optimize.FloatUnit
 public import LeanScript.Term.Optimize.FloatComm
+public import LeanScript.Term.Optimize.CondFold
 
 @[expose] public section
 
@@ -41,6 +42,12 @@ Proved: the value is unchanged (`Term.arithWalk_eval`), and no call is added
 (`Term.numCalls_arithWalk`: only pure expressions change).  In JavaScript a `number` model of
 `Int`/`Nat` (the `pbo` preset) checks every operation for overflow; regrouping can change which
 intermediate result overflows (not the value when none does).
+
+At every extern call and every literal, a conditional on one condition whose arms are constants
+is pushed out (`LeanScript.Term.Optimize.CondFold`): `(c ? "Hello" : "") ++ ", World"` is
+`c ? "Hello, World" : ", World"` (`Neu.condFold`), and an array, list, record or union literal
+with two conditional operands or more, on the same condition, the others constants, is one
+conditional of two literals (`PExpr.liftCond`).
 -/
 
 namespace LeanScript
@@ -418,7 +425,7 @@ def Neu.arithWalk {Φ : KCtx ks} {Γ : UCtx ks} : {τ : Ty ks} → {ℓ : Nat} �
   | _, _, .var x => .var x
   | _, _, .data_out b j e => .data_out b j e.arithWalk
   | _, _, .cond c a b => .cond c.arithWalk a.arithWalk b.arithWalk
-  | _, _, .extern e args h => Neu.normArith (.extern e args.arithWalk h)
+  | _, _, .extern e args h => Neu.condFold (Neu.normArith (.extern e args.arithWalk h))
 /-- `Neu.arithWalk` in a pure expression. -/
 def PExpr.arithWalk {Φ : KCtx ks} {Γ : UCtx ks} : {τ : Ty ks} → {o : Lvl} →
     PExpr Δ Φ Γ τ o → PExpr Δ Φ Γ τ o
@@ -426,10 +433,10 @@ def PExpr.arithWalk {Φ : KCtx ks} {Γ : UCtx ks} : {τ : Ty ks} → {o : Lvl} �
   | _, _, .kvar k => .kvar k
   | _, _, .lit p v => .lit p v
   | _, _, .enum_mk s i => .enum_mk s i
-  | _, _, .record_mk args => .record_mk args.arithWalk
-  | _, _, .union_mk ix args => .union_mk ix args.arithWalk
-  | _, _, .array_mk es => .array_mk es.arithWalk
-  | _, _, .list_mk es => .list_mk es.arithWalk
+  | _, _, .record_mk args => PExpr.liftCond (.record_mk args.arithWalk)
+  | _, _, .union_mk ix args => PExpr.liftCond (.union_mk ix args.arithWalk)
+  | _, _, .array_mk es => PExpr.liftCond (.array_mk es.arithWalk)
+  | _, _, .list_mk es => PExpr.liftCond (.list_mk es.arithWalk)
   | _, _, .data_in b j e => .data_in b j e.arithWalk
 /-- `Neu.arithWalk` in arguments. -/
 def Args.arithWalk {Φ : KCtx ks} {Γ : UCtx ks} : {σs : List (Ty ks)} → {o : Lvl} →
@@ -454,7 +461,7 @@ theorem Neu.arithWalk_eval {Φ : KCtx ks} {Γ : UCtx ks} : {τ : Ty ks} → {ℓ
         PExpr.arithWalk_eval b]
   | _, _, .extern e args _, κ, ρ => by
       simp only [Neu.arithWalk]
-      rw [Neu.normArith_eval]
+      rw [Neu.condFold_eval, Neu.normArith_eval]
       simp only [Neu.eval, Args.arithWalk_eval args]
 theorem PExpr.arithWalk_eval {Φ : KCtx ks} {Γ : UCtx ks} : {τ : Ty ks} → {o : Lvl} →
     (e : PExpr Δ Φ Γ τ o) → (κ : KEnv Δ Φ) → (ρ : UEnv Δ Γ) → e.arithWalk.eval κ ρ = e.eval κ ρ
@@ -463,13 +470,17 @@ theorem PExpr.arithWalk_eval {Φ : KCtx ks} {Γ : UCtx ks} : {τ : Ty ks} → {o
   | _, _, .lit _ _, _, _ => rfl
   | _, _, .enum_mk _ _, _, _ => rfl
   | _, _, .record_mk args, κ, ρ => by
-      simp only [PExpr.arithWalk, PExpr.eval, Args.arithWalk_eval args] <;> rfl
+      simp only [PExpr.arithWalk]; rw [PExpr.liftCond_eval]
+      simp only [PExpr.eval, Args.arithWalk_eval args] <;> rfl
   | _, _, .union_mk _ args, κ, ρ => by
-      simp only [PExpr.arithWalk, PExpr.eval, Args.arithWalk_eval args] <;> rfl
+      simp only [PExpr.arithWalk]; rw [PExpr.liftCond_eval]
+      simp only [PExpr.eval, Args.arithWalk_eval args] <;> rfl
   | _, _, .array_mk es, κ, ρ => by
-      simp only [PExpr.arithWalk, PExpr.eval, Elems.arithWalk_eval es] <;> rfl
+      simp only [PExpr.arithWalk]; rw [PExpr.liftCond_eval]
+      simp only [PExpr.eval, Elems.arithWalk_eval es] <;> rfl
   | _, _, .list_mk es, κ, ρ => by
-      simp only [PExpr.arithWalk, PExpr.eval, Elems.arithWalk_eval es] <;> rfl
+      simp only [PExpr.arithWalk]; rw [PExpr.liftCond_eval]
+      simp only [PExpr.eval, Elems.arithWalk_eval es] <;> rfl
   | _, _, .data_in _ _ e, κ, ρ => by
       simp only [PExpr.arithWalk, PExpr.eval, PExpr.arithWalk_eval e]
 theorem Args.arithWalk_eval {Φ : KCtx ks} {Γ : UCtx ks} : {σs : List (Ty ks)} → {o : Lvl} →

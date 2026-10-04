@@ -3183,6 +3183,61 @@ def knownConstructors03Spec : Spec := describe "KnownConstructors03" do
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+/-- `Tests/SnapshotsPBOPure/KnownConstructors04.lean` (an `Option` chosen by a test, named once
+    and taken apart by two `get!`s) and its variants `Tests/SnapshotsMy/KnownCtorShared.lean`:
+    no record is built for the option, the test is made once, the appends of literals are folded
+    (`test1` is one conditional of two array literals, `test3` is `false`), and an option that is
+    also returned is still built once (`alsoReturned`, the only `.tag` test left). -/
+def knownConstructors04Spec : Spec := describe "KnownConstructors04" do
+  it "a shared conditional of constructors is written at its case analyses (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/knownconstructors04"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at preset pbo, fragments at preset faithful, absent,
+    --  number of `.tag === ` tests, checks)
+    for (path, file, fragsPbo, fragsFaithful, absent, nTags, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "KnownConstructors04",
+          ["42 < x ? [\"Hello, World\", \"Hello, Universe\"] : [\", World\", \", Universe\"]",
+           "  const x$1 = 42 < x;",
+           "    x$1 ? \"Hello, World\" : \", World\",",
+           "    x$1 ? \"Hello, Universe\" : \", Universe\",",
+           "export const test3 = (x) => false;"],
+          ["42n < x ? [\"Hello, World\", \"Hello, Universe\"] : [\", World\", \", Universe\"]",
+           "  const x$1 = 42n < x;",
+           "export const test3 = (x) => false;"],
+          ["{ tag: ", "._1", "let x$"], (0 : Nat), (14 : Nat)),
+        ("Tests/SnapshotsMy", "KnownCtorShared",
+          ["  return [(x$1 ? s : \"none\") + \"!\", x$1 ? s : \"?\"];",
+           "42 < x ? [\"Hello1\", \"Hello2\", \"Hello3\"] : [\"1\", \"2\", \"3\"]",
+           "  return (x$1 ? String(x) : \"neg\") + int53__lean_int_add(x$1 ? x : 0, 1);",
+           "export const boolTwice = (x) => true;",
+           "    return x$1 ? \"Hello, World\" : \", World\";"],
+          ["  return [(x$1 ? s : \"none\") + \"!\", x$1 ? s : \"?\"];",
+           "42n < x ? [\"Hello1\", \"Hello2\", \"Hello3\"] : [\"1\", \"2\", \"3\"]",
+           "  return (x$1 ? String(x) : \"neg\") + ((x$1 ? x : 0n) + 1n);",
+           "export const boolTwice = (x) => true;"],
+          ["while (", "nat_rec"], 1, 85)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript exit code" 0 out.exitCode
+      for (preset, frags) in [("pbo", fragsPbo), ("faithful", fragsFaithful)] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        assertEq s!"{file}-{preset}: tests of a tag" nTags ((js.splitOn ".tag === ").length - 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -3230,6 +3285,7 @@ def spec : Spec := do
   knownConstructors01Spec
   knownConstructors02Spec
   knownConstructors03Spec
+  knownConstructors04Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

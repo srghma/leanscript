@@ -6,6 +6,7 @@ public import LeanScript.Term.Optimize.CountInline
 public import LeanScript.Term.Optimize.CountInlineRet
 public import LeanScript.Term.Optimize.CountJoinCtor
 public import LeanScript.Term.Optimize.CountLoopYield
+public import LeanScript.Term.Optimize.CountCondJump
 
 @[expose] public section
 
@@ -478,22 +479,26 @@ theorem Term.numCalls_optimize {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty 
     (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk
   have h5' := Term.numCalls_appendWalk
     (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits
-  have h5j := Term.numCalls_joinCtor
+  have h5c := Term.numCalls_condJump
     (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk
+  have h5j := Term.numCalls_joinCtor
+    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.condJump
+  have h5c' := Term.numCalls_condJump
+    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.condJump.joinCtor
   have h5y := Term.numCalls_loopYield
-    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor
+    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.condJump.joinCtor.condJump
   have h5o := Term.numCalls_openCall
-    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.loopYield
+    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.condJump.joinCtor.condJump.loopYield
   have h5d := Term.numCalls_delayEta
-    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.loopYield.openCall
+    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.condJump.joinCtor.condJump.loopYield.openCall
   have h6 := Term.numCalls_inlineRet
-    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.loopYield.openCall.delayEta
+    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.condJump.joinCtor.condJump.loopYield.openCall.delayEta
   have h6' := Term.numCalls_arithWalk
-    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.loopYield.openCall.delayEta.inlineRet
+    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.condJump.joinCtor.condJump.loopYield.openCall.delayEta.inlineRet
   have h7 := Term.numCalls_dce
-    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.loopYield.openCall.delayEta.inlineRet.arithWalk
+    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.condJump.joinCtor.condJump.loopYield.openCall.delayEta.inlineRet.arithWalk
   have h8 := Term.numCalls_sinkWalk
-    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.joinCtor.loopYield.openCall.delayEta.inlineRet.arithWalk.dce
+    (t.inlineKnown.simp.widenFields.reuseFields []).knownTests.knownSizes.shareTestWalk.zipTestWalk.dce.cseWalk.hoistWalk.condWalk.mergeTestWalk.knownLits.appendWalk.condJump.joinCtor.condJump.loopYield.openCall.delayEta.inlineRet.arithWalk.dce
   simp only [Term.optimize]; omega
 
 /-- Running the optimiser any number of times never adds calls either. -/

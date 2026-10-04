@@ -205,26 +205,8 @@ export const isSomeIf = (x) => 0n < x;
  * @returns {int(bigint)}
  */
 export const usedTwice = (x) => {
-  const x$1 = 0n < x ? { tag: 1, _1: x } : { tag: 0 };
-  let x$2;
-  if (x$1.tag === 0) {
-    x$2 = 0n;
-  } else {
-    x$2 = x$1._1;
-  }
-  let x$3;
-  if (x$1.tag === 0) {
-    x$3 = { tag: 0 };
-  } else {
-    x$3 = { tag: 1, _1: x$1._1 * 2n };
-  }
-  let x$4;
-  if (x$3.tag === 0) {
-    x$4 = 1n;
-  } else {
-    x$4 = x$3._1;
-  }
-  return x$2 + x$4;
+  const x$1 = 0n < x;
+  return (x$1 ? x : 0n) + (x$1 ? x * 2n : 1n);
 };
 
 /**

@@ -25,14 +25,10 @@ ret k1
 -- test4 : (String → String → String) → Int → String
 val k1 [1] : ((String → (String → String)) → (Int → String)) := fun x2 [ω] : (String → (String → String)) => (closed)
   val k3 [1] : (Int → String) := fun x4 [1] : Int => (open)
-    join j5 [1] (x6 [ω] : String) :=
-      let x7 [1] : (String → String) := x2 lean_string_append__String_append(x6, ", World")
-      let x8 [1] : String := x7 lean_string_append__String_append(x6, ", Universe")
-      ret x8
-    if lean_int_dec_lt(42, x4) then
-      jump j5 "Hello"
-    else
-      jump j5 "Default"
+    let x5 [ω] : String := share cond(lean_int_dec_lt(42, x4), "Hello", "Default")
+    let x6 [1] : (String → String) := x2 lean_string_append__String_append(x5, ", World")
+    let x7 [1] : String := x6 lean_string_append__String_append(x5, ", Universe")
+    ret x7
   ret k3
 ret k1
 
