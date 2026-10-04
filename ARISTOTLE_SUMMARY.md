@@ -1,3 +1,37 @@
+# Summary of changes for run 183c468b-0221-4425-beb0-2bb0cecd0fba
+**`KnownConstructors02.lean` itself was already better than the legacy output, so its JavaScript didn't change.**
+- Legacy tests `a.tag === "error"` and then `"ok"`, returns `a._1` in each arm, and ends with `throw new Error("UNREACHABLE")`.
+- Ours, at both presets, is `export const test = (a) => a._1;`. The known `some` and the dead `none => 42` arm are already gone from the `Term`. Both arms read the field at the same position, so the printer writes them once, with no test.
+
+To look for real gaps I added variants in `Tests/SnapshotsMy/KnownCtorExcept.lean`: `Sum`, three constructors, nested `some`, an inlined helper, two scrutinees, and different fields. Most were already ideal. Two gaps were real, and both are fixed:
+
+1. **The same field, then more code.** `callAfter` gave `const x$1 = a._1; return int53__lean_int_add(f(x$1), 1);`. It is now `(f, a) => int53__lean_int_add(f(a._1), 1)`. `knownThenAdd` is now `(a, k) => int53__lean_int_add(a._1, k)`.
+2. **A loop whose state is rebuilt by a `match` on itself** (`countDown`). Each step built a temporary `let x$3`, set it in both arms, then ran `p$1 = x$3;`. Now each arm assigns `p$1` directly and reads `p$1._1` in place. It is still a `while (true)` loop, so it can't overflow the stack.
+
+**Why the fixes are not in the `Term` phase you preferred:**
+- `Term` has no expression for "field *i* of a union, whatever its constructor". The only way to remove gap 1 there is to copy the join point's body into every arm. That copies the body's calls, and the optimiser is proved never to add calls (`Term.numCalls_optimize`), so the copy would break that theorem whenever the body calls something, as `callAfter` does.
+- The temporary in gap 2 and the loop variable only exist after conversion. `Term` has no mutable variables.
+- The `Term → JsTerm` conversion builds a join point without knowing what follows it, so it can't make either rewrite.
+
+**What I changed:**
+- **New `JsTerm → JsTerm` pass, `JsBlock.joinArms`** (`JsTerm/Lower/JoinArms.lean`). It runs first in the `JsTerm` optimiser (`JsTerm/Print/Share.lean`) and does two rewrites:
+  - `joinIntoArms?` handles gap 1. When every arm takes apart the field at the same position and only jumps with it, the code after the join point is written into each arm. The arms are then identical, so the printer writes that code once, with no test. The condition is exactly what the printer's merge requires, so nothing ends up duplicated in the output.
+  - `joinIntoAssign?` handles gap 2. When the code after the join point starts with `m = x;` and never reads `x` again, each jump assigns `m` itself.
+- **Printer change in `readInPlace`** (`JsTerm/Print/Mini/Block.lean`), needed for gap 2. A field of a mutable variable can now be read in place when the block's first statement assigns that variable and the field is read only in the value being assigned.
+
+Neither change is proved; like the other `JsTerm` passes, they are checked by the generated `node` checks.
+
+**Testing:**
+- I regenerated all snapshots and every node check reports 0 failures. The script still exits 1, as it did before, because of `KnownConstructors04`'s known `get!` panics.
+- The only other output that changed is `LoopState.minMaxSum`. Its temporary `x$12` is gone, but `acc$1._1` is now read three times in the return. Ideally it would be `return acc$1._1;`, which needs nested record eta in `Term.recordEta`.
+- New spec `knownConstructors02Spec` in `Tests/Main.lean`. It runs leanscript on both files at both presets, checks output fragments, checks that `const x$`, `let x$`, `const { _1: f$` and `throw` are absent, and runs the node checks (4 and 119).
+- `lake build leanscript TermTests TyTests JsTerm JsSpec tests` succeeds, and `lake exe tests` passes 137/137.
+- A plain `lake build` of the default targets fails: `LeanScript/Term/Syntax/UsageAlgebra.lean` imports Mathlib, which the project doesn't depend on. I didn't touch that file.
+
+**Still not translated:** `for` loops over a `List` or `Array` of `Except`, and structural recursion over `List (Except Int Int)`. This is unrelated to known constructors, so those functions are not in the variants file.
+
+The full comparison is in `Tests/SnapshotsPBOPure/KnownConstructors02.md`. Everything is committed.
+
 # Summary of changes for run 970b4c50-42a9-4e5a-ad59-6a43d528852b
 **KnownConstructors01 was already on par.** purescript-backend-optimizer outputs `const test1 = "b";`. Both of our presets output `export const test1 = "b";`. Lean's compiler folds the known `some` before our pipeline sees the code, so even the unoptimised `Term` is `ret "b"`.
 

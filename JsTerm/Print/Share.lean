@@ -4,6 +4,7 @@ import JsTerm.Lower.Unroll
 import JsTerm.Lower.AddChain
 import JsTerm.Lower.Sink
 import JsTerm.Lower.MergeIte
+import JsTerm.Lower.JoinArms
 import JsTerm.Lower.ShareTail
 import JsTerm.Lower.Globals
 
@@ -235,14 +236,15 @@ def literalCalls (funs : List JsFun) : List JsFun := Id.run do
 
 /-- The functions `funs`, those that compute the same up to the literal initial value of their
     first mutable variable written as calls of one shared worker (put just before the first of
-    them); first, the pairs of `pairTagLoops` without their tag, then the additions of
+    them); first, the pairs of `pairTagLoops` without their tag, then the join points written
+    into the arms that jump to them or into the variable they feed (`JsTerm.Lower.JoinArms`), the additions of
     literals folded through constants (`JsTerm.Lower.AddChain`), the constants read on one
     path only computed on it (`JsTerm.Lower.Sink`), the tests that end in the same statements
     merged (`JsTerm.Lower.MergeIte`), and the tails that several branches of a test end in
     written once after a labelled block (`JsTerm.Lower.ShareTail`, where that makes the
     JavaScript shorter, the tests then merged again). -/
 def shareWorkers (funs : List JsFun) : List JsFun := Id.run do
-  let funs := (pairTagLoops (linkGlobals funs)).map fun f => (f.foldAdds.sink.mergeIte.shareTails mergedCost).mergeIte
+  let funs := (pairTagLoops (linkGlobals funs)).map fun f => (f.joinArms.foldAdds.sink.mergeIte.shareTails mergedCost).mergeIte
   let arr := funs.toArray.map fun _ => ()
   let names := funs.map (·.name)
   -- for each function: the worker put before it, and the call it is written as

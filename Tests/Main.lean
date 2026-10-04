@@ -3086,6 +3086,51 @@ def knownConstructors01Spec : Spec := describe "KnownConstructors01" do
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+/-- `KnownConstructors02.lean`: `test` (a `match` on `some a`, `a : Except Int Int`, each arm
+    answering its one field) is `(a) => a._1`, without a test (legacy tests both tags and throws
+    `UNREACHABLE`).  Its variants `KnownCtorExcept.lean`: the same field followed by more code
+    (`knownThenAdd`, `callAfter`: the join point is written into the arms, which the printer then
+    writes once, `JsTerm.Lower.JoinArms`), and a loop whose state is rebuilt by a `match` on
+    itself (`countDown`: every arm assigns the loop variable, no temporary). -/
+def knownConstructors02Spec : Spec := describe "KnownConstructors02" do
+  it "the same field in every arm read once, without a test (needs node and leanscript)" do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/knownconstructors02"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments at both presets, absent, checks)
+    for (path, file, frags, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "KnownConstructors02",
+          ["export const test = (a) => a._1;"], [".tag", "if (", "throw"], (4 : Nat)),
+        ("Tests/SnapshotsMy", "KnownCtorExcept",
+          ["export const knownSome = (a) => a._1;",
+           "export const knownSum = (a) => a._1;",
+           "export const threeFirst = (t) => t._1;",
+           "export const knownNested = (a) => a._1;",
+           "export const knownViaHelper = (a) => a._1;",
+           "export const knownThenAdd = (a, k) => ",
+           "export const callAfter = (f, a) => ", "f(a._1)",
+           "      p$1 = { tag: 1, _1: ", "      p$1 = { tag: 0, _1: "],
+          ["const x$", "let x$", "const { _1: f$", "throw"], 119)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -3131,6 +3176,7 @@ def spec : Spec := do
   inlineReferenceRecordUpdateSpec
   knownConstructor07Spec
   knownConstructors01Spec
+  knownConstructors02Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

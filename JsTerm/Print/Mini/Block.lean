@@ -100,8 +100,21 @@ def readInPlace {C M J : List JsTy} {k : JsEnd} (src : Option (Option Nat)) (n :
       | none => true
       | some m => !occs.any fun o => o.write && o.is ⟨true, m⟩
     let uses j := occs.filter fun o => !o.isMut && o.idx == n - 1 - j
+    -- the mutable variable is assigned by the first statement, `m = e;`, the fields read in `e`
+    -- only (before the assignment): read in place there
+    let firstAssign : Option (Nat → Bool) := match m, rest with
+      | some m, .assign x e r =>
+        let eo := e.occs
+        let ro := r.occs
+        if x.index == m && !eo.any (fun o => o.write && o.is ⟨true, m⟩) then
+          some fun j =>
+            let ue := eo.filter fun o => !o.isMut && o.idx == n - 1 - j
+            let ur := ro.filter fun o => !o.isMut && o.idx == n - 1 - j
+            ur.isEmpty && (ue.isEmpty || (ue.size == 1 && !ue.any (·.again)))
+        else none
+      | _, _ => none
     -- a field the block never reads is not bound
-    if !stable then fun j => (uses j).isEmpty else
+    if !stable then (firstAssign.getD fun j => (uses j).isEmpty) else
     fun j =>
       let us := uses j
       us.isEmpty || (us.size == 1 && !us.any (·.again))
