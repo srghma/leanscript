@@ -20,6 +20,8 @@ JavaScript backend on its own grammar before, `MoreJs.condNode`, and by its prin
 * a condition that is a negation, `c ? false : true`, is `c` with the two branches swapped:
   `(c ? false : true) ? a : b` is `c ? b : a` (`Neu.mkCond`), and
   `if (c ? false : true) then t else e` is `if c then e else t` (`Branch.mkIte`).
+* the negation of a conditional one of whose arms is a literal is pushed into its arms:
+  `(p ? false : q) ? false : true` is `p ? true : (q ? false : true)` (`Neu.condOfCond?`).
 
 It also answers a test of a key of a hash map with string keys, the case analysis of `m[k]?`
 whose arms answer Boolean literals, by `m.contains k` (`Term.ofBranchStrMap`,
@@ -112,23 +114,135 @@ theorem Neu.mkCondLit_eval {Φ : KCtx ks} {Γ : UCtx ks} {ℓ : Nat} {τ : Ty ks
 
 /-- `c ? a : b`, with `c ? true : false` as `c`, and a negated condition read as the
     condition with the branches swapped. -/
-def Neu.mkCond {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} {o₁ o₂ : Lvl}
+def Neu.mkCondNeg {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} {o₁ o₂ : Lvl}
     (c : Neu Δ Φ Γ .bool ℓ) (a : PExpr Δ Φ Γ τ o₁) (b : PExpr Δ Φ Γ τ o₂) :
     Neu Δ Φ Γ τ (Lvl.meetL ℓ (Lvl.meet o₁ o₂)) :=
   match c.negView? with
   | some c' => (Neu.cond c' b a).castLvlC (by rw [Lvl.meet_comm])
   | none => Neu.mkCondLit c a b
 
-theorem Neu.mkCond_eval {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} {o₁ o₂ : Lvl}
+theorem Neu.mkCondNeg_eval {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} {o₁ o₂ : Lvl}
     (c : Neu Δ Φ Γ .bool ℓ) (a : PExpr Δ Φ Γ τ o₁) (b : PExpr Δ Φ Γ τ o₂) (κ : KEnv Δ Φ)
-    (ρ : UEnv Δ Γ) : (Neu.mkCond c a b).eval κ ρ = (Neu.cond c a b).eval κ ρ := by
-  unfold Neu.mkCond
+    (ρ : UEnv Δ Γ) : (Neu.mkCondNeg c a b).eval κ ρ = (Neu.cond c a b).eval κ ρ := by
+  unfold Neu.mkCondNeg
   split
   · rename_i c' hc
     rw [Neu.castLvlC_eval]
     simp only [Neu.eval, Neu.negView?_eval c c' hc κ ρ]
     split <;> rename_i h <;> simp [h]
   · exact Neu.mkCondLit_eval c a b κ ρ
+
+/-- Is the neutral expression an unknown? -/
+def Neu.isVarB {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} : Neu Δ Φ Γ τ ℓ → Bool
+  | .var _ => true
+  | _ => false
+
+/-- Is the pure expression an unknown? -/
+def PExpr.isVarB {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl} : PExpr Δ Φ Γ τ o → Bool
+  | .neu (.var _) => true
+  | _ => false
+
+/-- `x ? a : b` for a Boolean `x` that is a literal (its arm) or neutral (`Neu.mkCondLit`). -/
+def PExpr.condArm? {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ox o₁ o₂ : Lvl}
+    (x : PExpr Δ Φ Γ .bool ox) (a : PExpr Δ Φ Γ τ o₁) (b : PExpr Δ Φ Γ τ o₂) :
+    Option ((o : Lvl) × PExpr Δ Φ Γ τ o) :=
+  match x.boolLit? with
+  | some v => some (if v then ⟨_, a⟩ else ⟨_, b⟩)
+  | none =>
+      match x with
+      | .neu n => some ⟨_, .neu (Neu.mkCondLit n a b)⟩
+      | _ => none
+
+theorem PExpr.condArm?_eval {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ox o₁ o₂ : Lvl}
+    (x : PExpr Δ Φ Γ .bool ox) (a : PExpr Δ Φ Γ τ o₁) (b : PExpr Δ Φ Γ τ o₂)
+    {r : (o : Lvl) × PExpr Δ Φ Γ τ o} (h : x.condArm? a b = some r) (κ : KEnv Δ Φ)
+    (ρ : UEnv Δ Γ) :
+    r.2.eval κ ρ = match (x.eval κ ρ : Bool) with
+      | true => a.eval κ ρ
+      | false => b.eval κ ρ := by
+  unfold PExpr.condArm? at h
+  split at h
+  · rename_i v hv
+    cases h
+    rw [PExpr.boolLit?_eval x v hv κ ρ]
+    cases v <;> rfl
+  · split at h
+    · rename_i n _
+      cases h
+      simp only [PExpr.eval]
+      rw [Neu.mkCondLit_eval]
+      rfl
+    · cases h
+
+/-- The negation `(c₀ ? x : y) ? false : true` of a conditional one of whose arms is a literal:
+    `c₀ ? !x : !y`, the literal arm negated (`PExpr.condArm?`).  So the negation of
+    `p ? false : q` is `p ? true : !q`, which JavaScript writes `p || !q`: `!(compare a b == .eq)`
+    on `Nat` is `a < b || a !== b`.  Not done when the condition and an arm are unknowns, whose
+    conditional the JavaScript backend writes as a comparison of booleans (`!(a < b)` on `Bool`
+    is `a >= b`, `JsTerm.Lower.BoolCmp`). -/
+def Neu.condOfCond? {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} {o₁ o₂ : Lvl}
+    (c : Neu Δ Φ Γ .bool ℓ) (a : PExpr Δ Φ Γ τ o₁) (b : PExpr Δ Φ Γ τ o₂) :
+    Option ((ℓ' : Nat) × Neu Δ Φ Γ τ ℓ') :=
+  if a.boolLit? = some false ∧ b.boolLit? = some true then
+    match c with
+    | .cond c₀ x y =>
+        if (x.boolLit?.isSome || y.boolLit?.isSome) && !(c₀.isVarB && (x.isVarB || y.isVarB)) then
+          match x.condArm? a b, y.condArm? a b with
+          | some ax, some ay => some ⟨_, .cond c₀ ax.2 ay.2⟩
+          | _, _ => none
+        else none
+    | _ => none
+  else none
+
+theorem Neu.condOfCond?_eval {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} {o₁ o₂ : Lvl}
+    (c : Neu Δ Φ Γ .bool ℓ) (a : PExpr Δ Φ Γ τ o₁) (b : PExpr Δ Φ Γ τ o₂)
+    {r : (ℓ' : Nat) × Neu Δ Φ Γ τ ℓ'} (h : Neu.condOfCond? c a b = some r) (κ : KEnv Δ Φ)
+    (ρ : UEnv Δ Γ) : r.2.eval κ ρ = (Neu.cond c a b).eval κ ρ := by
+  unfold Neu.condOfCond? at h
+  split at h
+  · split at h
+    · rename_i c₀ x y
+      split at h
+      · split at h
+        · rename_i ax ay hx hy
+          cases h
+          simp only [Neu.eval]
+          cases hc : (c₀.eval κ ρ : Bool) with
+          | true =>
+              simp only
+              exact PExpr.condArm?_eval x a b hx κ ρ
+          | false =>
+              simp only
+              exact PExpr.condArm?_eval y a b hy κ ρ
+        · cases h
+      · cases h
+    · cases h
+  · cases h
+
+/-- `c ? a : b`, with `c ? true : false` as `c`, a negated condition read as the condition with
+    the branches swapped (`Neu.mkCondNeg`), and the negation of a conditional with a literal arm
+    pushed into its arms (`Neu.condOfCond?`, when the level comes out the same). -/
+def Neu.mkCond {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} {o₁ o₂ : Lvl}
+    (c : Neu Δ Φ Γ .bool ℓ) (a : PExpr Δ Φ Γ τ o₁) (b : PExpr Δ Φ Γ τ o₂) :
+    Neu Δ Φ Γ τ (Lvl.meetL ℓ (Lvl.meet o₁ o₂)) :=
+  match Neu.condOfCond? c a b with
+  | some r => if h : r.1 = Lvl.meetL ℓ (Lvl.meet o₁ o₂) then h ▸ r.2 else Neu.mkCondNeg c a b
+  | none => Neu.mkCondNeg c a b
+
+theorem Neu.mkCond_eval {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat} {o₁ o₂ : Lvl}
+    (c : Neu Δ Φ Γ .bool ℓ) (a : PExpr Δ Φ Γ τ o₁) (b : PExpr Δ Φ Γ τ o₂) (κ : KEnv Δ Φ)
+    (ρ : UEnv Δ Γ) : (Neu.mkCond c a b).eval κ ρ = (Neu.cond c a b).eval κ ρ := by
+  unfold Neu.mkCond
+  split
+  · rename_i r hr
+    split
+    · rename_i h
+      obtain ⟨ℓ', m⟩ := r
+      simp only at h
+      subst h
+      exact Neu.condOfCond?_eval c a b hr κ ρ
+    · exact Neu.mkCondNeg_eval c a b κ ρ
+  · exact Neu.mkCondNeg_eval c a b κ ρ
 
 /-- `if c then t else e`, with a negated condition read as the condition with the branches
     swapped. -/

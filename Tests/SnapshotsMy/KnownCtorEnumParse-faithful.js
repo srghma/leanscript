@@ -74,15 +74,15 @@ export const armsCall = (f, a) => {
  */
 export const thenMore = (f, a) =>
   f(
-    (a === "red"
-      ? 1n
+    a === "red"
+      ? 11n
       : a === "green"
-        ? 2n
+        ? 12n
         : a === "blue"
-          ? 3n
+          ? 13n
           : a === "black"
-            ? 4n
-            : 0n) + 10n,
+            ? 14n
+            : 10n,
   );
 
 /**

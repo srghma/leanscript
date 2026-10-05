@@ -76,18 +76,15 @@ export const armsCall = (f, a) => {
  */
 export const thenMore = (f, a) =>
   f(
-    int53__lean_int_add(
-      a === "red"
-        ? 1
-        : a === "green"
-          ? 2
-          : a === "blue"
-            ? 3
-            : a === "black"
-              ? 4
-              : 0,
-      10,
-    ),
+    a === "red"
+      ? 11
+      : a === "green"
+        ? 12
+        : a === "blue"
+          ? 13
+          : a === "black"
+            ? 14
+            : 10,
   );
 
 /**

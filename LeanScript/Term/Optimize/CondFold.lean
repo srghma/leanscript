@@ -16,6 +16,9 @@ condition `c`, is a conditional of two constants:
 * `Neu.condFold`: a call of an extern, folded on each side when both calls fold to literals
   (`"Hello" ++ ", World"` is a literal): `(c ? "Hello" : "") ++ ", World"` is
   `c ? "Hello, World" : ", World"`;
+* `Neu.condFoldDeep?`: the same with nested conditionals, on several conditions (a tree of
+  conditionals with the calls folded at its leaves, at most four deep):
+  `(c ? 0 : (d ? 1 : 2)) == 1` is `c ? false : (d ? true : false)`;
 * `PExpr.liftCond`: an array, list, record or union literal with at least two conditional
   operands (one test instead of several):
   `#[c ? "a" : "b", c ? "x" : "y"]` is `c ? #["a", "x"] : #["b", "y"]`.
@@ -214,13 +217,156 @@ theorem Neu.condFold?_eval {σs : List (Ty ks)} {τ : Ty ks} (e : Extern ks σs 
     · cases h
   · cases h
 
+/-! ### Nested conditionals -/
+
+/-- `PExpr.pick` on the parts of `e` as a conditional (`PExpr.asCond?`). -/
+def PExpr.pickR {ℓ : Nat} (c : Neu Δ Φ Γ .bool ℓ) (b : Bool) {τ : Ty ks} {o : Lvl}
+    (e : PExpr Δ Φ Γ τ o) :
+    Option ((ℓ : Nat) × Neu Δ Φ Γ .bool ℓ × (oa : Lvl) × PExpr Δ Φ Γ τ oa × (ob : Lvl) ×
+      PExpr Δ Φ Γ τ ob) → (o' : Lvl) × PExpr Δ Φ Γ τ o'
+  | some ⟨_, c', _, x, _, y⟩ => if c'.same c then (if b then ⟨_, x⟩ else ⟨_, y⟩) else ⟨_, e⟩
+  | none => ⟨_, e⟩
+
+/-- `e` read where the condition `c` has the value `b`: a conditional on `c` (written the same
+    way) is its arm `b`; anything else is `e` itself. -/
+def PExpr.pick {ℓ : Nat} (c : Neu Δ Φ Γ .bool ℓ) (b : Bool) {τ : Ty ks} {o : Lvl}
+    (e : PExpr Δ Φ Γ τ o) : (o' : Lvl) × PExpr Δ Φ Γ τ o' :=
+  PExpr.pickR c b e e.asCond?
+
+theorem PExpr.pick_eval {ℓ : Nat} (c : Neu Δ Φ Γ .bool ℓ) (b : Bool) {τ : Ty ks} {o : Lvl}
+    (e : PExpr Δ Φ Γ τ o) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (hc : (c.eval κ ρ : Bool) = b) :
+    (e.pick c b).2.eval κ ρ = e.eval κ ρ := by
+  unfold PExpr.pick
+  cases hce : e.asCond? with
+  | none => rfl
+  | some r =>
+      obtain ⟨ℓ', c', oa, x, ob, y⟩ := r
+      by_cases hs : c'.same c = true
+      · have hv : (c'.eval κ ρ : Bool) = c.eval κ ρ := by
+          have := (Neu.same_eval c' c hs).2 κ ρ
+          exact eq_of_heq this
+        rw [PExpr.asCond?_eval e hce κ ρ]
+        simp only [PExpr.pickR]
+        rw [ite_eq_left_of_eq_true _ _ (eq_true hs), hv, hc]
+        cases b <;> rfl
+      · simp only [PExpr.pickR]
+        rw [ite_eq_right_of_eq_false _ _ (eq_false hs)]
+
+/-- `PExpr.pick` on every argument. -/
+def Args.pick {ℓ : Nat} (c : Neu Δ Φ Γ .bool ℓ) (b : Bool) :
+    {σs : List (Ty ks)} → {o : Lvl} → Args Δ Φ Γ σs o → (o' : Lvl) × Args Δ Φ Γ σs o'
+  | _, _, .nil => ⟨_, .nil⟩
+  | _, _, .cons e es => ⟨_, .cons (e.pick c b).2 (Args.pick c b es).2⟩
+
+theorem Args.pick_eval {ℓ : Nat} (c : Neu Δ Φ Γ .bool ℓ) (b : Bool) (κ : KEnv Δ Φ)
+    (ρ : UEnv Δ Γ) (hc : (c.eval κ ρ : Bool) = b) :
+    {σs : List (Ty ks)} → {o : Lvl} → (es : Args Δ Φ Γ σs o) →
+    (es.pick c b).2.eval κ ρ = es.eval κ ρ
+  | _, _, .nil => rfl
+  | _, _, .cons e es => by
+      simp only [Args.pick, Args.eval, PExpr.pick_eval c b e κ ρ hc, Args.pick_eval c b κ ρ hc es]
+
+/-- The call `e args`, folded to a literal (`none` when it does not fold). -/
+def PExpr.foldLeaf? {σs : List (Ty ks)} {τ : Ty ks} (e : Extern ks σs τ) {o : Lvl}
+    (args : Args Δ Φ Γ σs o) : Option ((o' : Lvl) × PExpr Δ Φ Γ τ o') :=
+  match Neu.mkExtern? e args with
+  | some r => if r.2.cst?.isSome then some r else none
+  | none => none
+
+theorem PExpr.foldLeaf?_eval {σs : List (Ty ks)} {τ : Ty ks} (e : Extern ks σs τ) {o : Lvl}
+    (args : Args Δ Φ Γ σs o) {r : (o' : Lvl) × PExpr Δ Φ Γ τ o'}
+    (h : PExpr.foldLeaf? e args = some r) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
+    r.2.eval κ ρ = Extern.eval (DSig.refDen Δ) e (args.eval κ ρ) := by
+  unfold PExpr.foldLeaf? at h
+  split at h
+  · rename_i r' hr'
+    split at h
+    · cases h; exact Neu.mkExtern?_eval e args _ hr' κ ρ
+    · cases h
+  · cases h
+
+/-- The call `e args` where the arguments are constants and conditionals of constants, nested
+    (`c ? 0 : (d ? 1 : 2)`) and on several conditions: a tree of conditionals (at most `fuel`
+    deep) with the calls folded to literals at its leaves.  Each path computes the conditions it
+    tests once, as before. -/
+def PExpr.condFoldN? {σs : List (Ty ks)} {τ : Ty ks} (e : Extern ks σs τ) :
+    (fuel : Nat) → {o : Lvl} → Args Δ Φ Γ σs o → Option ((o' : Lvl) × PExpr Δ Φ Γ τ o')
+  | 0, _, args => PExpr.foldLeaf? e args
+  | fuel + 1, _, args =>
+      match args.firstCond? with
+      | some ⟨_, c⟩ =>
+          match PExpr.condFoldN? e fuel (args.pick c true).2,
+            PExpr.condFoldN? e fuel (args.pick c false).2 with
+          | some la, some lb => some ⟨_, .neu (.cond c la.2 lb.2)⟩
+          | _, _ => none
+      | none => PExpr.foldLeaf? e args
+
+theorem PExpr.condFoldN?_eval {σs : List (Ty ks)} {τ : Ty ks} (e : Extern ks σs τ)
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
+    (fuel : Nat) → {o : Lvl} → (args : Args Δ Φ Γ σs o) → {r : (o' : Lvl) × PExpr Δ Φ Γ τ o'} →
+    PExpr.condFoldN? e fuel args = some r →
+    r.2.eval κ ρ = Extern.eval (DSig.refDen Δ) e (args.eval κ ρ)
+  | 0, _, args, _, h => PExpr.foldLeaf?_eval e args h κ ρ
+  | fuel + 1, _, args, _, h => by
+      unfold PExpr.condFoldN? at h
+      split at h
+      · rename_i ℓ c _
+        split at h
+        · rename_i la lb ha hb
+          cases h
+          simp only [PExpr.eval, Neu.eval]
+          cases hc : (c.eval κ ρ : Bool) with
+          | true =>
+              simp only
+              rw [PExpr.condFoldN?_eval e κ ρ fuel _ ha, Args.pick_eval c true κ ρ hc args]
+          | false =>
+              simp only
+              rw [PExpr.condFoldN?_eval e κ ρ fuel _ hb, Args.pick_eval c false κ ρ hc args]
+        · cases h
+      · exact PExpr.foldLeaf?_eval e args h κ ρ
+
+/-- `Neu.condFold?` with nested conditionals (`PExpr.condFoldN?`, three deep):
+    `(c ? 0 : (d ? 1 : 2)) == 1` is `c ? false : (d ? true : false)`. -/
+def Neu.condFoldDeep? {σs : List (Ty ks)} {τ : Ty ks} (e : Extern ks σs τ) {o : Lvl}
+    (args : Args Δ Φ Γ σs o) : Option ((ℓ : Nat) × Neu Δ Φ Γ τ ℓ) :=
+  match args.firstCond? with
+  | some ⟨_, c⟩ =>
+      match PExpr.condFoldN? e 3 (args.pick c true).2, PExpr.condFoldN? e 3 (args.pick c false).2 with
+      | some la, some lb => some ⟨_, .cond c la.2 lb.2⟩
+      | _, _ => none
+  | none => none
+
+theorem Neu.condFoldDeep?_eval {σs : List (Ty ks)} {τ : Ty ks} (e : Extern ks σs τ) {o : Lvl}
+    (args : Args Δ Φ Γ σs o) {r : (ℓ : Nat) × Neu Δ Φ Γ τ ℓ}
+    (h : Neu.condFoldDeep? e args = some r) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
+    r.2.eval κ ρ = Extern.eval (DSig.refDen Δ) e (args.eval κ ρ) := by
+  unfold Neu.condFoldDeep? at h
+  split at h
+  · rename_i ℓ c _
+    split at h
+    · rename_i la lb ha hb
+      cases h
+      simp only [Neu.eval]
+      cases hc : (c.eval κ ρ : Bool) with
+      | true =>
+          simp only
+          rw [PExpr.condFoldN?_eval e κ ρ 3 _ ha, Args.pick_eval c true κ ρ hc args]
+      | false =>
+          simp only
+          rw [PExpr.condFoldN?_eval e κ ρ 3 _ hb, Args.pick_eval c false κ ρ hc args]
+    · cases h
+  · cases h
+
 /-- `Neu.condFold?` on an extern call, when the level comes out the same. -/
 def Neu.condFold {τ : Ty ks} {ℓ : Nat} (n : Neu Δ Φ Γ τ ℓ) : Neu Δ Φ Γ τ ℓ :=
   match n with
   | .extern e args _ =>
       match Neu.condFold? e args with
       | some r => if h : r.1 = ℓ then h ▸ r.2 else n
-      | none => n
+      | none =>
+          match Neu.condFoldDeep? e args with
+          | some r => if h : r.1 = ℓ then h ▸ r.2 else n
+          | none => n
   | _ => n
 
 theorem Neu.condFold_eval {τ : Ty ks} {ℓ : Nat} (n : Neu Δ Φ Γ τ ℓ) (κ : KEnv Δ Φ)
@@ -238,7 +384,17 @@ theorem Neu.condFold_eval {τ : Ty ks} {ℓ : Nat} (n : Neu Δ Φ Γ τ ℓ) (κ
           simp only [Neu.eval]
           exact Neu.condFold?_eval e args hr κ ρ
         · rfl
-      · rfl
+      · split
+        · rename_i r hr
+          split
+          · rename_i h
+            obtain ⟨ℓ', m⟩ := r
+            simp only at h
+            subst h
+            simp only [Neu.eval]
+            exact Neu.condFoldDeep?_eval e args hr κ ρ
+          · rfl
+        · rfl
   | _ => rfl
 
 /-! ## Literals -/

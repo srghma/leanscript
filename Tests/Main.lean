@@ -3652,6 +3652,60 @@ def primOpBoolean02Spec : Spec := describe "PrimOpBoolean02" do
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+/-! `Tests/SnapshotsPBOPure/PrimOpBooleanNotRegression.lean`: `comp a b != Ordering.eq` is one
+call and one comparison, `comp(a, b) !== 0` (`Ordering` numbers from `-1`), where
+purescript-backend-optimizer writes `comp(a)(b) !== "eq"` (`legacy-backend/`).
+`Tests/SnapshotsMy/OrderingCmp.lean` has its neighbours: `compare` inlined on `Nat` and `Int`
+builds no `Ordering` (`Branch.enumCaseCond`, `Neu.condFoldDeep?`, `Neu.condOfCond?`, in the `Term`
+optimiser), a case analysis answering Boolean literals is one comparison, and `!=` of an enum is
+`a !== b` (in the conversion). -/
+
+def primOpBooleanNotRegressionSpec : Spec := describe "PrimOpBooleanNotRegression" do
+  it "a comparison of an Ordering is one comparison, no Ordering built (needs node and leanscript)"
+      (timeoutMs? := some 120000) do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/primopbooleannotregression"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments, fragments that must not appear, checks)
+    for (path, file, frags, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "PrimOpBooleanNotRegression",
+          ["export const test = (comp, a, b) => comp(a, b) !== 0;"], ["const x"], (0 : Nat)),
+        ("Tests/SnapshotsMy", "OrderingCmp",
+          ["export const cmpNe = (comp, a, b) => comp(a, b) !== 0;",
+           "export const cmpEqLt = (comp, a, b) => comp(a, b) === -1;",
+           "export const cmpNeGt = (comp, a, b) => comp(a, b) !== 1;",
+           "export const cmpNotEq = (comp, a, b) => comp(a, b) !== 0;",
+           "export const cmpDecide = (comp, a, b) => comp(a, b) !== 0;",
+           "export const cmpIsLE = (comp, a, b) => comp(a, b) !== 1;",
+           "export const cmpIsGE = (comp, a, b) => comp(a, b) !== -1;",
+           "export const natLt = (a, b) => a < b;",
+           "export const natNe = (a, b) => a < b || a !== b;",
+           "export const intLt = (a, b) => a < b;",
+           "export const shadeNe = (a, b) => a !== b;",
+           "export const shadeEq = (a, b) => a === b;"],
+          ["const x"], 126)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript exit code" 0 out.exitCode
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        assertEq s!"{file}-{preset}: every function translated" false
+          ((js.splitOn "not translated").length > 1)
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -3708,6 +3762,7 @@ def spec : Spec := do
   primOpBitVec02Spec
   primOpBoolean01Spec
   primOpBoolean02Spec
+  primOpBooleanNotRegressionSpec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

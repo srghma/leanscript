@@ -65,7 +65,7 @@ ret k1
 -- thenMore : (Int → Int) → String → Int
 val k1 [1] : ((Int → Int) → (String → Int)) := fun x2 [ω] : (Int → Int) => (closed)
   val k3 [1] : (String → Int) := fun x4 [ω] : String => (open)
-    let x5 [1] : Int := x2 lean_int_add(cond(lean_string_dec_eq(x4, "red"), 1, cond(lean_string_dec_eq(x4, "green"), 2, cond(lean_string_dec_eq(x4, "blue"), 3, cond(lean_string_dec_eq(x4, "black"), 4, 0)))), 10)
+    let x5 [1] : Int := x2 cond(lean_string_dec_eq(x4, "red"), 11, cond(lean_string_dec_eq(x4, "green"), 12, cond(lean_string_dec_eq(x4, "blue"), 13, cond(lean_string_dec_eq(x4, "black"), 14, 10))))
     ret x5
   ret k3
 ret k1

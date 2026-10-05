@@ -59,6 +59,19 @@ theorem Branch.numCalls_caseCond {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : L
             · rw [ite_eq_left_of_eq_true _ _ (eq_true hn')]; exact hn'
             · rw [ite_eq_right_of_eq_false _ _ (eq_false hn')]; exact Nat.le_refl _
 
+theorem Branch.numCalls_enumCaseCond {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks}
+    {s : LeanEnumSchema} {τ : Ty ks} {js : JCtx ks} {ℓ : Nat} {os : Fin s.nOfConstructors → Lvl}
+    (n : Neu Δ Φ Γ (.enum s) ℓ) (bs : (i : Fin s.nOfConstructors) → Term Δ d Φ Γ τ js (os i)) :
+    (Branch.enumCaseCond n bs).2.numCalls ≤ Fin.sumNat _ (fun i => (bs i).numCalls) := by
+  unfold Branch.enumCaseCond
+  cases n.enumCaseCond? bs with
+  | none => exact Nat.le_refl _
+  | some r =>
+      simp only
+      by_cases hn : r.2.numCalls ≤ Fin.sumNat _ (fun i => (bs i).numCalls)
+      · rw [ite_eq_left_of_eq_true _ _ (eq_true hn)]; exact hn
+      · rw [ite_eq_right_of_eq_false _ _ (eq_false hn)]; exact Nat.le_refl _
+
 theorem Term.numCalls_recordCaseCond {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {t : Ty ks}
     {fs : Fields ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl} {ℓ : Nat} (us : List Usage01ω)
     (n : Neu Δ Φ Γ (.record t fs) ℓ)
@@ -176,7 +189,8 @@ theorem Branch.numCalls_jcWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks}
       simp only [Branch.jcWalk, Branch.numCalls]; omega
   | _, _, _, _, _, _, .enum_casesOn e bs => by
       simp only [Branch.jcWalk, Branch.numCalls]
-      exact Fin.sumNat_le _ (fun i => Term.numCalls_jcWalk (bs i))
+      exact Nat.le_trans (Branch.numCalls_enumCaseCond _ _)
+        (Fin.sumNat_le _ (fun i => Term.numCalls_jcWalk (bs i)))
   | _, _, _, _, _, _, .union_casesOn e bs => by
       simp only [Branch.jcWalk, Branch.numCalls]
       exact Nat.le_trans (Branch.numCalls_caseCond _ _) (Branches.numCalls_jcWalk bs)

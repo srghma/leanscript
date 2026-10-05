@@ -339,6 +339,37 @@ def knownGet? {C M : List JsTy} (l? : Option Nat) (τ : JsTy) : ConvM (Option (J
   | some l => do return some (← (Ref.c l).get τ)
   | none => pure none
 
+/-- `join x { block } rest`, or `const x = e; rest` when the block only jumps to the join point
+    with `e` (what is left of a join point once the case analyses in front of its jump are
+    gone, `Nat.decEq (toCtorIdx a) (toCtorIdx b)`): the printer can then write `e` at its use
+    (`constInline`), `a !== b` instead of `const x = a === b; return !x;`. -/
+def _root_.MoreJs.JsBlock.joinOrConst {C M J : List JsTy} {τ : JsTy} {k : JsEnd} (hint : String)
+    (block : JsBlock S C M (τ :: J) k) (rest : JsBlock S (τ :: C) M J k) : JsBlock S C M J k :=
+  match block with
+  | .jump .zero e => .const hint e rest
+  | b => .join hint b rest
+
+/-- The Boolean literal the statement answers, when it is `ret true` or `ret false`. -/
+def _root_.LeanScript.Term.retBoolLit? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks}
+    {js : JCtx ks} {o : Lvl} : Term Δ d Φ Γ τ js o → Option Bool
+  | .ret e => e.boolLit?
+  | _ => none
+
+/-- The answers of the arms of an enum's case analysis that all answer a Boolean literal, and the
+    position of the one arm that answers differently from all the others: `(k, true)` when only
+    the arm `k` answers `true` (the case analysis is `e === k`), `(k, false)` when only the arm
+    `k` answers `false` (`e !== k`). -/
+def enumBoolArm? (vs : List (Option Bool)) : Option (Nat × Bool) :=
+  if vs.all Option.isSome then
+    let bs := vs.map (·.getD false)
+    let idx (b : Bool) := (List.range bs.length).filter fun i => bs[i]? == some b
+    match idx true, idx false with
+    | [k], _ :: _ :: _ => some (k, true)
+    | _ :: _ :: _, [k] => some (k, false)
+    | [k], [_] => some (k, true)
+    | _, _ => none
+  else none
+
 /-- Is the statement `jump j i`, `j` the innermost join point and `i` the literal `Nat` `k`? -/
 def isJumpNatLit {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCtx ks} {o : Lvl}
     (k : Nat) : Term Δ d Φ Γ τ js o → Bool
@@ -1102,6 +1133,15 @@ partial def cBranch {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : J
     let (cx, own) := n.own.stmt (fun w => Own.Neu.occ w c)
       (fun w => (List.finRange _).any fun j => (Own.Term.occ w (bs j)).n > 0)
     let ce ← cNeu c { n with cx } C M
+    -- arms that all answer a Boolean literal, one of them differently from all the others:
+    -- `e === k` (or `e !== k`), the subject computed once, in place
+    -- (`(c ? 1 : 2).isLE`, `(comp a b).isLE`: `comp(a, b) !== 1`)
+    if let some (j, b) := enumBoolArm? ((List.finRange s.nOfConstructors).map fun i => (bs i).retBoolLit?) then
+      if let some kc := enumCtorOf? (S := S) (C := C) (M := M) s.nOfConstructors s.shift j then
+        let eq : JsExpr S C M (.terminal .bool) := .enumEq (← castE ce _) kc
+        let r : JsExpr S C M (.terminal .bool) :=
+          if b then eq else .cond eq (.lit (.bool false)) (.lit (.bool true))
+        return .ret (← castE r _)
     let n := { n with own }
     let k := s.nOfConstructors
     let rec arms (m start : Nat) : ConvM (JsEnumArms S C M J (.ret (lowerTy cfg τ)) m) :=
@@ -1184,12 +1224,12 @@ partial def cJoin {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {js : JCt
         let block ← cBranch br { n with own := envBr, inl := entry :: n.inl, jmap := jmapPush n.jmap }
           C M (σ' :: J)
         let rest ← cTerm body { n with u := .c C.length :: n.u, own } (σ' :: C) M J
-        return (JsBlock.join "x" block rest)
+        return (JsBlock.joinOrConst "x" block rest)
     else
     let block ← cBranch br { n with own := envBr, inl := none :: n.inl, jmap := jmapPush n.jmap }
       C M (σ' :: J)
     let rest ← cTerm body { n with u := .c C.length :: n.u, own } (σ' :: C) M J
-    return (JsBlock.join "x" block rest)
+    return (JsBlock.joinOrConst "x" block rest)
 
 /-- The arm `tag` of a union's case analysis on a value known to be that constructor, whose
     fields are `fs` (`Ref.ctor`): no test.  A field read more than once that holds calls not

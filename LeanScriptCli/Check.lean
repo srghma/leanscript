@@ -226,6 +226,14 @@ structure Sample where
   js : String
   deriving Inhabited
 
+
+/-- The number the first constructor of an enumeration prints as in the JavaScript (the table
+    `enumShift` of the translation: `Ordering` prints as `-1, 0, 1`). -/
+def enumCtorsShift (cs : List Expr) : Int :=
+  match cs.head? with
+  | some c => if c.constName?.map Name.getPrefix == some ``Ordering then -1 else 0
+  | none => 0
+
 /-- The samples of a type (few and small: the functions are called on every combination).
     `nats` are the natural-number literals of the function (`natLitsOf`): the `Nat` fields of the
     values of a `SType.tree` take them too, besides their first two samples, so that a pattern
@@ -300,7 +308,7 @@ partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : Lis
       ⟨mkAppN ctor (picks.map (·.lean)).toArray,
        "{ " ++ ", ".intercalate (picks.zipIdx.map fun (x, j) => s!"_{j + 1}: {x.js}") ++ " }"⟩
   | .wrap _ ctor t => (samplesOf cfg t nats).map fun x => ⟨mkApp ctor x.lean, x.js⟩
-  | .enum cs => cs.zipIdx.map fun (c, i) => ⟨c, toString i⟩
+  | .enum cs => cs.zipIdx.map fun (c, i) => ⟨c, toString (enumCtorsShift cs + (i : Int))⟩
   | .tree ctors =>
     -- the values of depth at most 2 (the leaves taken among their first two samples), the
     -- smallest first, at most `treeCap` of them
@@ -677,7 +685,7 @@ partial def showExpr (t : SType) (e : Expr) : MetaM Expr := do
     let casesInfo ← getConstInfo casesName
     let lvls' := if casesInfo.levelParams.length == lvls.length + 1 then Level.one :: lvls else lvls
     let motive := mkLambda `x .default (mkConst cv.induct lvls) (mkConst ``String)
-    let minors := (List.range cs.length).map fun i => toExpr (toString i)
+    let minors := (List.range cs.length).map fun (i : Nat) => toExpr (toString (enumCtorsShift cs + (i : Int)))
     return mkAppN (mkConst casesName lvls') (#[motive, e] ++ minors.toArray)
   | .tree ctors =>
     -- `i(…, …)`: the index of the constructor, then its fields (`casesOn`)

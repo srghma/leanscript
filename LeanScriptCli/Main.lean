@@ -471,6 +471,9 @@ unsafe def processFile (o : CliOptions) (input : String) : IO Bool := do
     -- the grammar dump `FILE-JsTerm-{preset}.txt` is no longer written: remove a stale one
     let staleDump := outPath o file s!"-JsTerm-{preset}.txt"
     if ← staleDump.pathExists then IO.FS.removeFile staleDump
+    -- for debugging: `LEANSCRIPT_DUMP_JSTERM=1` prints the grammar of each function to stderr
+    if (← IO.getEnv "LEANSCRIPT_DUMP_JSTERM").isSome then
+      for f in m.funs do IO.eprintln s!"-- JsTerm ({preset}):\n{f.pretty}"
     IO.FS.writeFile jsPath (m.toJs (header "JavaScript") (relativePath jsDir rtFile))
     if o.check then
       let jsFile := jsPath.fileName.getD "out.js"

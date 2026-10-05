@@ -50,10 +50,7 @@ export const threeUses = (x) =>
  */
 export const nestedChoice = (x) => {
   const x$1 = 42n < x;
-  return [
-    (x$1 ? 1n : x < 0n ? 2n : 0n) + 10n,
-    (x$1 ? 1n : x < 0n ? 2n : 5n) * 3n,
-  ];
+  return [x$1 ? 11n : x < 0n ? 12n : 10n, x$1 ? 3n : x < 0n ? 6n : 15n];
 };
 
 /**

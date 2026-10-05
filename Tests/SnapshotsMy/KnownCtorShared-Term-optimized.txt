@@ -36,7 +36,7 @@ ret k1
 -- nestedChoice : Int → Array Int
 val k1 [1] : (Int → (Array Int)) := fun x2 [ω] : Int => (closed)
   let x3 [ω] : Bool := share lean_int_dec_lt(42, x2)
-  ret #[lean_int_add(cond(x3, 1, cond(lean_int_dec_lt(x2, 0), 2, 0)), 10), lean_int_mul(cond(x3, 1, cond(lean_int_dec_lt(x2, 0), 2, 5)), 3)]
+  ret #[cond(x3, 11, cond(lean_int_dec_lt(x2, 0), 12, 10)), cond(x3, 3, cond(lean_int_dec_lt(x2, 0), 6, 15))]
 ret k1
 
 -- exceptTwice : Int → String

@@ -465,6 +465,68 @@ theorem Neu.caseCond?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bo
     · cases hr
   · cases hr
 
+theorem Term.enumCaseOf?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {s : LeanEnumSchema}
+    {τ : Ty ks} {js : JCtx ks} {os : Fin s.nOfConstructors → Lvl}
+    (bs : (i : Fin s.nOfConstructors) → Term Δ d Φ Γ τ js (os i))
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    (fuel : Nat) → {o' : Lvl} → (e : PExpr Δ Φ Γ (.enum s) o') →
+    {r : (o'' : Lvl) × Term Δ d Φ Γ τ js o''} → Term.enumCaseOf? bs fuel e = some r →
+    r.2.eval κ ρ jκ = (bs (e.eval κ ρ)).eval κ ρ jκ
+  | 0, _, e, r, hr => by
+      unfold Term.enumCaseOf? at hr
+      split at hr
+      · contradiction
+      · cases hr; rfl
+      · cases hr
+  | fuel + 1, _, e, r, hr => by
+      unfold Term.enumCaseOf? at hr
+      split at hr
+      · rename_i fuel' _ _ _ c a b heq
+        obtain rfl : fuel = fuel' := Nat.succ.inj heq
+        split at hr
+        · rename_i ta tb ha hb
+          cases hr
+          simp only [Term.eval, Branch.eval, PExpr.eval, Neu.eval]
+          split
+          · exact Term.enumCaseOf?_eval bs κ ρ jκ fuel a ha
+          · exact Term.enumCaseOf?_eval bs κ ρ jκ fuel b hb
+        · cases hr
+      · cases hr; rfl
+      · cases hr
+
+theorem Neu.enumCaseCond?_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {s : LeanEnumSchema}
+    {τ : Ty ks} {js : JCtx ks} {ℓ : Nat} {os : Fin s.nOfConstructors → Lvl}
+    (n : Neu Δ Φ Γ (.enum s) ℓ) (bs : (i : Fin s.nOfConstructors) → Term Δ d Φ Γ τ js (os i))
+    {r : (ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ'} (hr : n.enumCaseCond? bs = some r)
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    r.2.eval κ ρ jκ = (bs (n.eval κ ρ)).eval κ ρ jκ := by
+  unfold Neu.enumCaseCond? at hr
+  split at hr
+  · rename_i c a b
+    split at hr
+    · rename_i ta tb ha hb
+      cases hr
+      simp only [Branch.eval, Neu.eval]
+      split
+      · exact Term.enumCaseOf?_eval bs κ ρ jκ 8 _ ha
+      · exact Term.enumCaseOf?_eval bs κ ρ jκ 8 _ hb
+    · cases hr
+  · cases hr
+
+theorem Branch.enumCaseCond_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {s : LeanEnumSchema}
+    {τ : Ty ks} {js : JCtx ks} {ℓ : Nat} {os : Fin s.nOfConstructors → Lvl}
+    (n : Neu Δ Φ Γ (.enum s) ℓ) (bs : (i : Fin s.nOfConstructors) → Term Δ d Φ Γ τ js (os i))
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
+    (Branch.enumCaseCond n bs).2.eval κ ρ jκ = (bs (n.eval κ ρ)).eval κ ρ jκ := by
+  unfold Branch.enumCaseCond
+  cases hc : n.enumCaseCond? bs with
+  | none => rfl
+  | some r =>
+      simp only
+      by_cases hn : r.2.numCalls ≤ Fin.sumNat _ (fun i => (bs i).numCalls)
+      · rw [ite_eq_left_of_eq_true _ _ (eq_true hn)]; exact Neu.enumCaseCond?_eval n bs hc κ ρ jκ
+      · rw [ite_eq_right_of_eq_false _ _ (eq_false hn)]; rfl
+
 theorem Term.underOne_eval {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {σ τ : Ty ks} {js : JCtx ks}
     {o : Lvl} (us : List Usage01ω) (t : Term Δ d Φ (UCtx.annot d [σ] us ++ Γ) τ js o)
     (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) (v : Ty.Den Δ σ) :
@@ -790,7 +852,8 @@ theorem Branch.jcWalk_eval : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} →
   | _, _, _, _, _, _, .ite c t e, κ, ρ, jκ => by
       simp only [Branch.jcWalk, Branch.eval, Term.jcWalk_eval t κ ρ jκ, Term.jcWalk_eval e κ ρ jκ]
   | _, _, _, _, _, _, .enum_casesOn e bs, κ, ρ, jκ => by
-      simp only [Branch.jcWalk, Branch.eval]; exact Term.jcWalk_eval _ κ ρ jκ
+      simp only [Branch.jcWalk, Branch.eval]
+      rw [Branch.enumCaseCond_eval]; exact Term.jcWalk_eval _ κ ρ jκ
   | _, _, _, _, _, _, .union_casesOn e bs, κ, ρ, jκ => by
       simp only [Branch.jcWalk, Branch.eval]
       rw [Branch.caseCond_eval]; exact Branches.jcWalk_eval bs κ ρ jκ _

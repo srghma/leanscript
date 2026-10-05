@@ -384,6 +384,49 @@ def Branch.caseCond {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {bs : List Bool} {cs
         | none => ⟨_, .union_casesOn n brs⟩
   | none => ⟨_, .union_casesOn n brs⟩
 
+/-- `case e of bs` on an enum, for `e` a constructor literal of the enum (its arm) or a
+    conditional of such (`c ? a : b`, recursively, at most `fuel` deep):
+    `if c then (case a of bs) else (case b of bs)`, each reduced to its arm.  This is what
+    `match compare a b with …` becomes once `compare` is inlined
+    (`if a < b then .lt else if a = b then .eq else .gt`). -/
+def Term.enumCaseOf? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {s : LeanEnumSchema} {τ : Ty ks}
+    {js : JCtx ks} {os : Fin s.nOfConstructors → Lvl}
+    (bs : (i : Fin s.nOfConstructors) → Term Δ d Φ Γ τ js (os i)) :
+    (fuel : Nat) → {o' : Lvl} → PExpr Δ Φ Γ (.enum s) o' →
+    Option ((o'' : Lvl) × Term Δ d Φ Γ τ js o'')
+  | fuel + 1, _, .neu (.cond c a b) =>
+      match Term.enumCaseOf? bs fuel a, Term.enumCaseOf? bs fuel b with
+      | some ta, some tb => some ⟨_, .branch (.ite c ta.2 tb.2)⟩
+      | _, _ => none
+  | _, _, .enum_mk _ i => some ⟨_, bs i⟩
+  | _, _, _ => none
+
+/-- `case n of bs` on an enum, where `n` is a conditional of constructor literals
+    (`Term.enumCaseOf?`): `if c then … else …`, each case analysis of a literal reduced to its
+    arm. -/
+def Neu.enumCaseCond? {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {s : LeanEnumSchema} {τ : Ty ks}
+    {js : JCtx ks} {ℓ : Nat} {os : Fin s.nOfConstructors → Lvl}
+    (n : Neu Δ Φ Γ (.enum s) ℓ) (bs : (i : Fin s.nOfConstructors) → Term Δ d Φ Γ τ js (os i)) :
+    Option ((ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ') :=
+  match n with
+  | .cond c a b =>
+      match Term.enumCaseOf? bs 8 a, Term.enumCaseOf? bs 8 b with
+      | some ta, some tb => some ⟨_, .ite c ta.2 tb.2⟩
+      | _, _ => none
+  | _ => none
+
+/-- `case n of bs` on an enum, rewritten by `Neu.enumCaseCond?` when that adds no call (an arm
+    selected by two leaves is written twice). -/
+def Branch.enumCaseCond {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {s : LeanEnumSchema} {τ : Ty ks}
+    {js : JCtx ks} {ℓ : Nat} {os : Fin s.nOfConstructors → Lvl}
+    (n : Neu Δ Φ Γ (.enum s) ℓ) (bs : (i : Fin s.nOfConstructors) → Term Δ d Φ Γ τ js (os i)) :
+    (ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ' :=
+  match n.enumCaseCond? bs with
+  | some r =>
+      if r.2.numCalls ≤ Fin.sumNat _ (fun i => (bs i).numCalls) then r
+      else ⟨_, .enum_casesOn n bs⟩
+  | none => ⟨_, .enum_casesOn n bs⟩
+
 /-- `let ⟨fs⟩ := e; body` for `e` a record literal (its fields substituted,
     `Term.substFields`) or a conditional of such (`c ? a : b`, recursively, at most `fuel`
     deep): `if c then (let ⟨fs⟩ := a; body) else (let ⟨fs⟩ := b; body)`, each reduced.  This is
@@ -495,7 +538,7 @@ def Term.jcWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty k
 def Branch.jcWalk : {d : Nat} → {Φ : KCtx ks} → {Γ : UCtx ks} → {τ : Ty ks} → {js : JCtx ks} →
     {ℓ : Nat} → Branch Δ d Φ Γ τ js ℓ → (ℓ' : Nat) × Branch Δ d Φ Γ τ js ℓ'
   | _, _, _, _, _, _, .ite c t e => ⟨_, .ite c t.jcWalk.2 e.jcWalk.2⟩
-  | _, _, _, _, _, _, .enum_casesOn e bs => ⟨_, .enum_casesOn e (fun i => (bs i).jcWalk.2)⟩
+  | _, _, _, _, _, _, .enum_casesOn e bs => Branch.enumCaseCond e (fun i => (bs i).jcWalk.2)
   | _, _, _, _, _, _, .union_casesOn e bs => Branch.caseCond e bs.jcWalk.2
   | _, _, _, _, _, _, .join σ u uₓ body main => Branch.joinCtor σ u uₓ body.jcWalk.2 main.jcWalk.2
 /-- `Term.jcWalk` in the branches of a union's case analysis. -/

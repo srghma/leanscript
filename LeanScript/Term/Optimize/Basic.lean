@@ -111,6 +111,9 @@ only as the operand of union case analyses, is `body[x := c ? a : b]` (each `cas
 case of a conditional of constructors, which `Term.joinCtor` makes an `if`); `if c then jump j a
 else jump j b` is `jump j (c ? a : b)`; and `join j x := body; jump j a` is `body[x := a]`.  So
 `let o := if c then some v else none; … o.get! … o.get! …` builds no option.
+The same for a case analysis of an enum whose subject is a conditional of constructor literals
+(`Branch.enumCaseCond`): `match compare a b with …`, `compare` inlined, makes the tests of
+`compare` and builds no `Ordering`.
 
 Then the loops whose state is always the same constructor (`Term.loopYield`,
 `LeanScript.Term.Optimize.LoopYield`): when the initial state of a `nat_rec` is a literal `C a`

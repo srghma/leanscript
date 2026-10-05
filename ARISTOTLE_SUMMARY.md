@@ -1,3 +1,48 @@
+# Summary of changes for run f050f962-c134-4454-ad11-0652e71ddece
+The JavaScript for `Tests/SnapshotsPBOPure/PrimOpBooleanNotRegression.lean` was already as good as the legacy output or better, before I changed anything. It is still unchanged:
+
+| | |
+|---|---|
+| legacy | `const test = (comp) => (a) => (b) => { return comp(a)(b) !== "eq"; };` |
+| ours (both presets) | `export const test = (comp, a, b) => comp(a, b) !== 0;` |
+
+That's one call with two arguments instead of two curried calls, a number compare instead of a string compare, and an arrow body instead of a block. The optimised `Term` still contains Lean's `toCtorIdx` join point. `Term` has no enum-to-`Nat` operation, so the conversion is where it gets recognised and turned into `=== `/`!==` on the enum. The file has no loops or recursion, so labelled blocks and loops don't come into it. The full analysis is in `Tests/SnapshotsPBOPure/PrimOpBooleanNotRegression.md`.
+
+Because the target file needed nothing, I tried variations of it, and several gave much worse JavaScript. They're collected in a new snapshot, `Tests/SnapshotsMy/OrderingCmp.lean`, and fixed in your preferred order of phases:
+
+| Lean | before | now |
+|---|---|---|
+| `compare a b == .lt` (`Nat`/`Int`) | `(a < b ? -1 : a === b ? 0 : 1) === -1` | `a < b` |
+| `compare a b != .eq` (`Nat`/`Int`) | `(a < b ? -1 : …) !== 0` | `a < b \|\| a !== b` |
+| `(comp a b).isLE` | `const x$1 = comp(a, b); return x$1 !== 1;` | `comp(a, b) !== 1` |
+| `a != b` on an enum | `const x$1 = a === b; return !x$1;` | `a !== b` |
+
+**`Term → Term`**, all proved to keep `Term.eval`, with no `sorry` and only the standard axioms. `Term.optimizeN_eval` still builds.
+- **`Branch.enumCaseCond`:** a case analysis on an enum whose subject is a conditional of constructors (an inlined `compare`) becomes `if`s on those conditions. It is kept only when it adds no call.
+- **`Neu.condFoldDeep?`:** an extern call on nested conditionals of constants becomes a tree of conditionals with folded literals at the leaves.
+- **`Neu.condOfCond?`:** the negation of a conditional with a literal arm is pushed into the arms.
+
+**`Term → JsTerm`** (not possible in `Term`, which has no enum comparison):
+- An enum case analysis whose arms all return boolean literals, with one arm differing from the rest, becomes one comparison.
+- A join point whose block only jumps to it with a value becomes a constant.
+
+**Check fix:** generated checks for a function that returns or takes an `Ordering` used `0/1/2`, while the JavaScript holds `-1/0/1`. Every such check failed; they now use the JavaScript numbering (`LeanScriptCli/Check.lean`).
+
+**Side effect in other snapshots:** `KnownCtorEnumParse` and `KnownCtorShared` lost runtime add/multiply calls, e.g. `[x$1 ? 11 : x < 0 ? 12 : 10, …]`. A first, broader version of `Neu.condOfCond?` made `p && q ? …` and `!(a < b)` on `Bool` worse. I narrowed it, and those outputs are back to what they were.
+
+**Not done:**
+- `compare a b != .eq` on `Nat` could be `a !== b`, and `(compare a b).isLE` could be `a <= b`. Both need the fact that `a < b` implies `a !== b`, which no rewrite knows yet.
+- `compare` on a user enum with derived `Ord` still builds the `Ordering`.
+
+**Tests:**
+- New `primOpBooleanNotRegressionSpec` in `Tests/Main.lean`.
+- `tests --timeout 180` passes 148/148.
+- I regenerated every snapshot and no check fails. `OrderingCmp` passes 126/126 at each preset; `PrimOpBooleanNotRegression.test` takes a function, so it has no checks.
+- `TyTests`, `TermTests`, `JsTerm`, `JsSpec`, `LanguageJavascriptMini`, `tests` and `leanscript` build.
+- A plain `lake build` fails, unrelated to this work: `LeanScript/Term/Syntax/UsageAlgebra.lean`, unchanged since the initial commit, imports Mathlib, which this project doesn't depend on.
+
+I also added an environment variable, `LEANSCRIPT_DUMP_JSTERM=1`, that makes `leanscript` print each function's `JsTerm` to stderr. The two optimiser proofs are registered as proved in the properties table. Everything is committed.
+
 # Summary of changes for run 347bc853-78c0-4753-9163-2ee8c17bd2d1
 The JavaScript for `Tests/SnapshotsPBOPure/PrimOpBoolean02.lean` now matches the legacy output at both presets, and `boolValues` is slightly better. The full comparison is in `Tests/SnapshotsPBOPure/PrimOpBoolean02.md`.
 
