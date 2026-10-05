@@ -352,8 +352,6 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | bigint_nat__lean_uint64_to_uint16 : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat)] (.terminal .uint16)
   /-- UInt64.toUInt16 -/
   | uint53__lean_uint64_to_uint16 : JsOpImported .pure .doesntThrow [(.terminal .uint53)] (.terminal .uint16)
-  /-- UInt8.div -/
-  | uint8__lean_uint8_div : JsOpImported .pure .doesntThrow [(.terminal .uint8), (.terminal .uint8)] (.terminal .uint8)
   /-- UInt8.shiftRight -/
   | uint8__lean_uint8_shift_right : JsOpImported .pure .doesntThrow [(.terminal .uint8), (.terminal .uint8)] (.terminal .uint8)
   /-- UInt8.shiftLeft -/
@@ -366,8 +364,6 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | uint16__lean_uint16_shift_left : JsOpImported .pure .doesntThrow [(.terminal .uint16), (.terminal .uint16)] (.terminal .uint16)
   /-- UInt16.mod -/
   | uint16__lean_uint16_mod : JsOpImported .pure .doesntThrow [(.terminal .uint16), (.terminal .uint16)] (.terminal .uint16)
-  /-- UInt16.div -/
-  | uint16__lean_uint16_div : JsOpImported .pure .doesntThrow [(.terminal .uint16), (.terminal .uint16)] (.terminal .uint16)
   /-- Bool.toUInt16 -/
   | bool__lean_bool_to_uint16 : JsOpImported .pure .doesntThrow [(.terminal .bool)] (.terminal .uint16)
   /-- UInt16.shiftRight -/
@@ -376,8 +372,6 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | uint32__lean_uint32_mod : JsOpImported .pure .doesntThrow [(.terminal .uint32), (.terminal .uint32)] (.terminal .uint32)
   /-- Bool.toUInt32 -/
   | bool__lean_bool_to_uint32 : JsOpImported .pure .doesntThrow [(.terminal .bool)] (.terminal .uint32)
-  /-- UInt32.div -/
-  | uint32__lean_uint32_div : JsOpImported .pure .doesntThrow [(.terminal .uint32), (.terminal .uint32)] (.terminal .uint32)
   /-- UInt64.shiftLeft -/
   | uint53__lean_uint64_shift_left : JsOpImported .pure .mayThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- UInt64.complement -/
@@ -408,10 +402,6 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | uint53__lean_uint64_neg : JsOpImported .pure .mayThrow [(.terminal .uint53)] (.terminal .uint53)
   /-- UInt64.xor -/
   | uint53__lean_uint64_xor : JsOpImported .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
-  /-- Int8.add -/
-  | int8__lean_int8_add : JsOpImported .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
-  /-- Int8.div -/
-  | int8__lean_int8_div : JsOpImported .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
   /-- Int8.shiftRight -/
   | int8__lean_int8_shift_right : JsOpImported .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
   /-- Int8.mod -/
@@ -420,104 +410,54 @@ inductive JsOpImported : Effectfulness → MayThrow → List JsTy → JsTy → T
   | bool__lean_bool_to_int8 : JsOpImported .pure .doesntThrow [(.terminal .bool)] (.terminal .int8)
   /-- Int8.shiftLeft -/
   | int8__lean_int8_shift_left : JsOpImported .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
-  /-- Int8.xor -/
-  | int8__lean_int8_xor : JsOpImported .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
-  /-- Int8.complement -/
-  | int8__lean_int8_complement : JsOpImported .pure .doesntThrow [(.terminal .int8)] (.terminal .int8)
-  /-- Int8.neg -/
-  | int8__lean_int8_neg : JsOpImported .pure .doesntThrow [(.terminal .int8)] (.terminal .int8)
   /-- Int8.abs -/
   | int8__lean_int8_abs : JsOpImported .pure .doesntThrow [(.terminal .int8)] (.terminal .int8)
-  /-- Int8.sub -/
-  | int8__lean_int8_sub : JsOpImported .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
   /-- Int8.ofNat -/
   | bigint_nat__lean_int8_of_nat : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat)] (.terminal .int8)
   /-- Int8.ofNat -/
   | uint53__lean_int8_of_nat : JsOpImported .pure .doesntThrow [(.terminal .uint53)] (.terminal .int8)
-  /-- Int8.mul -/
-  | int8__lean_int8_mul : JsOpImported .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
-  /-- Int8.land -/
-  | int8__lean_int8_land : JsOpImported .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
   /-- Int8.ofInt -/
   | bigint_int__lean_int8_of_int : JsOpImported .pure .doesntThrow [(.terminal .bigint_int)] (.terminal .int8)
   /-- Int8.ofInt -/
   | int53__lean_int8_of_int : JsOpImported .pure .doesntThrow [(.terminal .int53)] (.terminal .int8)
-  /-- Int8.lor -/
-  | int8__lean_int8_lor : JsOpImported .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
   /-- Int16.ofNat -/
   | bigint_nat__lean_int16_of_nat : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat)] (.terminal .int16)
   /-- Int16.ofNat -/
   | uint53__lean_int16_of_nat : JsOpImported .pure .doesntThrow [(.terminal .uint53)] (.terminal .int16)
   /-- Int16.shiftRight -/
   | int16__lean_int16_shift_right : JsOpImported .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
-  /-- Int16.div -/
-  | int16__lean_int16_div : JsOpImported .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
   /-- Int16.mod -/
   | int16__lean_int16_mod : JsOpImported .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
   /-- Bool.toInt16 -/
   | bool__lean_bool_to_int16 : JsOpImported .pure .doesntThrow [(.terminal .bool)] (.terminal .int16)
   /-- Int16.abs -/
   | int16__lean_int16_abs : JsOpImported .pure .doesntThrow [(.terminal .int16)] (.terminal .int16)
-  /-- Int16.complement -/
-  | int16__lean_int16_complement : JsOpImported .pure .doesntThrow [(.terminal .int16)] (.terminal .int16)
-  /-- Int16.land -/
-  | int16__lean_int16_land : JsOpImported .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
   /-- Int16.ofInt -/
   | bigint_int__lean_int16_of_int : JsOpImported .pure .doesntThrow [(.terminal .bigint_int)] (.terminal .int16)
   /-- Int16.ofInt -/
   | int53__lean_int16_of_int : JsOpImported .pure .doesntThrow [(.terminal .int53)] (.terminal .int16)
-  /-- Int16.mul -/
-  | int16__lean_int16_mul : JsOpImported .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
   /-- Int16.shiftLeft -/
   | int16__lean_int16_shift_left : JsOpImported .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
-  /-- Int16.xor -/
-  | int16__lean_int16_xor : JsOpImported .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
-  /-- Int16.lor -/
-  | int16__lean_int16_lor : JsOpImported .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
-  /-- Int16.add -/
-  | int16__lean_int16_add : JsOpImported .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
   /-- Int16.toInt8 -/
   | int16__lean_int16_to_int8 : JsOpImported .pure .doesntThrow [(.terminal .int16)] (.terminal .int8)
-  /-- Int16.neg -/
-  | int16__lean_int16_neg : JsOpImported .pure .doesntThrow [(.terminal .int16)] (.terminal .int16)
-  /-- Int16.sub -/
-  | int16__lean_int16_sub : JsOpImported .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
   /-- Int32.ofInt -/
   | bigint_int__lean_int32_of_int : JsOpImported .pure .doesntThrow [(.terminal .bigint_int)] (.terminal .int32)
   /-- Int32.ofInt -/
   | int53__lean_int32_of_int : JsOpImported .pure .doesntThrow [(.terminal .int53)] (.terminal .int32)
-  /-- Int32.land -/
-  | int32__lean_int32_land : JsOpImported .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
-  /-- Int32.mul -/
-  | int32__lean_int32_mul : JsOpImported .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
   /-- Int32.ofNat -/
   | bigint_nat__lean_int32_of_nat : JsOpImported .pure .doesntThrow [(.terminal .bigint_nat)] (.terminal .int32)
   /-- Int32.ofNat -/
   | uint53__lean_int32_of_nat : JsOpImported .pure .doesntThrow [(.terminal .uint53)] (.terminal .int32)
-  /-- Int32.sub -/
-  | int32__lean_int32_sub : JsOpImported .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
-  /-- Int32.neg -/
-  | int32__lean_int32_neg : JsOpImported .pure .doesntThrow [(.terminal .int32)] (.terminal .int32)
   /-- Int32.abs -/
   | int32__lean_int32_abs : JsOpImported .pure .doesntThrow [(.terminal .int32)] (.terminal .int32)
-  /-- Int32.xor -/
-  | int32__lean_int32_xor : JsOpImported .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
-  /-- Int32.complement -/
-  | int32__lean_int32_complement : JsOpImported .pure .doesntThrow [(.terminal .int32)] (.terminal .int32)
   /-- Bool.toInt32 -/
   | bool__lean_bool_to_int32 : JsOpImported .pure .doesntThrow [(.terminal .bool)] (.terminal .int32)
   /-- Int32.toInt8 -/
   | int32__lean_int32_to_int8 : JsOpImported .pure .doesntThrow [(.terminal .int32)] (.terminal .int8)
-  /-- Int32.add -/
-  | int32__lean_int32_add : JsOpImported .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
-  /-- Int32.lor -/
-  | int32__lean_int32_lor : JsOpImported .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
   /-- Int32.mod -/
   | int32__lean_int32_mod : JsOpImported .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
   /-- Int32.toInt16 -/
   | int32__lean_int32_to_int16 : JsOpImported .pure .doesntThrow [(.terminal .int32)] (.terminal .int16)
-  /-- Int32.div -/
-  | int32__lean_int32_div : JsOpImported .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
   /-- Int64.sub -/
   | int53__lean_int64_sub : JsOpImported .pure .mayThrow [(.terminal .int53), (.terminal .int53)] (.terminal .int53)
   /-- Int64.xor -/

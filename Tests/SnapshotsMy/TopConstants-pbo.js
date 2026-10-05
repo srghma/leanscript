@@ -3,9 +3,6 @@
 
 import {
   uint53__lean_nat_add,
-  int32__lean_int32_add,
-  int16__lean_int16_neg,
-  int8__lean_int8_sub,
   uint53__lean_uint64_add,
   int53__lean_int64_div,
 } from "../../runtime.js";
@@ -70,14 +67,14 @@ export const sumTo = (n) => {
  * @param {int32} x
  * @returns {int32}
  */
-export const succ32 = (x) => int32__lean_int32_add(x, 1);
+export const succ32 = (x) => (x + 1) | 0;
 
 /**
  * `neg16`
  * @param {int16} x
  * @returns {int16}
  */
-export const neg16 = (x) => int16__lean_int16_neg(x);
+export const neg16 = (x) => (-x << 16) >> 16;
 
 /**
  * `addU8`
@@ -100,7 +97,7 @@ export const mulU32 = (x) => Math.imul(x, 3) >>> 0;
  * @param {int8} y
  * @returns {int8}
  */
-export const subI8 = (x, y) => int8__lean_int8_sub(x, y);
+export const subI8 = (x, y) => ((x - y) << 24) >> 24;
 
 /**
  * `addU64`

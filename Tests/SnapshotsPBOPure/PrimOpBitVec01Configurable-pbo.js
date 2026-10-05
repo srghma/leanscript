@@ -2,7 +2,6 @@
 // configuration: nat=num int=num uint64=num int64=num bitvec=num array-fixed-int=generic array-float=generic array-uint64=generic array-int64=generic array-bitvec=generic list=array
 
 import {
-  uint32__lean_uint32_div,
   uint53__lean_uint64_add,
   uint53__lean_uint64_sub,
   uint53__lean_uint64_mul,
@@ -88,7 +87,7 @@ export const TestBitVec32$mul = (a, b) => Math.imul(a, b) >>> 0;
  * @param {bitvec32(number)} b
  * @returns {bitvec32(number)}
  */
-export const TestBitVec32$div = (a, b) => uint32__lean_uint32_div(a, b);
+export const TestBitVec32$div = (a, b) => (a / b) >>> 0;
 
 /**
  * `TestBitVec32.neg`

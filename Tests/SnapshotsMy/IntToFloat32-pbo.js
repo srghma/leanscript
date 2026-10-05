@@ -3,7 +3,6 @@
 
 import {
   uint53__lean_uint32_of_nat__UInt32_ofNat,
-  int32__lean_int32_add,
   int53__lean_int32_of_int,
   uint53__lean_uint64_add,
   uint53__lean_uint64_of_nat__UInt64_ofNat,
@@ -25,7 +24,7 @@ export const u32ToF32 = (n) =>
  * @returns {float}
  */
 export const i32ToF32 = (i) =>
-  Math.fround(int32__lean_int32_add(int53__lean_int32_of_int(i), 16777216));
+  Math.fround((int53__lean_int32_of_int(i) + 16777216) | 0);
 
 /**
  * `u64ToF32`

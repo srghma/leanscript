@@ -3,7 +3,6 @@
 
 import {
   bigint_nat__lean_uint32_of_nat__UInt32_ofNat,
-  int32__lean_int32_add,
   bigint_int__lean_int32_of_int,
   bigint_nat__lean_uint64_to_float32,
   bigint_int__lean_int64_to_float32,
@@ -26,9 +25,7 @@ export const u32ToF32 = (n) =>
  * @returns {float}
  */
 export const i32ToF32 = (i) =>
-  Math.fround(
-    int32__lean_int32_add(bigint_int__lean_int32_of_int(i), 16777216),
-  );
+  Math.fround((bigint_int__lean_int32_of_int(i) + 16777216) | 0);
 
 /**
  * `u64ToF32`

@@ -230,6 +230,8 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | uint8__lean_uint8_neg : JsOpInlinable .pure .doesntThrow [(.terminal .uint8)] (.terminal .uint8)
   /-- `a | b` (UInt8.lor) -/
   | uint8__lean_uint8_lor : JsOpInlinable .pure .doesntThrow [(.terminal .uint8), (.terminal .uint8)] (.terminal .uint8)
+  /-- `a / b | 0` (UInt8.div) -/
+  | uint8__lean_uint8_div : JsOpInlinable .pure .doesntThrow [(.terminal .uint8), (.terminal .uint8)] (.terminal .uint8)
   /-- `a & b` (UInt8.land) -/
   | uint8__lean_uint8_land : JsOpInlinable .pure .doesntThrow [(.terminal .uint8), (.terminal .uint8)] (.terminal .uint8)
   /-- `a * b & 255` (UInt8.mul) -/
@@ -256,10 +258,14 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | uint16__lean_uint16_xor : JsOpInlinable .pure .doesntThrow [(.terminal .uint16), (.terminal .uint16)] (.terminal .uint16)
   /-- `a < b` (UInt16.decLt) -/
   | uint16__lean_uint16_dec_lt : JsOpInlinable .pure .doesntThrow [(.terminal .uint16), (.terminal .uint16)] (.terminal .bool)
+  /-- `a / b | 0` (UInt16.div) -/
+  | uint16__lean_uint16_div : JsOpInlinable .pure .doesntThrow [(.terminal .uint16), (.terminal .uint16)] (.terminal .uint16)
   /-- `a <= b` (UInt16.decLe) -/
   | uint16__lean_uint16_dec_le : JsOpInlinable .pure .doesntThrow [(.terminal .uint16), (.terminal .uint16)] (.terminal .bool)
   /-- `a - b & 65535` (UInt16.sub) -/
   | uint16__lean_uint16_sub : JsOpInlinable .pure .doesntThrow [(.terminal .uint16), (.terminal .uint16)] (.terminal .uint16)
+  /-- `a / b >>> 0` (UInt32.div) -/
+  | uint32__lean_uint32_div : JsOpInlinable .pure .doesntThrow [(.terminal .uint32), (.terminal .uint32)] (.terminal .uint32)
   /-- `a >>> b` (UInt32.shiftRight) -/
   | uint32__lean_uint32_shift_right : JsOpInlinable .pure .doesntThrow [(.terminal .uint32), (.terminal .uint32)] (.terminal .uint32)
   /-- `-a >>> 0` (UInt32.neg) -/
@@ -306,14 +312,26 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | uint53__lean_uint64_dec_lt : JsOpInlinable .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .bool)
   /-- `a ^ b` (UInt64.xor) -/
   | bigint_nat__lean_uint64_xor : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bigint_nat)
+  /-- `a + b << 24 >> 24` (Int8.add) -/
+  | int8__lean_int8_add : JsOpInlinable .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
+  /-- `a / b << 24 >> 24` (Int8.div) -/
+  | int8__lean_int8_div : JsOpInlinable .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
   /-- `a` (Int8.toInt16) -/
   | int8__lean_int8_to_int16 : JsOpInlinable .pure .doesntThrow [(.terminal .int8)] (.terminal .int16)
+  /-- `a ^ b` (Int8.xor) -/
+  | int8__lean_int8_xor : JsOpInlinable .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
+  /-- `~a` (Int8.complement) -/
+  | int8__lean_int8_complement : JsOpInlinable .pure .doesntThrow [(.terminal .int8)] (.terminal .int8)
   /-- `a === b` (Int8.decEq) -/
   | int8__lean_int8_dec_eq : JsOpInlinable .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .bool)
+  /-- `-a << 24 >> 24` (Int8.neg) -/
+  | int8__lean_int8_neg : JsOpInlinable .pure .doesntThrow [(.terminal .int8)] (.terminal .int8)
   /-- `a < b` (Int8.decLt) -/
   | int8__lean_int8_dec_lt : JsOpInlinable .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .bool)
   /-- `a` (Int8.toInt32) -/
   | int8__lean_int8_to_int32 : JsOpInlinable .pure .doesntThrow [(.terminal .int8)] (.terminal .int32)
+  /-- `a - b << 24 >> 24` (Int8.sub) -/
+  | int8__lean_int8_sub : JsOpInlinable .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
   /-- `BigInt(a)` (Int8.toInt64) -/
   | bigint_int__lean_int8_to_int64 : JsOpInlinable .pure .doesntThrow [(.terminal .int8)] (.terminal .bigint_int)
   /-- `a` (Int8.toInt64) -/
@@ -324,8 +342,16 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | bigint_int__lean_int8_to_int : JsOpInlinable .pure .doesntThrow [(.terminal .int8)] (.terminal .bigint_int)
   /-- `a` (Int8.toInt) -/
   | int53__lean_int8_to_int : JsOpInlinable .pure .doesntThrow [(.terminal .int8)] (.terminal .int53)
+  /-- `a * b << 24 >> 24` (Int8.mul) -/
+  | int8__lean_int8_mul : JsOpInlinable .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
+  /-- `a & b` (Int8.land) -/
+  | int8__lean_int8_land : JsOpInlinable .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
+  /-- `a | b` (Int8.lor) -/
+  | int8__lean_int8_lor : JsOpInlinable .pure .doesntThrow [(.terminal .int8), (.terminal .int8)] (.terminal .int8)
   /-- `a <= b` (Int16.decLe) -/
   | int16__lean_int16_dec_le : JsOpInlinable .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .bool)
+  /-- `a / b << 16 >> 16` (Int16.div) -/
+  | int16__lean_int16_div : JsOpInlinable .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
   /-- `a < b` (Int16.decLt) -/
   | int16__lean_int16_dec_lt : JsOpInlinable .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .bool)
   /-- `BigInt(a)` (Int16.toInt) -/
@@ -336,28 +362,62 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | int16__lean_int16_dec_eq : JsOpInlinable .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .bool)
   /-- `a` (Int16.toInt32) -/
   | int16__lean_int16_to_int32 : JsOpInlinable .pure .doesntThrow [(.terminal .int16)] (.terminal .int32)
+  /-- `~a` (Int16.complement) -/
+  | int16__lean_int16_complement : JsOpInlinable .pure .doesntThrow [(.terminal .int16)] (.terminal .int16)
+  /-- `a & b` (Int16.land) -/
+  | int16__lean_int16_land : JsOpInlinable .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
+  /-- `a * b << 16 >> 16` (Int16.mul) -/
+  | int16__lean_int16_mul : JsOpInlinable .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
+  /-- `a ^ b` (Int16.xor) -/
+  | int16__lean_int16_xor : JsOpInlinable .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
+  /-- `a | b` (Int16.lor) -/
+  | int16__lean_int16_lor : JsOpInlinable .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
+  /-- `a + b << 16 >> 16` (Int16.add) -/
+  | int16__lean_int16_add : JsOpInlinable .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
+  /-- `-a << 16 >> 16` (Int16.neg) -/
+  | int16__lean_int16_neg : JsOpInlinable .pure .doesntThrow [(.terminal .int16)] (.terminal .int16)
+  /-- `a - b << 16 >> 16` (Int16.sub) -/
+  | int16__lean_int16_sub : JsOpInlinable .pure .doesntThrow [(.terminal .int16), (.terminal .int16)] (.terminal .int16)
   /-- `BigInt(a)` (Int16.toInt64) -/
   | bigint_int__lean_int16_to_int64 : JsOpInlinable .pure .doesntThrow [(.terminal .int16)] (.terminal .bigint_int)
   /-- `a` (Int16.toInt64) -/
   | int53__lean_int16_to_int64 : JsOpInlinable .pure .doesntThrow [(.terminal .int16)] (.terminal .int53)
+  /-- `a & b` (Int32.land) -/
+  | int32__lean_int32_land : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
+  /-- `Math.imul(a, b)` (Int32.mul) -/
+  | int32__lean_int32_mul : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
   /-- `a <= b` (Int32.decLe) -/
   | int32__lean_int32_dec_le : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .bool)
   /-- `BigInt(a)` (Int32.toInt64) -/
   | bigint_int__lean_int32_to_int64 : JsOpInlinable .pure .doesntThrow [(.terminal .int32)] (.terminal .bigint_int)
   /-- `a` (Int32.toInt64) -/
   | int53__lean_int32_to_int64 : JsOpInlinable .pure .doesntThrow [(.terminal .int32)] (.terminal .int53)
+  /-- `a - b | 0` (Int32.sub) -/
+  | int32__lean_int32_sub : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
+  /-- `-a | 0` (Int32.neg) -/
+  | int32__lean_int32_neg : JsOpInlinable .pure .doesntThrow [(.terminal .int32)] (.terminal .int32)
   /-- `a === b` (Int32.decEq) -/
   | int32__lean_int32_dec_eq : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .bool)
   /-- `a < b` (Int32.decLt) -/
   | int32__lean_int32_dec_lt : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .bool)
+  /-- `a ^ b` (Int32.xor) -/
+  | int32__lean_int32_xor : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
   /-- `a << b` (Int32.shiftLeft) -/
   | int32__lean_int32_shift_left : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
   /-- `a >> b` (Int32.shiftRight) -/
   | int32__lean_int32_shift_right : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
+  /-- `~a` (Int32.complement) -/
+  | int32__lean_int32_complement : JsOpInlinable .pure .doesntThrow [(.terminal .int32)] (.terminal .int32)
+  /-- `a + b | 0` (Int32.add) -/
+  | int32__lean_int32_add : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
+  /-- `a | b` (Int32.lor) -/
+  | int32__lean_int32_lor : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
   /-- `BigInt(a)` (Int32.toInt) -/
   | bigint_int__lean_int32_to_int : JsOpInlinable .pure .doesntThrow [(.terminal .int32)] (.terminal .bigint_int)
   /-- `a` (Int32.toInt) -/
   | int53__lean_int32_to_int : JsOpInlinable .pure .doesntThrow [(.terminal .int32)] (.terminal .int53)
+  /-- `a / b | 0` (Int32.div) -/
+  | int32__lean_int32_div : JsOpInlinable .pure .doesntThrow [(.terminal .int32), (.terminal .int32)] (.terminal .int32)
   /-- `BigInt.asIntN(64, a - b)` (Int64.sub) -/
   | bigint_int__lean_int64_sub : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
   /-- `BigInt.asIntN(64, a ^ b)` (Int64.xor) -/

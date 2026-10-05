@@ -41,7 +41,7 @@ def «cands_lean_uint16_dec_lt» : List Cand :=
 
 /-- The operations of `lean_uint16_div`. -/
 def «cands_lean_uint16_div» : List Cand :=
-  [⟨_, _, _, _, .imported .uint16__lean_uint16_div⟩]
+  [⟨_, _, _, _, .inlined .uint16__lean_uint16_div⟩]
 
 /-- The operations of `lean_uint16_land`. -/
 def «cands_lean_uint16_land» : List Cand :=
@@ -145,7 +145,7 @@ def «cands_lean_uint32_dec_lt» : List Cand :=
 
 /-- The operations of `lean_uint32_div`. -/
 def «cands_lean_uint32_div» : List Cand :=
-  [⟨_, _, _, _, .imported .uint32__lean_uint32_div⟩]
+  [⟨_, _, _, _, .inlined .uint32__lean_uint32_div⟩]
 
 /-- The operations of `lean_uint32_land`. -/
 def «cands_lean_uint32_land» : List Cand :=
@@ -361,7 +361,7 @@ def «cands_lean_uint8_dec_lt» : List Cand :=
 
 /-- The operations of `lean_uint8_div`. -/
 def «cands_lean_uint8_div» : List Cand :=
-  [⟨_, _, _, _, .imported .uint8__lean_uint8_div⟩]
+  [⟨_, _, _, _, .inlined .uint8__lean_uint8_div⟩]
 
 /-- The operations of `lean_uint8_land`. -/
 def «cands_lean_uint8_land» : List Cand :=

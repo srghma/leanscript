@@ -1,3 +1,29 @@
+# Summary of changes for run 12e7c078-521d-4248-8c15-4059e4fbc102
+`Tests/SnapshotsPBOPure/PrimOpInt01NonConfigurable` is now better than the purescript-backend-optimizer reference in every function. All 66 functions compile to inline JavaScript, and the generated module no longer imports anything from `runtime.js`. The reference uses a runtime function in 54 of its 66. The node checks against Lean pass: 1089 at `pbo` and 1089 at `faithful`.
+
+**What I found:** before this change, 48 of the 66 functions were already inline and on par with the reference or better. For example, `ne` was already `a !== b` where the reference uses an `if`, and the signed comparisons were already operators. The other 18 were runtime calls: `div` of `UInt8`/`UInt16`/`UInt32`, and `add`/`sub`/`mul`/`div`/`neg` of `Int8`/`Int16`/`Int32`.
+
+**Where the change went:** the `Term` that comes out of Lean is already as small as it gets here: each function is one extern call. So there was nothing for the `Term` → `Term` optimiser to do. The change is in `Term` → `JsTerm`: I added new inline forms to `scripts/js_ops_inline.json` and regenerated `JsTerm/Ops/` with `scripts/gen_js_ops.py`. `JsTerm` → `JsTerm` didn't need changes. The file has no recursion or loops, so labelled blocks and loops don't come into it.
+
+**The new forms** (each argument is read once):
+- **`Int8`:** `((a + b) << 24) >> 24`, and the same shape for `sub`, `mul` and `neg`, e.g. `(-a << 24) >> 24`.
+- **`Int16`:** the same with `<< 16 >> 16`.
+- **`Int32`:** `(a + b) | 0`, `(a - b) | 0`, `-a | 0`, and `Math.imul(a, b)` for `mul`.
+- **Division:** `((a / b) << 24) >> 24` for `Int8` (`<< 16 >> 16` for `Int16`), `(a / b) | 0` for `Int32`, `UInt8` and `UInt16`, and `(a / b) >>> 0` for `UInt32`.
+  - These drop the runtime's `b === 0 ? 0 : …` test. Dividing by zero in JavaScript gives `Infinity`, `-Infinity` or `NaN`, and `| 0`, `<<` and `>>>` all turn those into `0`, which is what Lean returns.
+- **Bitwise (not used in this file):** the `Int8`/`Int16`/`Int32` operations are now `~a`, `a & b`, `a | b`, `a ^ b`. This improves `PrimOpIntBit01NonConfigurable`, `PrimOpIntDivNonConfigurable`, `PrimOpInt03NonConfigurable`, `TopConstants` and a few other snapshots.
+
+**Proofs:** the new `RuntimeSpec/InlineSInt.lean` proves each form equal to the Lean operation for all arguments, in the existing model of JavaScript's 32-bit operators (`int8_add_inline` … `int32_div_inline`, `uint8_div_inline`, `uint16_div_inline`, `uint32_div_inline`). It has no `sorry` and uses only the standard axioms. For division the model takes one floating-point fact as given, stated in the module doc: for safe integers, `ToInt32(a / b)` equals the quotient truncated toward zero. This fact is not proved in Lean. A separate node script found no counterexamples (all `Int8` pairs, a sample of `Int16` pairs, 3 million random 32-bit pairs), but that is testing, not a proof. The snapshot checks also cover division by zero, `-128 / -1` and `UInt32` at its maximum value.
+
+**Tests and builds:**
+- `Tests/SnapshotsPBOPure/PrimOpInt01NonConfigurable.md` has the function-by-function comparison with the reference.
+- `Tests/Main.lean` has a new case for this file inside the existing `primOpInt01Spec`. It checks the generated fragments, that nothing is imported from `runtime.js`, and the 1089 checks.
+- `tests --timeout 180` passes 151/151.
+- I regenerated all snapshots and no node check fails. The snapshot script still exits 1 because of the "literal too big" refusals at `pbo` that were already there.
+- `leanscript`, `tests`, `TermTests`, `TyTests`, `JsTerm`, `JsSpec`, `OpsSpec` and `RuntimeSpec` all build.
+
+The new proofs are registered as proved in the properties table, and everything is committed.
+
 # Summary of changes for run 442bafa4-afe6-45c7-8e84-de34ba46ab89
 All 65 functions of `Tests/SnapshotsPBOPure/PrimOpInt01Configurable.lean` now translate at both presets. Before, the 22 `USize` and `ISize` functions were refused ("the width of `BitVec System.Platform.numBits` is not a numeral"). Every function is now on par with the reference or better (`-num.js` for the `pbo` preset, `-bigint.js` for `faithful`), except division, covered below. The node checks against Lean pass: 831 at `pbo` and 940 at `faithful`, up from 569 and 577. The full comparison is in `Tests/SnapshotsPBOPure/PrimOpInt01Configurable.md`.
 
