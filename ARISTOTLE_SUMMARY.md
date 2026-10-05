@@ -1,3 +1,35 @@
+# Summary of changes for run 475bc38a-b434-45ea-bca5-b24bd96b251a
+The JavaScript for `Tests/SnapshotsPBOPure/PrimOpInt02NonConfigurable.lean` was already better than `legacy-backend/PrimOpInt02NonConfigurable.js` at both presets before I changed anything, and its output didn't change. Because this file folds to constants, I also tested variants where the operations read an unknown value. That turned up leftover arithmetic, which I fixed in the `Term → Term` optimiser and in `Term → JsTerm`. The full comparison is in `Tests/SnapshotsPBOPure/PrimOpInt02NonConfigurable.md`.
+
+**This file compared with the reference**
+- **Tests:** each of the 72 definitions is now an array literal (`[2, 3, 3, 255, 1, 254]`, or `Uint8Array.of(…)` at `faithful`). Equal results are shared (`TestInt16$test1 = TestInt8$test1`).
+- **What the reference does:** it computes every test when the module loads, using a closure per test, 51 imported runtime functions and nested spreads. It is 24 049 bytes against our 9 017 (`pbo`) and 9 616 (`faithful`).
+- **`intValues`:** ours is `(op) => [op(1, 1), …, op(255, 255)]`, with the `-1`/`-2` arguments already worked out. There are no imports.
+- **Checks against Lean:** 78 pass at each preset.
+- **Where the folding happens:** the elaboration to `Term` already does it, so no phase needed changing for this file. It has no loops or recursion, so labelled blocks and loops don't apply.
+
+**Variants with an unknown value** (new `Tests/SnapshotsMy/IntOpsUnknown.lean`, 123 checks per preset, all passing)
+- **`Term → Term`** (new `LeanScript/Term/Optimize/IntUnit.lean`, run inside `Term.arithWalk`):
+  - `x - 0`, `x / 1` and `-(-x)` become `x`.
+  - `x * -1` and `0 - x` become `-x`. For example, `((c * 255) & 255)` becomes `-c & 255`, which is then shared in a `const`.
+  - `x - k` (a literal `k`) becomes `x + (-k)`, so it folds with nearby literals.
+  - The sums now read `-x` as `x * -1`, so the copies of `x` in a sum are still counted together.
+  - This covers `UInt8`–`UInt64`, `Int8`–`Int64` and `Int` (plus `Nat` for `x - 0` and `x / 1`).
+- **`Term → JsTerm`** (new `LeanScript/Term/Optimize/AddLitAsSub.lean`): an addition of a negative literal is written as a subtraction. So `((c + -1) << 24) >> 24` becomes `((c - 1) << 24) >> 24`, and `(c + 255) & 255` becomes `(c - 1) & 255`. This can't go in the optimiser, because it would undo the `x - k` rewrite above and the two would keep reversing each other.
+- **Proofs:** `Neu.intUnit_eval` and `Neu.addLitAsSub_eval` prove both rewrites don't change the value. `Term.arithWalk_eval` and `Term.optimizeN_eval` still hold. All use only the standard axioms, with no `sorry`. Both new theorems are registered as proved in the properties table.
+- **Other snapshots that improved:** `PrimOpInt03NonConfigurable`/`Configurable`. For example, `(a + 144) & 255` is now `(a - 112) & 255`, and `BigInt.asIntN(64, a + -8446744073709551616n)` is now `a - 8446744073709551616n`.
+
+**Not done:** these are listed in the `.md`.
+- `c + c * -1` at `Int8` leaves `(c * 0)` instead of `0`.
+- `(c - 1) - (d - 2)` is not regrouped.
+
+**Tests and builds**
+- I regenerated all snapshots and no node check fails. The script still exits 1 because of the "literal too big" refusals at `pbo` that were already there.
+- `Tests/Main.lean` has a new `primOpInt02NonConfigurableSpec`. It checks fragments of this file's output, that there are no imports, runtime calls or spreads, and the variant snapshot. `tests --timeout 180` passes 154/154.
+- `leanscript`, `tests`, `TermTests`, `TyTests`, `JsTerm`, `JsSpec`, `RuntimeSpec` and `OpsSpec` build. A plain `lake build` still fails on `LeanScript/Term/Syntax/UsageAlgebra.lean`, which imports Mathlib; that was already the case and I didn't touch it.
+
+Everything is committed.
+
 # Summary of changes for run eaaac882-e679-4442-acea-75ab92d90d69
 The JavaScript for `Tests/SnapshotsPBOPure/PrimOpInt02Configurable.lean` was already on par with the purescript-backend-optimizer references or better, so I didn't change the translation. There is one gap: 12 `UInt64`/`USize` definitions are refused at the `pbo` preset, explained below. The full comparison is in `Tests/SnapshotsPBOPure/PrimOpInt02Configurable.md`.
 

@@ -13,11 +13,11 @@
 //   TestInt64.test1: literal too big: the Int64 literal -8446744073709551616 does not fit in a JavaScript number (use the bigint representation)
 //   TestInt64.test2: literal too big: the Int64 literal 8446744073709551616 does not fit in a JavaScript number (use the bigint representation)
 //   TestInt64.test3: literal too big: the Int64 literal 6553255926290448384 does not fit in a JavaScript number (use the bigint representation)
-//   TestInt64.test4: literal too big: the Int64 literal -8446744073709551616 does not fit in a JavaScript number (use the bigint representation)
+//   TestInt64.test4: literal too big: the Int64 literal 8446744073709551616 does not fit in a JavaScript number (use the bigint representation)
 //   TestISize.test1: literal too big: the Int64 literal -8446744073709551616 does not fit in a JavaScript number (use the bigint representation)
 //   TestISize.test2: literal too big: the Int64 literal 8446744073709551616 does not fit in a JavaScript number (use the bigint representation)
 //   TestISize.test3: literal too big: the Int64 literal 6553255926290448384 does not fit in a JavaScript number (use the bigint representation)
-//   TestISize.test4: literal too big: the Int64 literal -8446744073709551616 does not fit in a JavaScript number (use the bigint representation)
+//   TestISize.test4: literal too big: the Int64 literal 8446744073709551616 does not fit in a JavaScript number (use the bigint representation)
 //   TestInt.test3: literal too big: the Int literal 4000000000000000000 does not fit in a JavaScript number (use the bigint representation)
 
 import { uint53__lean_nat_add, int53__lean_int_add } from "../../runtime.js";

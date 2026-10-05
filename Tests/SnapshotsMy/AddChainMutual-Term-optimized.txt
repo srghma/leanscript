@@ -156,7 +156,7 @@ val k1 [1] : (Nat → (Int → (Nat → (Int × Nat)))) := fun x2 [ω] : Nat => 
             val k19 [1] : (Nat → (Int × Nat)) := fun x20 [1] : Nat => (open)
               if x16 then
                 let x21 [1] : (Int → (Nat → (Int × Nat))) := acc13 false
-                let x22 [1] : (Nat → (Int × Nat)) := x21 lean_int_sub(x18, 7)
+                let x22 [1] : (Nat → (Int × Nat)) := x21 lean_int_add(x18, -7)
                 let x23 [1] : (Int × Nat) := x22 lean_nat_add(x20, 1)
                 ret x23
               else
@@ -191,7 +191,7 @@ val k1 [1] : (Nat → (Int → (Nat → (Int × Nat)))) := fun x2 [ω] : Nat => 
             val k19 [1] : (Nat → (Int × Nat)) := fun x20 [1] : Nat => (open)
               if x16 then
                 let x21 [1] : (Int → (Nat → (Int × Nat))) := acc13 false
-                let x22 [1] : (Nat → (Int × Nat)) := x21 lean_int_sub(x18, 7)
+                let x22 [1] : (Nat → (Int × Nat)) := x21 lean_int_add(x18, -7)
                 let x23 [1] : (Int × Nat) := x22 lean_nat_add(x20, 1)
                 ret x23
               else

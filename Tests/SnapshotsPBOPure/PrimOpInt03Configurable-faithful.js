@@ -102,7 +102,7 @@ export const TestInt64$test3 = 6553255926290448384n;
  * @returns {int(bigint)}
  */
 export const TestInt64$test4 = (a) =>
-  BigInt.asIntN(64, a + -8446744073709551616n);
+  BigInt.asIntN(64, a - 8446744073709551616n);
 
 /**
  * `TestISize.test1`
@@ -128,7 +128,7 @@ export const TestISize$test3 = 6553255926290448384n;
  * @returns {int(bigint)}
  */
 export const TestISize$test4 = (a) =>
-  BigInt.asIntN(64, a + -8446744073709551616n);
+  BigInt.asIntN(64, a - 8446744073709551616n);
 
 /**
  * `TestInt.test1`

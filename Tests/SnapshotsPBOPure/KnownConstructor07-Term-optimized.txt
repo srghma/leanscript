@@ -13,6 +13,6 @@ val k1 [1] : ((Int → Int) → (Int → (Int × Int))) := fun x2 [ω] : (Int �
   val k3 [1] : (Int → (Int × Int)) := fun x4 [1] : Int => (open)
     let x5 [ω] : Int := x2 x4
     let x6 [1] : Int := share lean_int_add(x5, 1)
-    ret ⟨x6, lean_int_sub(x5, 2)⟩
+    ret ⟨x6, lean_int_add(x5, -2)⟩
   ret k3
 ret k1

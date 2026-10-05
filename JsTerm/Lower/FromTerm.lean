@@ -6,6 +6,7 @@ public import JsTerm.Lower.Shift
 public import JsTerm.Lower.BoolCmp
 public import JsTerm.Lower.OrdCmp
 public import LeanScript.Term.Optimize.KnownCond
+public import LeanScript.Term.Optimize.AddLitAsSub
 
 @[expose] public section
 
@@ -26,7 +27,7 @@ syntax-directed and type-directed: a `Term` of type `τ` becomes a `JsTerm` of t
 | `record_mk`, `union_mk ix`, `array_mk`, `list_mk` | `{ _1: f₁, … }`, `{ tag: ix, _1: f₁, … }`, `[e₀, …]` or `Uint8Array.of(…)`, `[e₀, …]` (`listRepr = stdListToJsArray`) or `{ tag: 1, _1: e₀, _2: … { tag: 0 } }` (`listRepr = taggedUnion`) |
 | `enum_mk i` | the number `shift + i` |
 | `Neu.cond` | `c ? a : b`, simplified first (`Neu.condSimp`: `c ? 7 : 7` is `7`, `(c && false) ? a : b` is `b`); on booleans, `c ? y : !y` is `c === y`, `c ? false : y` is `c < y`, … (`JsTerm.Lower.BoolCmp`) |
-| `Neu.extern` | the operation of the extern at these types (`MoreJs.lowerExtern`); `a[i]!` known in bounds by the enclosing tests is `a[i]`, and a comparison of sizes of arrays at `BigInt` is done on the numbers (`JsTerm.Lower.Bounds`) |
+| `Neu.extern` | the operation of the extern at these types (`MoreJs.lowerExtern`); an addition of a negative literal as a subtraction (`x + -1`, `x + 255` at `UInt8`, is `x - 1`: `Neu.addLitAsSub`); `a[i]!` known in bounds by the enclosing tests is `a[i]`, and a comparison of sizes of arrays at `BigInt` is done on the numbers (`JsTerm.Lower.Bounds`) |
 | `Val.lam` | `(x, y) => { … }`, of all the parameters of its type (uncurried) |
 | `Val.thunk_mk`, `Val.lazy_mk` | `thunk__lean_mk_thunk(() => { … })`, `() => { … }` |
 | `Term.ret`, `Term.jump j v` | `return e;`, a jump to the join point `j`; `throw new Error(msg);` when the value is a panic, `lean_panic_fn(d, msg)`, or an arm of a conditional is one (`JsBlock.retOrRaise`) |
@@ -419,6 +420,9 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
     -- open body unchanged
     let r := (Neu.extern e args h).reflFold
     if r.2.boolLit?.isSome then return ← cPExpr r.2 n C M
+    -- an addition of a negative literal is the subtraction it reads as: `x + -1` is `x - 1`,
+    -- `x + 255` at `UInt8` too (`Neu.addLitAsSub`)
+    if let some m := (Neu.extern e args h).addLitAsSub then return ← cNeu m n C M
     let nm := externName e
     -- `l ++ l'` on cons cells: the whole chain of appends, built from its end (`cConsAppend`)
     if nm == "lean_list_append" && (lowerTy cfg τ).isConsList then

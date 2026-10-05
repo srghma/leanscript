@@ -145,7 +145,7 @@ val k1 [1] : (Nat → (([Int] | [Int]) → Int)) := fun x2 [ω] : Nat => (closed
         | ctor#0(f16 [1] : Int) =>
           jump j13 ctor#1(lean_int_add(f16, 1))
         | ctor#1(f17 [1] : Int) =>
-          jump j13 ctor#0(lean_int_sub(f17, 1))
+          jump j13 ctor#0(lean_int_add(f17, -1))
       ret k11
     let x19 [1] : Int := x18 x4
     ret x19

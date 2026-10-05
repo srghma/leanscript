@@ -4,6 +4,7 @@ public import LeanScript.Term.Optimize.ArithPow
 public import LeanScript.Term.Optimize.FloatUnit
 public import LeanScript.Term.Optimize.FloatComm
 public import LeanScript.Term.Optimize.BitVecConv
+public import LeanScript.Term.Optimize.IntUnit
 public import LeanScript.Term.Optimize.CondFold
 
 @[expose] public section
@@ -115,6 +116,24 @@ def mulView : (a : ArithOp) → {o : Lvl} → (e : PExpr Δ Φ Γ (.prim a.prim)
       match hy : ArithOp.litVal? .int64Add y with
       | some c => some ⟨_, x, c, mulLit_eval .int64Add _ x y (fun _ _ => rfl) c hy⟩
       | none => none
+  | .intAdd, _, .neu (.extern (.intBasicExtern .lean_int_neg) (.cons x .nil) _) =>
+      some ⟨_, x, (-1 : Int), fun _ _ => IntUnit.int_mul_neg_one _⟩
+  | .uint8Add, _, .neu (.extern (.uint8BasicExtern .lean_uint8_neg) (.cons x .nil) _) =>
+      some ⟨_, x, (-1 : UInt8), fun _ _ => IntUnit.uint8_mul_neg_one _⟩
+  | .uint16Add, _, .neu (.extern (.uint16BasicExtern .lean_uint16_neg) (.cons x .nil) _) =>
+      some ⟨_, x, (-1 : UInt16), fun _ _ => IntUnit.uint16_mul_neg_one _⟩
+  | .uint32Add, _, .neu (.extern (.uint32BasicExtern .lean_uint32_neg) (.cons x .nil) _) =>
+      some ⟨_, x, (-1 : UInt32), fun _ _ => IntUnit.uint32_mul_neg_one _⟩
+  | .uint64Add, _, .neu (.extern (.uint64BasicExtern .lean_uint64_neg) (.cons x .nil) _) =>
+      some ⟨_, x, (-1 : UInt64), fun _ _ => IntUnit.uint64_mul_neg_one _⟩
+  | .int8Add, _, .neu (.extern (.int8BasicExtern .lean_int8_neg) (.cons x .nil) _) =>
+      some ⟨_, x, (-1 : Int8), fun _ _ => IntUnit.int8_mul_neg_one _⟩
+  | .int16Add, _, .neu (.extern (.int16BasicExtern .lean_int16_neg) (.cons x .nil) _) =>
+      some ⟨_, x, (-1 : Int16), fun _ _ => IntUnit.int16_mul_neg_one _⟩
+  | .int32Add, _, .neu (.extern (.int32BasicExtern .lean_int32_neg) (.cons x .nil) _) =>
+      some ⟨_, x, (-1 : Int32), fun _ _ => IntUnit.int32_mul_neg_one _⟩
+  | .int64Add, _, .neu (.extern (.int64BasicExtern .lean_int64_neg) (.cons x .nil) _) =>
+      some ⟨_, x, (-1 : Int64), fun _ _ => IntUnit.int64_mul_neg_one _⟩
   | _, _, _ => none
 
 /-- An operand of a sum that is an unknown `x`, or a product `x * c` of an unknown by a literal:
@@ -387,7 +406,9 @@ theorem normAt_eval (a : ArithOp) {Φ : KCtx ks} {Γ : UCtx ks} (p : LeanPrimTy)
 end ArithOp
 
 /-- `ArithOp.normAt` of every operation, in turn (`ArithOp.all`), on a neutral expression of a
-    leaf type: for an integer type, its sums, then its products; then, for a float type, a unit
+    leaf type: for an integer type, its sums, then its products, then a unit operand dropped or a
+    negation written as one (`Neu.intUnit`: `x - 0` is `x`, `x * -1` is `-x`, …); then, for a
+    float type, a unit
     operand dropped (`Neu.floatUnit`: `x * 1.0` is `x`, …), and the operands of a `Float` `+`
     or `*` swapped when that saves parentheses in JavaScript (`Neu.floatComm`); last, for a
     fixed-width unsigned integer, `UInt32.ofBitVec (UInt32.toBitVec y)` is `y`
@@ -395,13 +416,14 @@ end ArithOp
 def Neu.normArithPrim {Φ : KCtx ks} {Γ : UCtx ks} (p : LeanPrimTy) {ℓ : Nat}
     (n : Neu Δ Φ Γ (.prim p) ℓ) : Neu Δ Φ Γ (.prim p) ℓ :=
   Neu.uintRoundTrip p
-    (Neu.floatComm p (Neu.floatUnit p (ArithOp.all.foldl (fun n a => a.normAt p n) n)))
+    (Neu.floatComm p (Neu.floatUnit p
+      (Neu.intUnit p (ArithOp.all.foldl (fun n a => a.normAt p n) n))))
 
 theorem Neu.normArithPrim_eval {Φ : KCtx ks} {Γ : UCtx ks} (p : LeanPrimTy) {ℓ : Nat}
     (n : Neu Δ Φ Γ (.prim p) ℓ) (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) :
     (Neu.normArithPrim p n).eval κ ρ = n.eval κ ρ := by
   unfold Neu.normArithPrim
-  rw [Neu.uintRoundTrip_eval, Neu.floatComm_eval, Neu.floatUnit_eval]
+  rw [Neu.uintRoundTrip_eval, Neu.floatComm_eval, Neu.floatUnit_eval, Neu.intUnit_eval]
   generalize ArithOp.all = as
   induction as generalizing n with
   | nil => rfl

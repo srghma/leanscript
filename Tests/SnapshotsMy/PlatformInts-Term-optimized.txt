@@ -83,7 +83,7 @@ ret k1
 
 -- isizeToInt : ISize → Int
 val k1 [1] : (Int64 → Int) := fun x2 [1] : Int64 => (closed)
-  ret lean_int_sub(lean_int64_to_int_sint(x2), 1)
+  ret lean_int_add(lean_int64_to_int_sint(x2), -1)
 ret k1
 
 -- isizeOfInt : Int → ISize
@@ -107,7 +107,7 @@ ret k1
 
 -- isizeToInt64 : ISize → Int64
 val k1 [1] : (Int64 → Int64) := fun x2 [1] : Int64 => (closed)
-  ret lean_int64_sub(x2, 1)
+  ret lean_int64_add(x2, -1)
 ret k1
 
 -- int64ToISize : Int64 → ISize

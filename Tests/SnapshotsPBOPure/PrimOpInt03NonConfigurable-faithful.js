@@ -24,7 +24,7 @@ export const TestUInt8$test3 = 144;
  * @param {uint8} a
  * @returns {uint8}
  */
-export const TestUInt8$test4 = (a) => (a + 144) & 255;
+export const TestUInt8$test4 = (a) => (a - 112) & 255;
 
 /**
  * `TestUInt16.test1`
@@ -49,7 +49,7 @@ export const TestUInt16$test3 = 16960;
  * @param {uint16} a
  * @returns {uint16}
  */
-export const TestUInt16$test4 = (a) => (a + 34464) & 65535;
+export const TestUInt16$test4 = (a) => (a - 31072) & 65535;
 
 /**
  * `TestUInt32.test1`
@@ -99,7 +99,7 @@ export const TestInt8$test3 = -112;
  * @param {int8} a
  * @returns {int8}
  */
-export const TestInt8$test4 = (a) => ((a + -56) << 24) >> 24;
+export const TestInt8$test4 = (a) => ((a - 56) << 24) >> 24;
 
 /**
  * `TestInt16.test1`
@@ -124,7 +124,7 @@ export const TestInt16$test3 = 16960;
  * @param {int16} a
  * @returns {int16}
  */
-export const TestInt16$test4 = (a) => ((a + -25536) << 16) >> 16;
+export const TestInt16$test4 = (a) => ((a - 25536) << 16) >> 16;
 
 /**
  * `TestInt32.test1`
@@ -149,4 +149,4 @@ export const TestInt32$test3 = -1946474495;
  * @param {int32} a
  * @returns {int32}
  */
-export const TestInt32$test4 = (a) => (a + -294967296) | 0;
+export const TestInt32$test4 = (a) => (a - 294967296) | 0;
