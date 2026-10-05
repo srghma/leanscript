@@ -7,7 +7,7 @@
  * @returns {Array<string>}
  */
 export const test1 = (x) =>
-  42 < x ? ["Hello, World", "Hello, Universe"] : [", World", ", Universe"];
+  x > 42 ? ["Hello, World", "Hello, Universe"] : [", World", ", Universe"];
 
 /**
  * `test2`
@@ -16,7 +16,7 @@ export const test1 = (x) =>
  * @returns {string}
  */
 export const test2 = (f, x) => {
-  const x$1 = 42 < x;
+  const x$1 = x > 42;
   return f(
     x$1 ? "Hello, World" : ", World",
     x$1 ? "Hello, Universe" : ", Universe",

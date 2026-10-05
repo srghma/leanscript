@@ -150,6 +150,11 @@ inductive Ref where
   | lit (t : JsTerminalTy) (l : JsLit t)
   deriving Inhabited
 
+/-- The level of a constant, or `none` for any other place. -/
+def Ref.cLvl? : Ref → Option Nat
+  | .c l => some l
+  | _ => Option.none
+
 /-- A variable of JavaScript as the facts on sizes name it: a mutable variable or not, and its
     de Bruijn *level* (`Ref.c`, `Ref.m`), which does not change under binders. -/
 abbrev VarKey := Bool × Nat
@@ -248,6 +253,10 @@ structure Names where
   /-- For each join point of `Term` (by its index), whether it is written at its jumps
       (`JoinInl`). -/
   inl : List (Option JoinInl) := []
+  /-- The levels of the constants that are the parameters of the innermost enclosing function
+      (`JsTerm.Lower.OrdCmp`: a comparison of two of them is written with the parameter to the
+      left on the left, `b < a` as `a > b`). -/
+  params : List Nat := []
   deriving Inhabited
 
 /-- The same update of an array, done in place (`JsOpImported.toMutable?`: `…_immutable` becomes

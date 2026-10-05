@@ -70,7 +70,7 @@ export const ArrStd$tExtract = (a, i, j) =>
  * @returns {boolean}
  */
 export const ArrStd$tAny = (a) =>
-  bigint_nat__lean_array_any(a, (x$1) => 3n < x$1, 0n, BigInt(a.length));
+  bigint_nat__lean_array_any(a, (x$1) => x$1 > 3n, 0n, BigInt(a.length));
 
 /**
  * `ArrStd.tAll`
@@ -78,7 +78,7 @@ export const ArrStd$tAny = (a) =>
  * @returns {boolean}
  */
 export const ArrStd$tAll = (a) =>
-  bigint_nat__lean_array_all(a, (x$1) => 3n < x$1, 0n, BigInt(a.length));
+  bigint_nat__lean_array_all(a, (x$1) => x$1 > 3n, 0n, BigInt(a.length));
 
 /**
  * `ArrStd.tContains`
@@ -95,7 +95,7 @@ export const ArrStd$tContains = (a, x) =>
  * @returns {({ tag: 0 } | { tag: 1, _1: nat(bigint) })}
  */
 export const ArrStd$tFind = (a) =>
-  array__lean_array_find_opt((x$1) => 2n < x$1, a);
+  array__lean_array_find_opt((x$1) => x$1 > 2n, a);
 
 /**
  * `ArrStd.tFindIdx`
@@ -103,7 +103,7 @@ export const ArrStd$tFind = (a) =>
  * @returns {({ tag: 0 } | { tag: 1, _1: nat(bigint) })}
  */
 export const ArrStd$tFindIdx = (a) =>
-  bigint_nat__lean_array_find_idx_opt((x$1) => 2n < x$1, a);
+  bigint_nat__lean_array_find_idx_opt((x$1) => x$1 > 2n, a);
 
 /**
  * `ArrStd.tIdxOf`
@@ -205,7 +205,7 @@ export const ArrStd$tBack = (a) => array__lean_array_back_opt(a);
  * @returns {nat(bigint)}
  */
 export const ArrStd$tCount = (a) =>
-  bigint_nat__lean_array_count_p((x$1) => 1n < x$1, a);
+  bigint_nat__lean_array_count_p((x$1) => x$1 > 1n, a);
 
 /**
  * `ArrStd.tTake`
@@ -228,7 +228,7 @@ export const ArrStd$tU8 = (a) => {
   );
   return array__lean_array_reverse(
     bigint_nat__lean_array_filter(
-      (x$3) => 3 < x$3,
+      (x$3) => x$3 > 3,
       x$2,
       0n,
       BigInt(x$2.length),

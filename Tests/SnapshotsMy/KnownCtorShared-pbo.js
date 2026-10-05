@@ -10,7 +10,7 @@ import { int53__lean_int_add } from "../../runtime.js";
  * @returns {Array<string>}
  */
 export const twoDefaults = (x, s) => {
-  const x$1 = 42 < x;
+  const x$1 = x > 42;
   return [(x$1 ? s : "none") + "!", x$1 ? s : "?"];
 };
 
@@ -21,7 +21,7 @@ export const twoDefaults = (x, s) => {
  * @returns {string}
  */
 export const twoMatchCalls = (f, x) => {
-  const x$1 = 42 < x;
+  const x$1 = x > 42;
   let x$2;
   if (x$1) {
     x$2 = f("Hello");
@@ -43,7 +43,7 @@ export const twoMatchCalls = (f, x) => {
  * @returns {Array<string>}
  */
 export const threeUses = (x) =>
-  42 < x ? ["Hello1", "Hello2", "Hello3"] : ["1", "2", "3"];
+  x > 42 ? ["Hello1", "Hello2", "Hello3"] : ["1", "2", "3"];
 
 /**
  * `nestedChoice`
@@ -51,7 +51,7 @@ export const threeUses = (x) =>
  * @returns {Array<int53(number)>}
  */
 export const nestedChoice = (x) => {
-  const x$1 = 42 < x;
+  const x$1 = x > 42;
   return [x$1 ? 11 : x < 0 ? 12 : 10, x$1 ? 3 : x < 0 ? 6 : 15];
 };
 
@@ -61,7 +61,7 @@ export const nestedChoice = (x) => {
  * @returns {string}
  */
 export const exceptTwice = (x) => {
-  const x$1 = 0 < x;
+  const x$1 = x > 0;
   return (x$1 ? String(x) : "neg") + int53__lean_int_add(x$1 ? x : 0, 1);
 };
 
@@ -78,7 +78,7 @@ export const boolTwice = (x) => true;
  * @returns {{ _1: ({ tag: 0 } | { tag: 1, _1: string }), _2: string }}
  */
 export const alsoReturned = (x) => {
-  const x$1 = 42 < x ? { tag: 1, _1: "Hello" } : { tag: 0 };
+  const x$1 = x > 42 ? { tag: 1, _1: "Hello" } : { tag: 0 };
   let x$2;
   if (x$1.tag === 0) {
     x$2 = "";
@@ -95,8 +95,8 @@ export const alsoReturned = (x) => {
  * @returns {string}
  */
 export const underTests = (x, y) => {
-  const x$1 = 42 < x;
-  if (0 < y) {
+  const x$1 = x > 42;
+  if (y > 0) {
     return x$1 ? "Hello, World" : ", World";
   }
   return x$1 ? "Hello, Universe" : ", Universe";

@@ -19,7 +19,7 @@ export const test1 = (a) => a._1;
  * @param {int(bigint)} x
  * @returns {string}
  */
-export const test2 = (x) => (42n < x ? "Hello, World!" : "");
+export const test2 = (x) => (x > 42n ? "Hello, World!" : "");
 
 /**
  * `test3`
@@ -27,7 +27,7 @@ export const test2 = (x) => (42n < x ? "Hello, World!" : "");
  * @returns {Array<string>}
  */
 export const test3 = (x) =>
-  42n < x
+  x > 42n
     ? ["Hello, World", "Hello, Universe"]
     : ["Default, World", "Default, Universe"];
 
@@ -38,7 +38,7 @@ export const test3 = (x) =>
  * @returns {string}
  */
 export const test4 = (f, x) => {
-  const x$1 = 42n < x;
+  const x$1 = x > 42n;
   return f(
     x$1 ? "Hello, World" : "Default, World",
     x$1 ? "Hello, Universe" : "Default, Universe",

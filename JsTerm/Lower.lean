@@ -7,6 +7,7 @@ public import JsTerm.Lower.DataRec
 public import JsTerm.Lower.Bounds
 public import JsTerm.Lower.Shift
 public import JsTerm.Lower.BoolCmp
+public import JsTerm.Lower.OrdCmp
 public import JsTerm.Lower.FromTerm
 public import JsTerm.Lower.Module
 public import JsTerm.Lower.ShareConsts

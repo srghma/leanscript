@@ -43,10 +43,10 @@ export const Test2$test2 = (x) => {
  */
 export const test3 = (x) => {
   const { _1: f$1, _2: f$2 } = x;
-  if (0 < f$1) {
+  if (f$1 > 0) {
     return f$1;
   }
-  return 1 < f$2 ? f$2 : 3;
+  return f$2 > 1 ? f$2 : 3;
 };
 
 /**
@@ -56,10 +56,10 @@ export const test3 = (x) => {
  */
 export const test4 = (x) => {
   const { _1: f$1, _2: f$2 } = x;
-  if (0 < f$1) {
+  if (f$1 > 0) {
     return f$1;
   }
-  return 1 < f$2 ? f$2 : 3;
+  return f$2 > 1 ? f$2 : 3;
 };
 
 /**
@@ -69,10 +69,10 @@ export const test4 = (x) => {
  */
 export const test5 = (x) => {
   const { _1: f$1, _2: f$2 } = x;
-  if (0 < f$1) {
+  if (f$1 > 0) {
     return f$1;
   }
-  return 0 < f$2 ? f$2 : 0;
+  return f$2 > 0 ? f$2 : 0;
 };
 
 /**
@@ -82,8 +82,8 @@ export const test5 = (x) => {
  */
 export const test6 = (x) => {
   const { _1: f$1, _2: f$2 } = x;
-  if (0 < f$1) {
+  if (f$1 > 0) {
     return f$1;
   }
-  return 0 < f$2 ? f$2 : 0;
+  return f$2 > 0 ? f$2 : 0;
 };

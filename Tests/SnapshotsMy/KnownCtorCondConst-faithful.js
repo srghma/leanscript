@@ -8,7 +8,7 @@
  * @returns {string}
  */
 export const twoAppends = (f, x) => {
-  const x$1 = 42n < x;
+  const x$1 = x > 42n;
   return f(
     x$1 ? "Hello, World" : "Default, World",
     x$1 ? "Hello, Universe" : "Default, Universe",
@@ -22,7 +22,7 @@ export const twoAppends = (f, x) => {
  * @returns {int(bigint)}
  */
 export const intOps = (f, x) => {
-  const x$1 = 42n < x;
+  const x$1 = x > 42n;
   return f(x$1 ? 11n : 21n, x$1 ? 30n : 60n);
 };
 
@@ -32,7 +32,7 @@ export const intOps = (f, x) => {
  * @returns {Array<string>}
  */
 export const threeUses = (x) =>
-  0n < x ? ["pos!", "<pos", "yes"] : ["neg!", "<neg", "no"];
+  x > 0n ? ["pos!", "<pos", "yes"] : ["neg!", "<neg", "no"];
 
 /**
  * `usesInArms`
@@ -42,8 +42,8 @@ export const threeUses = (x) =>
  * @returns {string}
  */
 export const usesInArms = (f, x, y) => {
-  const x$1 = 0n < x;
-  if (0n < y) {
+  const x$1 = x > 0n;
+  if (y > 0n) {
     return f(x$1 ? "a1" : "b1");
   }
   return f(x$1 ? "a2" : "b2");
@@ -56,7 +56,7 @@ export const usesInArms = (f, x, y) => {
  * @returns {string}
  */
 export const alsoDirect = (f, x) => {
-  const x$1 = 0n < x ? "a" : "b";
+  const x$1 = x > 0n ? "a" : "b";
   return f(x$1, x$1 + "!");
 };
 
@@ -67,6 +67,6 @@ export const alsoDirect = (f, x) => {
  * @returns {nat(bigint)}
  */
 export const natOps = (f, x) => {
-  const x$1 = 5n < x;
+  const x$1 = x > 5n;
   return f(x$1 ? 9n : 11n, x$1 ? 6n : 8n);
 };

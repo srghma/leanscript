@@ -242,7 +242,7 @@ export const TestFloat32$ltNoInline = (a, b) => a < b;
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$gtNoInline = (a, b) => b < a;
+export const TestFloat32$gtNoInline = (a, b) => a > b;
 
 /**
  * `TestFloat32.leNoInline`
@@ -258,7 +258,7 @@ export const TestFloat32$leNoInline = (a, b) => a <= b;
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$geNoInline = (a, b) => b <= a;
+export const TestFloat32$geNoInline = (a, b) => a >= b;
 
 /**
  * `TestFloat32.mulNoInline`

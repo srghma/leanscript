@@ -265,7 +265,8 @@ The supported fragment and the refusals are listed in the header of
   be visible with Lean).
 - `String` ordering (`lean_string_dec_lt`) is JavaScript's `<`, which compares UTF-16 code
   units, not code points as Lean does: the two differ on strings mixing characters above
-  `U+FFFF` with characters in `U+E000`–`U+FFFF`.
+  `U+FFFF` with characters in `U+E000`–`U+FFFF`.  `Char` ordering (`<`, `≤`, … on characters,
+  translated as the ordering of one-character strings) has the same limit.
 - A top-level function whose body is not a chain of lambdas (e.g. `fun m => nat_rec …`
   returning a function) is exported curried: `ack2(m)(n)`.
 - `leanscript` only reads the definitions `LeanScript.Term` supports: non-recursive and

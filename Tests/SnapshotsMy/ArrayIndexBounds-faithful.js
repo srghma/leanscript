@@ -34,7 +34,7 @@ export const getLe = (i) => (i <= 2n ? [10n, 20n, 30n][Number(i)] : 0n);
  * @param {nat(bigint)} i
  * @returns {int(bigint)}
  */
-export const getGe = (i) => (3n <= i ? 0n : [10n, 20n, 30n][Number(i)]);
+export const getGe = (i) => (i >= 3n ? 0n : [10n, 20n, 30n][Number(i)]);
 
 /**
  * `getUnproved`

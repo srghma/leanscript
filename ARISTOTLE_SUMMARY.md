@@ -1,3 +1,60 @@
+# Summary of changes for run 1b6f9a3f-7b71-4e16-8aa9-f1b2049c78f8
+The JavaScript for `Tests/SnapshotsPBOPure/PrimOpChar01.lean` now matches `legacy-backend/PrimOpChar01.js` line for line (with `export` in front), at both presets. All 96 checks against Lean pass at each preset. The full write-up is in `Tests/SnapshotsPBOPure/PrimOpChar01.md`.
+
+| fn | legacy | before | now |
+|---|---|---|---|
+| `test1`, `test2` | `a === b`, `a !== b` | same | same |
+| `test3` | `a < b` | not translated | `a < b` |
+| `test4` | `a > b` | not translated | `a > b` |
+| `test5` | `a <= b` | not translated | `a <= b` |
+| `test6` | `a >= b` | not translated | `a >= b` |
+
+**Why `test3`–`test6` were refused:** Lean decides `<` and `≤` on `Char` by looking inside the character (`Char.val`). A `Char` is a leaf of the language, so nothing can look inside it ("`Char` is a leaf of the language").
+
+**Lean → `Term`** (`LeanScript/TermElab/ToTerm/Expr/Calls.lean`). This uses the same approach already used for `==`:
+- `a < b` becomes `"".push a < "".push b`, using the existing string extern `lean_string_dec_lt`.
+- `a ≤ b` becomes `!("".push b < "".push a)`.
+
+Two new proofs in `LeanScript/TermElab/ToTerm/CharEq.lean` show these decide the same as Lean (`decide_char_lt_push`, `decide_char_le_push`). They have no `sorry` and use only the standard axioms.
+
+**`Term → Term`:** nothing to change. The optimised `Term` is already minimal, and `Term` has no `>` or `>=` to rewrite to, so the remaining work had to go in the conversion.
+
+**`Term → JsTerm`** (new `JsTerm/Lower/OrdCmp.lean`). Without this step the output was `b < a`, `!(b < a)`, `!(a < b)`. The conversion now does three things:
+- **Negation:** `!(x < y)` becomes `x >= y`, and `!(x <= y)` becomes `x > y`. This is only done for integers, strings and booleans. It is never done for floats, where it would be wrong because of `NaN`.
+- **Negation inside `&&`/`||`:** `c ? false : y` becomes `c' && y`, and `c ? y : true` becomes `c' || y`, where `c'` is the opposite comparison.
+- **Swapped operands,** only where the order of evaluation can't matter:
+  - two parameters of the same function, with the left one written first (`b < a` → `a > b`);
+  - a literal on the left (`"z" >= c` → `c <= "z"`).
+
+  A loop counter against its bound (`i < n`) is left as it is.
+
+The comparison node `JsExpr.boolCmp` now accepts operands of any basic type. The rules rest on a small model of JavaScript's `<`, `>`, `<=`, `>=`, with three proofs:
+- `JsOrd.eval_flip`: swapping operands and flipping the operator gives the same answer.
+- `JsOrd.eval_neg`: negating a comparison gives the opposite operator when no `NaN` can occur.
+- `JsOrd.eval_neg_needs_total`: with `NaN`, negation fails.
+
+These are proofs about the model. The conversion code itself is not verified; the generated checks back it up.
+
+The `JsTerm → JsTerm` phase wasn't needed. This file has no loops or recursion, so labelled blocks and loops don't come into it.
+
+**Other outputs that changed** (now closer to legacy):
+- `PrimOpString01`: `a > b`, `a <= b`, `a >= b` instead of `b < a`, `!(b < a)`, `!(a < b)`.
+- `PrimOpNumber01`: `TestNat$gt`/`$ge` are now `a > b`/`a >= b`.
+- `KnownConstructors03`/`04`: `x > 42`, which is exactly legacy's `if (x > 42)`.
+- `BoolCmp`: `x >= 5 && b` instead of `(x < 5 ? false : b)`.
+- `charIsLower` (new test): `c >= "a" && c <= "z"`.
+
+**Tests:**
+- New snapshot `Tests/SnapshotsMy/OrdCmp.lean` (`Nat`, `Int`, `UInt8`, `UInt32`, `String`, `Char`, computed operands, floats) passes 291/291 checks at each preset.
+- New `primOpChar01Spec` in `Tests/Main.lean`. I also updated older specs whose expected text changed (e.g. `42 < x` → `x > 42`).
+- I regenerated every snapshot and no check failed. After tightening the operand-swapping rule I re-ran the 34 affected files, and all of them pass.
+- `tests --timeout 180` passes 149/149.
+- `leanscript`, `tests`, `JsTerm`, `JsSpec`, `LanguageJavascriptMini`, `TermTests` and `TyTests` build.
+
+**Limitation:** ordering of characters inherits the existing limit on string ordering. JavaScript compares UTF-16 code units and Lean compares code points, so the two disagree when one character is above `U+FFFF` and the other is in `U+E000`–`U+FFFF`. Legacy behaves the same way. I noted this in `NOT_IMPLEMENTED.md`.
+
+The three proofs are registered as proved in the properties table. Everything is committed.
+
 # Summary of changes for run f050f962-c134-4454-ad11-0652e71ddece
 The JavaScript for `Tests/SnapshotsPBOPure/PrimOpBooleanNotRegression.lean` was already as good as the legacy output or better, before I changed anything. It is still unchanged:
 

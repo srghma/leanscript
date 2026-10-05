@@ -12,7 +12,7 @@ export const test1 = (n) => {
   if (n < 1) {
     return "n: " + n;
   }
-  return 1 < n && n < 100 ? "1 < x < 100: " + n : "catch";
+  return n > 1 && n < 100 ? "1 < x < 100: " + n : "catch";
 };
 
 /**
@@ -21,7 +21,7 @@ export const test1 = (n) => {
  * @returns {int53(number)}
  */
 export const test2 = (a) => {
-  if (a < 1 || 1 < a) {
+  if (a < 1 || a > 1) {
     return a;
   }
   return a === 1 ? 1 : 0;

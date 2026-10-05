@@ -6,4 +6,4 @@
  * @param {int(bigint)} x
  * @returns {string}
  */
-export const test = (x) => (42n < x ? "Hello, World!" : "");
+export const test = (x) => (x > 42n ? "Hello, World!" : "");

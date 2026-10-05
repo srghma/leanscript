@@ -47,7 +47,7 @@ export const test5 = (a, b) => a < b;
  * @param {float} b
  * @returns {boolean}
  */
-export const test6 = (a, b) => b < a;
+export const test6 = (a, b) => a > b;
 
 /**
  * `test7`
@@ -63,7 +63,7 @@ export const test7 = (a, b) => a <= b;
  * @param {float} b
  * @returns {boolean}
  */
-export const test8 = (a, b) => b <= a;
+export const test8 = (a, b) => a >= b;
 
 /**
  * `test9`

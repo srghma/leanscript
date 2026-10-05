@@ -3133,13 +3133,13 @@ def knownConstructors02Spec : Spec := describe "KnownConstructors02" do
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
-/-- `KnownConstructors03.lean`: `test` (a `match` on `if 42 < x then some "Hello" else none`)
-    is one conditional expression `(x) => (42 < x ? "Hello, World!" : "")`, with no record and
+/-- `KnownConstructors03.lean`: `test` (a `match` on `if x > 42 then some "Hello" else none`)
+    is one conditional expression `(x) => (x > 42 ? "Hello, World!" : "")`, with no record and
     no test of a tag (legacy builds no record either but writes `if`/`return`).  Its variants
     `KnownCtorCaseOfIf.lean`: the arm of the constructor with a field written once as a join point
     when the conditional has more than one leaf of it (`bigShared`: `let x$1; if … x$1 = s; else
     if … x$1 = t; else return ""; return f(f(f(x$1 + …)))`), a record of literals taken apart
-    (`pairOpt`, `pairBool`), jumps passing a conditional (`doChain`: `0 < x && 0 < y`), and
+    (`pairOpt`, `pairBool`), jumps passing a conditional (`doChain`: `x > 0 && y > 0`), and
     `match` on `Nat` without a loop (`fromMatch`). -/
 def knownConstructors03Spec : Spec := describe "KnownConstructors03" do
   it "a case of a conditional of constructors is a conditional (needs node and leanscript)" do
@@ -3155,20 +3155,20 @@ def knownConstructors03Spec : Spec := describe "KnownConstructors03" do
     -- (directory, file, fragments at preset pbo, fragments at preset faithful, absent, checks)
     for (path, file, fragsPbo, fragsFaithful, absent, nChecks) in [
         ("Tests/SnapshotsPBOPure", "KnownConstructors03",
-          ["export const test = (x) => (42 < x ? \"Hello, World!\" : \"\");"],
-          ["export const test = (x) => (42n < x ? \"Hello, World!\" : \"\");"],
+          ["export const test = (x) => (x > 42 ? \"Hello, World!\" : \"\");"],
+          ["export const test = (x) => (x > 42n ? \"Hello, World!\" : \"\");"],
           [".tag", "if (", "return "], (7 : Nat)),
         ("Tests/SnapshotsMy", "KnownCtorCaseOfIf",
-          ["export const twiceUse = (x) => (42 < x ? \"HelloHello\" : \"\");",
-           "export const pairOpt = (x) => (0 < x ? x : int53__lean_int_neg(x));",
-           "export const pairBool = (x) => (0 < x ? int53__lean_int_mul(x, 3) : -1);",
-           "export const isSomeIf = (x) => 0 < x;",
-           "  if (0 < x && 0 < y) {",
+          ["export const twiceUse = (x) => (x > 42 ? \"HelloHello\" : \"\");",
+           "export const pairOpt = (x) => (x > 0 ? x : int53__lean_int_neg(x));",
+           "export const pairBool = (x) => (x > 0 ? int53__lean_int_mul(x, 3) : -1);",
+           "export const isSomeIf = (x) => x > 0;",
+           "  if (x > 0 && y > 0) {",
            "  } else if (x < 0) {"],
-          ["export const twiceUse = (x) => (42n < x ? \"HelloHello\" : \"\");",
-           "export const pairOpt = (x) => (0n < x ? x : -x);",
-           "export const isSomeIf = (x) => 0n < x;",
-           "  if (0n < x && 0n < y) {",
+          ["export const twiceUse = (x) => (x > 42n ? \"HelloHello\" : \"\");",
+           "export const pairOpt = (x) => (x > 0n ? x : -x);",
+           "export const isSomeIf = (x) => x > 0n;",
+           "  if (x > 0n && y > 0n) {",
            "  } else if (x < 0n) {"],
           ["while (", "s$1._1", "nat_rec"], 250)] do
       let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
@@ -3205,23 +3205,23 @@ def knownConstructors04Spec : Spec := describe "KnownConstructors04" do
     --  number of `.tag === ` tests, checks)
     for (path, file, fragsPbo, fragsFaithful, absent, nTags, nChecks) in [
         ("Tests/SnapshotsPBOPure", "KnownConstructors04",
-          ["42 < x ? [\"Hello, World\", \"Hello, Universe\"] : [\", World\", \", Universe\"]",
-           "  const x$1 = 42 < x;",
+          ["x > 42 ? [\"Hello, World\", \"Hello, Universe\"] : [\", World\", \", Universe\"]",
+           "  const x$1 = x > 42;",
            "    x$1 ? \"Hello, World\" : \", World\",",
            "    x$1 ? \"Hello, Universe\" : \", Universe\",",
            "export const test3 = (x) => false;"],
-          ["42n < x ? [\"Hello, World\", \"Hello, Universe\"] : [\", World\", \", Universe\"]",
-           "  const x$1 = 42n < x;",
+          ["x > 42n ? [\"Hello, World\", \"Hello, Universe\"] : [\", World\", \", Universe\"]",
+           "  const x$1 = x > 42n;",
            "export const test3 = (x) => false;"],
           ["{ tag: ", "._1", "let x$"], (0 : Nat), (14 : Nat)),
         ("Tests/SnapshotsMy", "KnownCtorShared",
           ["  return [(x$1 ? s : \"none\") + \"!\", x$1 ? s : \"?\"];",
-           "42 < x ? [\"Hello1\", \"Hello2\", \"Hello3\"] : [\"1\", \"2\", \"3\"]",
+           "x > 42 ? [\"Hello1\", \"Hello2\", \"Hello3\"] : [\"1\", \"2\", \"3\"]",
            "  return (x$1 ? String(x) : \"neg\") + int53__lean_int_add(x$1 ? x : 0, 1);",
            "export const boolTwice = (x) => true;",
            "    return x$1 ? \"Hello, World\" : \", World\";"],
           ["  return [(x$1 ? s : \"none\") + \"!\", x$1 ? s : \"?\"];",
-           "42n < x ? [\"Hello1\", \"Hello2\", \"Hello3\"] : [\"1\", \"2\", \"3\"]",
+           "x > 42n ? [\"Hello1\", \"Hello2\", \"Hello3\"] : [\"1\", \"2\", \"3\"]",
            "  return (x$1 ? String(x) : \"neg\") + ((x$1 ? x : 0n) + 1n);",
            "export const boolTwice = (x) => true;"],
           ["while (", "nat_rec"], 1, 85)] do
@@ -3289,7 +3289,8 @@ def knownConstructors05Spec : Spec := describe "KnownConstructors05" do
     writes for an enum of four constructors): the four arms differ only by the name of the
     constructor, so they are written once (`Term.factorWalk`): a chain of `if`s picks the name,
     then one expression builds the `Format`, the test `1024 <= prec` computed once and known
-    inside its own arms (`1` and `2` instead of `x$1 ? 1 : 2`).  Its variants
+    inside its own arms (`1` and `2` instead of `x$1 ? 1 : 2`), written `prec >= 1024`
+    (`JsTerm.Lower.OrdCmp`).  Its variants
     `Tests/SnapshotsMy/KnownCtorEnumFactor.lean` are checked against Lean. -/
 def knownConstructors06Spec : Spec := describe "KnownConstructors06" do
   it "the arms of an enum case analysis that differ by a literal are written once (needs node and leanscript)" do
@@ -3306,15 +3307,15 @@ def knownConstructors06Spec : Spec := describe "KnownConstructors06" do
     for (path, file, frags, absent, counts, nChecks) in [
         ("Tests/SnapshotsPBOPure", "KnownConstructors06",
           ["  let x$1;\n  if (x === 0) {\n    x$1 = \"Test.Foo\";\n  } else if (x === 1) {",
-           "  } else {\n    x$1 = \"Test.Qux\";\n  }\n  return 1024",
+           "  } else {\n    x$1 = \"Test.Qux\";\n  }\n  return prec >= 1024",
            "_2: { tag: 3, _1: x$1 } }"],
           ["? 1 : 2", "? 1n : 2n", "throw"],
-          [("\"Test.Foo\"", 1), ("\"(\"", 1), ("<= prec", 1), ("_1: x$1 }", 2)], (0 : Nat)),
+          [("\"Test.Foo\"", 1), ("\"(\"", 1), ("prec >= 1024", 1), ("_1: x$1 }", 2)], (0 : Nat)),
         ("Tests/SnapshotsMy", "KnownCtorEnumFactor",
           ["  return x$1 + s + \">\";", "  return { _1: x$1, _2: x$1 + s };",
            "    x$1 = \"Color.Black\";"],
           ["throw"],
-          [("\"<red\"", 1), ("\"Color.Red\"", 1), ("<= prec", 2)], 173)] do
+          [("\"<red\"", 1), ("\"Color.Red\"", 1), ("prec >= 1024", 2)], 173)] do
       let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
       let out ← IO.Process.output { cmd := bin.toString, args }
       assertEq s!"{file}: leanscript exit code" 0 out.exitCode
@@ -3356,7 +3357,7 @@ def knownConstructorsSpec : Spec := describe "KnownConstructors" do
            "  if (a === \"foo\") {\n    return 1"],
           ["x$1 + \", World\"", "throw", "tag: 1, _1: \"Hello\""], (31 : Nat)),
         ("Tests/SnapshotsMy", "KnownCtorCondConst",
-          [" < x ? [\"pos!\", \"<pos\", \"yes\"] : [\"neg!\", \"<neg\", \"no\"]",
+          ["x > 0", " ? [\"pos!\", \"<pos\", \"yes\"] : [\"neg!\", \"<neg\", \"no\"]",
            "return f(x$1 ? \"a1\" : \"b1\");",
            "  return f(x$1, x$1 + \"!\");"],
           ["throw", "while"], 51)] do
@@ -3559,9 +3560,9 @@ def primOpBoolean01Spec : Spec := describe "PrimOpBoolean01" do
         ("Tests/SnapshotsMy", "BoolCmp",
           ["export const eqCmp = (x, y, b) => x < y === b;",
            "export const neCmp = (x, y, b) => (x === y) !== b;",
-           -- (`5` at `pbo`, `5n` at `faithful`)
-           "export const ltComputed = (x, b) => (x < 5", " ? false : b);",
-           "export const leComputed = (x, b) => (x < 5", " ? b : true);",
+           -- (`5` at `pbo`, `5n` at `faithful`): `!(x < 5) && b`, `!(x < 5) || b`
+           -- (`JsTerm.Lower.OrdCmp`)
+           "export const ltComputed = (x, b) => x >= 5", "export const leComputed = (x, b) => x >= 5",
            "export const notLt = (a, b) => a >= b;",
            "export const notLe = (a, b) => a > b;",
            "export const notGt = (a, b) => a <= b;",
@@ -3706,6 +3707,67 @@ def primOpBooleanNotRegressionSpec : Spec := describe "PrimOpBooleanNotRegressio
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+/-! `Tests/SnapshotsPBOPure/PrimOpChar01.lean`: `==`, `!=`, `<`, `>`, `<=`, `>=` on `Char`.  The
+JavaScript is that of purescript-backend-optimizer (`legacy-backend/PrimOpChar01.js`) line for
+line: a `Char` is compared as the one-character string it is (`decide_char_lt_push`,
+`decide_char_le_push`), and a comparison is written with the operator that reads best
+(`JsTerm.Lower.OrdCmp`: `b < a` is `a > b`, `!(b < a)` is `a <= b`, …).
+`Tests/SnapshotsMy/OrdCmp.lean` has the other types, computed operands and floats. -/
+
+def primOpChar01Spec : Spec := describe "PrimOpChar01" do
+  it "the comparisons of characters are JavaScript comparisons, as in legacy (needs node and leanscript)"
+      (timeoutMs? := some 120000) do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/primopchar01"
+    IO.FS.createDirAll dir
+    -- every line `const testN = …;` of the legacy output is a line of ours, after `export `
+    let legacy ← IO.FS.readFile "Tests/SnapshotsPBOPure/legacy-backend/PrimOpChar01.js"
+    let legacyFns := (legacy.splitOn "\n").filter (fun (l : String) => l.startsWith "const test")
+    assertEq "legacy: six functions" 6 legacyFns.length
+    -- (directory, file, fragments, fragments that must not appear, checks)
+    for (path, file, frags, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "PrimOpChar01", legacyFns.map ("export " ++ ·), ["!("], (96 : Nat)),
+        ("Tests/SnapshotsMy", "OrdCmp",
+          ["export const natGt = (a, b) => a > b;",
+           "export const natGe = (a, b) => a >= b;",
+           "export const natNotLt = (a, b) => a >= b;",
+           "export const natNotLe = (a, b) => a > b;",
+           "export const intGe = (a, b) => a >= b;",
+           "export const uint8Gt = (a, b) => a > b;",
+           "export const strGt = (a, b) => a > b;",
+           "export const strLe = (a, b) => a <= b;",
+           "export const strGe = (a, b) => a >= b;",
+           "export const charGe = (a, b) => a >= b;",
+           "export const charIsLower = (c) => c >= \"a\" && c <= \"z\";",
+           "export const charIfGt = (a, b, x, y) => (a > b ? x : y);",
+           -- a computed operand keeps its place (`b + 1n` at `faithful`)
+           " < a;",
+           " >= b;",
+           "export const floatGt = (a, b) => a > b;",
+           -- `!(a < b)` is not `a >= b` on floats (`NaN`)
+           "export const floatNotLt = (a, b) => !(a < b);"], [], 291)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript exit code" 0 out.exitCode
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        assertEq s!"{file}-{preset}: every function translated" false
+          ((js.splitOn "not translated").length > 1)
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -3763,6 +3825,7 @@ def spec : Spec := do
   primOpBoolean01Spec
   primOpBoolean02Spec
   primOpBooleanNotRegressionSpec
+  primOpChar01Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

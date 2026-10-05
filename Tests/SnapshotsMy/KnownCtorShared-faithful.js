@@ -8,7 +8,7 @@
  * @returns {Array<string>}
  */
 export const twoDefaults = (x, s) => {
-  const x$1 = 42n < x;
+  const x$1 = x > 42n;
   return [(x$1 ? s : "none") + "!", x$1 ? s : "?"];
 };
 
@@ -19,7 +19,7 @@ export const twoDefaults = (x, s) => {
  * @returns {string}
  */
 export const twoMatchCalls = (f, x) => {
-  const x$1 = 42n < x;
+  const x$1 = x > 42n;
   let x$2;
   if (x$1) {
     x$2 = f("Hello");
@@ -41,7 +41,7 @@ export const twoMatchCalls = (f, x) => {
  * @returns {Array<string>}
  */
 export const threeUses = (x) =>
-  42n < x ? ["Hello1", "Hello2", "Hello3"] : ["1", "2", "3"];
+  x > 42n ? ["Hello1", "Hello2", "Hello3"] : ["1", "2", "3"];
 
 /**
  * `nestedChoice`
@@ -49,7 +49,7 @@ export const threeUses = (x) =>
  * @returns {Array<int(bigint)>}
  */
 export const nestedChoice = (x) => {
-  const x$1 = 42n < x;
+  const x$1 = x > 42n;
   return [x$1 ? 11n : x < 0n ? 12n : 10n, x$1 ? 3n : x < 0n ? 6n : 15n];
 };
 
@@ -59,7 +59,7 @@ export const nestedChoice = (x) => {
  * @returns {string}
  */
 export const exceptTwice = (x) => {
-  const x$1 = 0n < x;
+  const x$1 = x > 0n;
   return (x$1 ? String(x) : "neg") + ((x$1 ? x : 0n) + 1n);
 };
 
@@ -76,7 +76,7 @@ export const boolTwice = (x) => true;
  * @returns {{ _1: ({ tag: 0 } | { tag: 1, _1: string }), _2: string }}
  */
 export const alsoReturned = (x) => {
-  const x$1 = 42n < x ? { tag: 1, _1: "Hello" } : { tag: 0 };
+  const x$1 = x > 42n ? { tag: 1, _1: "Hello" } : { tag: 0 };
   let x$2;
   if (x$1.tag === 0) {
     x$2 = "";
@@ -93,8 +93,8 @@ export const alsoReturned = (x) => {
  * @returns {string}
  */
 export const underTests = (x, y) => {
-  const x$1 = 42n < x;
-  if (0n < y) {
+  const x$1 = x > 42n;
+  if (y > 0n) {
     return x$1 ? "Hello, World" : ", World";
   }
   return x$1 ? "Hello, Universe" : ", Universe";

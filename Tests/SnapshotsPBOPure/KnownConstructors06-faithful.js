@@ -18,7 +18,7 @@ export const instReprTest$repr = (x, prec) => {
   } else {
     x$1 = "Test.Qux";
   }
-  return 1024n <= prec
+  return prec >= 1024n
     ? {
         tag: 6,
         _1: {

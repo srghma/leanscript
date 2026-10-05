@@ -101,10 +101,12 @@ def JsExpr.notOf? {C M : List JsTy} : JsExpr S C M (.terminal .bool) →
   | .cond y (.lit (.bool false)) (.lit (.bool true)) => some y
   | _ => none
 
-/-- The negation of a comparison of booleans, as the opposite comparison (`JsBoolCmp.neg`). -/
+/-- The negation of a comparison of booleans, as the opposite comparison (`JsBoolCmp.neg`).
+    Only of booleans: a comparison of floats (`JsTerm.Lower.OrdCmp`) is not negated so
+    (`NaN`). -/
 def JsExpr.negBoolCmp? {C M : List JsTy} : JsExpr S C M (.terminal .bool) →
     Option (JsExpr S C M (.terminal .bool))
-  | .boolCmp op x y => some (.boolCmp op.neg x y)
+  | .boolCmp (t := t) op x y => if t == .bool then some (.boolCmp op.neg x y) else none
   | _ => none
 
 /-- `x op y` of two variables, written with the one bound first on the left: `y > x` rather than

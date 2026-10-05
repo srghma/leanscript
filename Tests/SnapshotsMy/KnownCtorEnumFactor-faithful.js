@@ -26,7 +26,7 @@ export const instReprColor$repr = (x, prec) => {
   } else {
     x$1 = "Color.Black";
   }
-  return 1024n <= prec
+  return prec >= 1024n
     ? {
         tag: 6,
         _1: {
@@ -118,7 +118,7 @@ export const twice = (c, s) => {
  * @returns {{ _1: string, _2: nat(bigint) }}
  */
 export const paren = (c, prec) => {
-  const x$1 = 1024n <= prec;
+  const x$1 = prec >= 1024n;
   if (c === 0) {
     return x$1 ? { _1: "(red)", _2: 1n } : { _1: "red", _2: 2n };
   }

@@ -34,7 +34,7 @@ export const getLe = (i) => (i <= 2 ? [10, 20, 30][i] : 0);
  * @param {uint53(number)} i
  * @returns {int53(number)}
  */
-export const getGe = (i) => (3 <= i ? 0 : [10, 20, 30][i]);
+export const getGe = (i) => (i >= 3 ? 0 : [10, 20, 30][i]);
 
 /**
  * `getUnproved`

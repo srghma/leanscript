@@ -25,7 +25,7 @@ export const neCmp = (x, y, b) => (x === y) !== b;
  * @param {boolean} b
  * @returns {boolean}
  */
-export const ltComputed = (x, b) => (x < 5n ? false : b);
+export const ltComputed = (x, b) => x >= 5n && b;
 
 /**
  * `leComputed`
@@ -33,7 +33,7 @@ export const ltComputed = (x, b) => (x < 5n ? false : b);
  * @param {boolean} b
  * @returns {boolean}
  */
-export const leComputed = (x, b) => (x < 5n ? b : true);
+export const leComputed = (x, b) => x >= 5n || b;
 
 /**
  * `notLt`

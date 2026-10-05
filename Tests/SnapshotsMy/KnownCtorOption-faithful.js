@@ -91,7 +91,7 @@ export const viaHelper = (x) => x + 1n;
  * @param {nat(bigint)} x
  * @returns {nat(bigint)}
  */
-export const viaPrivate = (x) => (10n < x ? x * 2n : 7n);
+export const viaPrivate = (x) => (x > 10n ? x * 2n : 7n);
 
 /**
  * `loopOpt`

@@ -21,7 +21,7 @@ export const test1Fuel = (a, a1, a2) => {
       return p$1;
     }
     j$2--;
-    if (0 < p$1.length) {
+    if (p$1.length > 0) {
       const x$3 = p$1[0];
       if (x$3 === 1) {
         const s$4 = array__lean_array_back_opt(p$1);
@@ -111,7 +111,7 @@ export const test1Fuel$$mut_2 = (a, a1, a2) => {
       return p$1;
     }
     j$2--;
-    if (0 < p$1.length) {
+    if (p$1.length > 0) {
       const x$3 = p$1[0];
       if (x$3 === 1) {
         const s$4 = array__lean_array_back_opt(p$1);

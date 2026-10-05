@@ -6,4 +6,4 @@
  * @param {int53(number)} x
  * @returns {string}
  */
-export const test = (x) => (42 < x ? "Hello, World!" : "");
+export const test = (x) => (x > 42 ? "Hello, World!" : "");

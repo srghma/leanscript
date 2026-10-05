@@ -93,7 +93,7 @@ export const viaHelper = (x) => uint53__lean_nat_add(x, 1);
  * @param {uint53(number)} x
  * @returns {uint53(number)}
  */
-export const viaPrivate = (x) => (10 < x ? uint53__lean_nat_mul(x, 2) : 7);
+export const viaPrivate = (x) => (x > 10 ? uint53__lean_nat_mul(x, 2) : 7);
 
 /**
  * `loopOpt`

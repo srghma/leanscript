@@ -62,7 +62,7 @@ export const firstOr = (a) => (a.length === 0 ? 9 : a[0]);
  * @returns {uint53(number)}
  */
 export const litLt = (a) =>
-  2 < a.length ? uint53__lean_nat_add(a[0], a[2]) : 1;
+  a.length > 2 ? uint53__lean_nat_add(a[0], a[2]) : 1;
 
 /**
  * `sizeLt`
@@ -85,7 +85,7 @@ export const sizeLe = (a) => a.length <= 2;
  * @returns {uint53(number)}
  */
 export const notKnown = (a) =>
-  a.length === 1 ? uint53__lean_nat_add(1 < a.length ? a[1] : 3, a[0]) : 0;
+  a.length === 1 ? uint53__lean_nat_add(a.length > 1 ? a[1] : 3, a[0]) : 0;
 
 /**
  * `sumFuel`

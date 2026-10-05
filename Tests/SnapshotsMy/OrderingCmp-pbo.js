@@ -100,7 +100,7 @@ export const natLt = (a, b) => a < b;
  * @param {uint53(number)} b
  * @returns {boolean}
  */
-export const natGt = (a, b) => (a < b ? false : a !== b);
+export const natGt = (a, b) => a >= b && a !== b;
 
 /**
  * `natNe`

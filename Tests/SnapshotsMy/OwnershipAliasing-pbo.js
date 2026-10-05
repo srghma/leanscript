@@ -196,7 +196,7 @@ export const Bag$firstItems = (a) => {
   }
   const { _1: f$1 } = a;
   const x$2 = Bag$firstItems(a._2);
-  return 2 < f$1.length
+  return f$1.length > 2
     ? array__lean_array_push_immutable(f$1, x$2.length)
     : x$2;
 };

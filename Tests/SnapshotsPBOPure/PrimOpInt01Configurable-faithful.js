@@ -82,7 +82,7 @@ export const TestUInt64$lt = (a, b) => a < b;
  * @param {nat(bigint)} b
  * @returns {boolean}
  */
-export const TestUInt64$gt = (a, b) => b < a;
+export const TestUInt64$gt = (a, b) => a > b;
 
 /**
  * `TestUInt64.le`
@@ -98,7 +98,7 @@ export const TestUInt64$le = (a, b) => a <= b;
  * @param {nat(bigint)} b
  * @returns {boolean}
  */
-export const TestUInt64$ge = (a, b) => b <= a;
+export const TestUInt64$ge = (a, b) => a >= b;
 
 /**
  * `TestUInt64.mul`
@@ -169,7 +169,7 @@ export const TestNat$lt = (a, b) => a < b;
  * @param {nat(bigint)} b
  * @returns {boolean}
  */
-export const TestNat$gt = (a, b) => b < a;
+export const TestNat$gt = (a, b) => a > b;
 
 /**
  * `TestNat.le`
@@ -185,7 +185,7 @@ export const TestNat$le = (a, b) => a <= b;
  * @param {nat(bigint)} b
  * @returns {boolean}
  */
-export const TestNat$ge = (a, b) => b <= a;
+export const TestNat$ge = (a, b) => a >= b;
 
 /**
  * `TestNat.mul`
@@ -249,7 +249,7 @@ export const TestInt64$lt = (a, b) => a < b;
  * @param {int(bigint)} b
  * @returns {boolean}
  */
-export const TestInt64$gt = (a, b) => b < a;
+export const TestInt64$gt = (a, b) => a > b;
 
 /**
  * `TestInt64.le`
@@ -265,7 +265,7 @@ export const TestInt64$le = (a, b) => a <= b;
  * @param {int(bigint)} b
  * @returns {boolean}
  */
-export const TestInt64$ge = (a, b) => b <= a;
+export const TestInt64$ge = (a, b) => a >= b;
 
 /**
  * `TestInt64.mul`
@@ -336,7 +336,7 @@ export const TestInt$lt = (a, b) => a < b;
  * @param {int(bigint)} b
  * @returns {boolean}
  */
-export const TestInt$gt = (a, b) => b < a;
+export const TestInt$gt = (a, b) => a > b;
 
 /**
  * `TestInt.le`
@@ -352,7 +352,7 @@ export const TestInt$le = (a, b) => a <= b;
  * @param {int(bigint)} b
  * @returns {boolean}
  */
-export const TestInt$ge = (a, b) => b <= a;
+export const TestInt$ge = (a, b) => a >= b;
 
 /**
  * `TestInt.mul`

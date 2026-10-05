@@ -58,4 +58,4 @@ export const test3 = (x) =>
  * @returns {Array<uint53(number)>}
  */
 export const test4 = (a) =>
-  0 < a.length ? uint53__lean_array_fset_immutable(a, 0, 5) : a;
+  a.length > 0 ? uint53__lean_array_fset_immutable(a, 0, 5) : a;

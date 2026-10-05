@@ -13,7 +13,7 @@ import { bigint_nat__lean_nat_sub } from "../../runtime.js";
  * @param {nat(bigint)} n
  * @returns {nat(bigint)}
  */
-export const mc91 = (n) => (100n < n ? bigint_nat__lean_nat_sub(n, 10n) : 91n);
+export const mc91 = (n) => (n > 100n ? bigint_nat__lean_nat_sub(n, 10n) : 91n);
 
 /**
  * `iter`

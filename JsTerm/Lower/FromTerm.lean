@@ -4,6 +4,7 @@ public import JsTerm.Lower.DataRec
 public import JsTerm.Lower.Bounds
 public import JsTerm.Lower.Shift
 public import JsTerm.Lower.BoolCmp
+public import JsTerm.Lower.OrdCmp
 public import LeanScript.Term.Optimize.KnownCond
 
 @[expose] public section
@@ -404,6 +405,8 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
       let be ← cPExpr b' ne C M
       -- `i < a.length ? a[i] : d` is `a[i] ?? d` (`JsTerm.Lower.Bounds`)
       if let some r := JsExpr.condGet? ce ae be then return r
+      -- `!(a < b)` is `a >= b` on a totally ordered type (`JsTerm.Lower.OrdCmp`)
+      if let some r := JsExpr.condNegOrd? n.params ce ae be then return r
       -- `a ? b : !b` is `a === b`, `a ? false : b` is `a < b`, … (`JsTerm.Lower.BoolCmp`)
       if let some r := JsExpr.boolCond? ce ae be then return r
       -- a shift of `BitVec 64` (`y < 64 ? x <<< y : 0`) without the mask of its count
@@ -429,6 +432,8 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
     if nm == "lean_array_get" || nm == "lean_array_get_borrowed" then
       if let some r' := r.defaultGet? then return r'
     if let some r' := r.narrowCmp? then return r'
+    -- `b < a` of two parameters is `a > b` (`JsTerm.Lower.OrdCmp`)
+    if let some r' := r.ordFlip? n.params then return r'
     -- a shift of `UInt64` by a literal count without the mask of its count (`JsTerm.Lower.Shift`)
     if let some r' := r.litShift? then return r'
     -- an update of an array nothing else refers to is done in place; `set!` and
@@ -602,7 +607,8 @@ partial def cVal {d : Nat} {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {o : Lvl}
       -- a closure owns the parameters `fl` says (a version of a local function, `Own.lamPlan`)
       -- and borrows the others; nothing from outside is owned in it (it may run later, or many
       -- times)
-      let body ← cApplyBody b { n with own := n.own.none } (pushAll (d₀ :: ds) C) M
+      let body ← cApplyBody b { n with own := n.own.none, params := ps.filterMap (·.1.cLvl?) }
+        (pushAll (d₀ :: ds) C) M
         (ps.map (·.1)) (ps.zipIdx.map fun (_, i) => fl.getD i false) c
       castE (.lam ((d₀ :: ds).map fun _ => "x") body) _
     | _ => throw "internal: the type of a lambda"
@@ -1325,7 +1331,8 @@ def termToJs (cfg : JsConfig) (name leanName : String) (paramNames : List String
   let ps : List (String × JsTy) := ds.zipIdx.map fun (t, i) => (paramNames.getD i s!"p{i}", t)
   let sig := jsSigOf cfg ct.Δ
   let fl := ds.zipIdx.map fun (_, i) => owned.getD i false
-  let body ← cApplyTerm (S := sig) cfg ct.term {} (pushAll ds []) [] ((paramRefs [] ds).map (·.1))
+  let body ← cApplyTerm (S := sig) cfg ct.term { params := List.range ds.length } (pushAll ds [])
+    [] ((paramRefs [] ds).map (·.1))
     fl ret
   let body ← if h : pushAll ds [] = pushAll (ps.map (·.2)) [] then pure (h ▸ body) else
     throw "internal: the parameters of a function"

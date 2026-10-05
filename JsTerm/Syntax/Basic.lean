@@ -446,9 +446,12 @@ inductive JsExpr (S : JsSig) : List JsTy → List JsTy → JsTy → Type where
   /-- `a === b` on two constructors of the same enum. -/
   | enumEq {C M : List JsTy} {n : Nat} {shift : Int} (a b : JsExpr S C M (.enum n shift)) :
       JsExpr S C M (.terminal .bool)
-  /-- `a op b` on two booleans (`a === b`, `a !== b`, `a < b`, `a <= b`, …, `JsBoolCmp`): both
-      operands are always computed, `a` first. -/
-  | boolCmp {C M : List JsTy} (op : JsBoolCmp) (a b : JsExpr S C M (.terminal .bool)) :
+  /-- `a op b` on two values of a terminal type (`a === b`, `a !== b`, `a < b`, `a <= b`, …,
+      `JsBoolCmp`): both operands are always computed, `a` first.  Built for booleans
+      (`JsTerm.Lower.BoolCmp`) and for the totally ordered terminal types, whose comparisons
+      are JavaScript's (integers, strings: never a float, where `!(a < b)` is not `a >= b`;
+      `JsTerm.Lower.OrdCmp`). -/
+  | boolCmp {C M : List JsTy} {t : JsTerminalTy} (op : JsBoolCmp) (a b : JsExpr S C M (.terminal t)) :
       JsExpr S C M (.terminal .bool)
   /-- `[e₀, ...a, e₂]` (a generic array) or `Uint8Array.of(e₀, ...a)` (a typed array). -/
   | array_mk {C M : List JsTy} {A E : JsTy} (l : JsArrayLayout A E) (parts : JsParts S C M A E) :

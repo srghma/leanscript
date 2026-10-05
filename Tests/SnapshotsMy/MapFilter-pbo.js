@@ -15,7 +15,7 @@ import {
  */
 export const test1 = (a) => {
   const x$2 = array__lean_array_map((x$1) => uint53__lean_nat_mul(x$1, 2), a);
-  return uint53__lean_array_filter((x$3) => 4 < x$3, x$2, 0, x$2.length);
+  return uint53__lean_array_filter((x$3) => x$3 > 4, x$2, 0, x$2.length);
 };
 
 /**
@@ -39,7 +39,7 @@ export const test3 = (a) => {
   const x$2 = array__lean_array_map((x$1) => uint53__lean_nat_mul(x$1, 2), a);
   return {
     _1: x$2,
-    _2: uint53__lean_array_filter((x$3) => 4 < x$3, x$2, 0, x$2.length),
+    _2: uint53__lean_array_filter((x$3) => x$3 > 4, x$2, 0, x$2.length),
   };
 };
 
@@ -57,4 +57,4 @@ export const test4 = (a) =>
  * @returns {Array<uint53(number)>}
  */
 export const test5 = (a) =>
-  uint53__lean_array_filter((x$1) => 4 < x$1, a, 0, a.length);
+  uint53__lean_array_filter((x$1) => x$1 > 4, a, 0, a.length);

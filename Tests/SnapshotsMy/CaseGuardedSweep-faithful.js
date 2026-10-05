@@ -12,7 +12,7 @@ export const test1 = (n) => {
   if (n < 1n) {
     return "n: " + n;
   }
-  return 1n < n && n < 100n ? "1 < x < 100: " + n : "catch";
+  return n > 1n && n < 100n ? "1 < x < 100: " + n : "catch";
 };
 
 /**
@@ -90,7 +90,7 @@ export const sweep1 = (lo) => {
       acc$1 +
       (x$3 < 1n
         ? "n: " + x$3
-        : 1n < x$3 && x$3 < 100n
+        : x$3 > 1n && x$3 < 100n
           ? "1 < x < 100: " + x$3
           : "catch") +
       ";";

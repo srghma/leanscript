@@ -15,7 +15,7 @@ import {
  * @param {int53(number)} x
  * @returns {string}
  */
-export const twiceUse = (x) => (42 < x ? "HelloHello" : "");
+export const twiceUse = (x) => (x > 42 ? "HelloHello" : "");
 
 /**
  * `payloadArg`
@@ -23,7 +23,7 @@ export const twiceUse = (x) => (42 < x ? "HelloHello" : "");
  * @param {string} s
  * @returns {string}
  */
-export const payloadArg = (x, s) => (42 < x ? s + ", World!" : "");
+export const payloadArg = (x, s) => (x > 42 ? s + ", World!" : "");
 
 /**
  * `threeArms`
@@ -33,7 +33,7 @@ export const payloadArg = (x, s) => (42 < x ? s + ", World!" : "");
  * @returns {string}
  */
 export const threeArms = (x, s, t) => {
-  if (42 < x) {
+  if (x > 42) {
     return s + ", World!";
   }
   return x < 0 ? t + ", World!" : "";
@@ -49,7 +49,7 @@ export const threeArms = (x, s, t) => {
  */
 export const bigShared = (x, s, t, f) => {
   let x$1;
-  if (42 < x) {
+  if (x > 42) {
     x$1 = s;
   } else if (x < 0) {
     x$1 = t;
@@ -80,7 +80,7 @@ export const fromMatch = (n) => {
  * @param {int53(number)} x
  * @returns {int53(number)}
  */
-export const exceptIf = (x) => (0 < x ? int53__lean_int_mul(x, 2) : -1);
+export const exceptIf = (x) => (x > 0 ? int53__lean_int_mul(x, 2) : -1);
 
 /**
  * `doChain`
@@ -89,7 +89,7 @@ export const exceptIf = (x) => (0 < x ? int53__lean_int_mul(x, 2) : -1);
  * @returns {int53(number)}
  */
 export const doChain = (x, y) => {
-  if (0 < x && 0 < y) {
+  if (x > 0 && y > 0) {
     return int53__lean_int_add(x, y);
   }
   return 0;
@@ -130,14 +130,14 @@ export const safeDivTwice = (a, b, c) => {
  * @param {int53(number)} x
  * @returns {string}
  */
-export const boolTwice = (x) => (42 < x ? "big" : "small");
+export const boolTwice = (x) => (x > 42 ? "big" : "small");
 
 /**
  * `pairOpt`
  * @param {int53(number)} x
  * @returns {int53(number)}
  */
-export const pairOpt = (x) => (0 < x ? x : int53__lean_int_neg(x));
+export const pairOpt = (x) => (x > 0 ? x : int53__lean_int_neg(x));
 
 /**
  * `afterCall`
@@ -147,7 +147,7 @@ export const pairOpt = (x) => (0 < x ? x : int53__lean_int_neg(x));
  */
 export const afterCall = (f, x) => {
   const fx = f(x);
-  return 0 < fx ? fx : 0;
+  return fx > 0 ? fx : 0;
 };
 
 /**
@@ -157,8 +157,8 @@ export const afterCall = (f, x) => {
  * @returns {({ tag: 0, _1: string } | { tag: 1, _1: int53(number) })}
  */
 export const exceptChain = (x, y) => {
-  if (0 < x) {
-    return 0 < y
+  if (x > 0) {
+    return y > 0
       ? { tag: 1, _1: int53__lean_int_add(x, y) }
       : { tag: 0, _1: "y" };
   }
@@ -172,7 +172,7 @@ export const exceptChain = (x, y) => {
  * @returns {int53(number)}
  */
 export const exceptChainGet = (x, y) => {
-  if (0 < x && 0 < y) {
+  if (x > 0 && y > 0) {
     return int53__lean_int_add(x, y);
   }
   return 0;
@@ -184,7 +184,7 @@ export const exceptChainGet = (x, y) => {
  * @returns {int53(number)}
  */
 export const orElseIf = (x) => {
-  if (10 < x) {
+  if (x > 10) {
     return x;
   }
   return x < -10 ? int53__lean_int_neg(x) : 0;
@@ -196,14 +196,14 @@ export const orElseIf = (x) => {
  * @param {string} s
  * @returns {string}
  */
-export const ifLet = (x, s) => (0 < x ? s + "!" : "?");
+export const ifLet = (x, s) => (x > 0 ? s + "!" : "?");
 
 /**
  * `isSomeIf`
  * @param {int53(number)} x
  * @returns {boolean}
  */
-export const isSomeIf = (x) => 0 < x;
+export const isSomeIf = (x) => x > 0;
 
 /**
  * `usedTwice`
@@ -211,7 +211,7 @@ export const isSomeIf = (x) => 0 < x;
  * @returns {int53(number)}
  */
 export const usedTwice = (x) => {
-  const x$1 = 0 < x;
+  const x$1 = x > 0;
   return int53__lean_int_add(x$1 ? x : 0, x$1 ? int53__lean_int_mul(x, 2) : 1);
 };
 
@@ -220,4 +220,4 @@ export const usedTwice = (x) => {
  * @param {int53(number)} x
  * @returns {int53(number)}
  */
-export const pairBool = (x) => (0 < x ? int53__lean_int_mul(x, 3) : -1);
+export const pairBool = (x) => (x > 0 ? int53__lean_int_mul(x, 3) : -1);

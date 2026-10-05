@@ -54,7 +54,7 @@ export const TestFloat$test5 = (a, b) => a < b;
  * @param {float} b
  * @returns {boolean}
  */
-export const TestFloat$test6 = (a, b) => b < a;
+export const TestFloat$test6 = (a, b) => a > b;
 
 /**
  * `TestFloat.test7`
@@ -70,7 +70,7 @@ export const TestFloat$test7 = (a, b) => a <= b;
  * @param {float} b
  * @returns {boolean}
  */
-export const TestFloat$test8 = (a, b) => b <= a;
+export const TestFloat$test8 = (a, b) => a >= b;
 
 /**
  * `TestFloat.test9`
@@ -159,7 +159,7 @@ export const TestFloat32$test5 = (a, b) => a < b;
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$test6 = (a, b) => b < a;
+export const TestFloat32$test6 = (a, b) => a > b;
 
 /**
  * `TestFloat32.test7`
@@ -175,7 +175,7 @@ export const TestFloat32$test7 = (a, b) => a <= b;
  * @param {float32} b
  * @returns {boolean}
  */
-export const TestFloat32$test8 = (a, b) => b <= a;
+export const TestFloat32$test8 = (a, b) => a >= b;
 
 /**
  * `TestFloat32.test9`

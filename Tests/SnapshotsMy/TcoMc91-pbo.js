@@ -13,7 +13,7 @@ import { uint53__lean_nat_sub } from "../../runtime.js";
  * @param {uint53(number)} n
  * @returns {uint53(number)}
  */
-export const mc91 = (n) => (100 < n ? uint53__lean_nat_sub(n, 10) : 91);
+export const mc91 = (n) => (n > 100 ? uint53__lean_nat_sub(n, 10) : 91);
 
 /**
  * `iter`

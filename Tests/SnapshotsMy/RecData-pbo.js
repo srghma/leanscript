@@ -240,7 +240,7 @@ export const RecData$sizeArray = (xs) => {
  * @param {uint53(number)} x
  * @returns {D2}
  */
-export const RecData$roseOf = (x) => (2 < x ? [[], [[]]] : [[[], []]]);
+export const RecData$roseOf = (x) => (x > 2 ? [[], [[]]] : [[[], []]]);
 
 /**
  * `RecData.roseKids`

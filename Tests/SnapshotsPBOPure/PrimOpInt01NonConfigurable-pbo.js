@@ -68,7 +68,7 @@ export const TestUInt8$lt = (a, b) => a < b;
  * @param {uint8} b
  * @returns {boolean}
  */
-export const TestUInt8$gt = (a, b) => b < a;
+export const TestUInt8$gt = (a, b) => a > b;
 
 /**
  * `TestUInt8.le`
@@ -84,7 +84,7 @@ export const TestUInt8$le = (a, b) => a <= b;
  * @param {uint8} b
  * @returns {boolean}
  */
-export const TestUInt8$ge = (a, b) => b <= a;
+export const TestUInt8$ge = (a, b) => a >= b;
 
 /**
  * `TestUInt8.mul`
@@ -155,7 +155,7 @@ export const TestUInt16$lt = (a, b) => a < b;
  * @param {uint16} b
  * @returns {boolean}
  */
-export const TestUInt16$gt = (a, b) => b < a;
+export const TestUInt16$gt = (a, b) => a > b;
 
 /**
  * `TestUInt16.le`
@@ -171,7 +171,7 @@ export const TestUInt16$le = (a, b) => a <= b;
  * @param {uint16} b
  * @returns {boolean}
  */
-export const TestUInt16$ge = (a, b) => b <= a;
+export const TestUInt16$ge = (a, b) => a >= b;
 
 /**
  * `TestUInt16.mul`
@@ -242,7 +242,7 @@ export const TestUInt32$lt = (a, b) => a < b;
  * @param {uint32} b
  * @returns {boolean}
  */
-export const TestUInt32$gt = (a, b) => b < a;
+export const TestUInt32$gt = (a, b) => a > b;
 
 /**
  * `TestUInt32.le`
@@ -258,7 +258,7 @@ export const TestUInt32$le = (a, b) => a <= b;
  * @param {uint32} b
  * @returns {boolean}
  */
-export const TestUInt32$ge = (a, b) => b <= a;
+export const TestUInt32$ge = (a, b) => a >= b;
 
 /**
  * `TestUInt32.mul`
@@ -329,7 +329,7 @@ export const TestInt8$lt = (a, b) => a < b;
  * @param {int8} b
  * @returns {boolean}
  */
-export const TestInt8$gt = (a, b) => b < a;
+export const TestInt8$gt = (a, b) => a > b;
 
 /**
  * `TestInt8.le`
@@ -345,7 +345,7 @@ export const TestInt8$le = (a, b) => a <= b;
  * @param {int8} b
  * @returns {boolean}
  */
-export const TestInt8$ge = (a, b) => b <= a;
+export const TestInt8$ge = (a, b) => a >= b;
 
 /**
  * `TestInt8.mul`
@@ -416,7 +416,7 @@ export const TestInt16$lt = (a, b) => a < b;
  * @param {int16} b
  * @returns {boolean}
  */
-export const TestInt16$gt = (a, b) => b < a;
+export const TestInt16$gt = (a, b) => a > b;
 
 /**
  * `TestInt16.le`
@@ -432,7 +432,7 @@ export const TestInt16$le = (a, b) => a <= b;
  * @param {int16} b
  * @returns {boolean}
  */
-export const TestInt16$ge = (a, b) => b <= a;
+export const TestInt16$ge = (a, b) => a >= b;
 
 /**
  * `TestInt16.mul`
@@ -503,7 +503,7 @@ export const TestInt32$lt = (a, b) => a < b;
  * @param {int32} b
  * @returns {boolean}
  */
-export const TestInt32$gt = (a, b) => b < a;
+export const TestInt32$gt = (a, b) => a > b;
 
 /**
  * `TestInt32.le`
@@ -519,7 +519,7 @@ export const TestInt32$le = (a, b) => a <= b;
  * @param {int32} b
  * @returns {boolean}
  */
-export const TestInt32$ge = (a, b) => b <= a;
+export const TestInt32$ge = (a, b) => a >= b;
 
 /**
  * `TestInt32.mul`

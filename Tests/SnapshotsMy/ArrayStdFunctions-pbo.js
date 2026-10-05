@@ -71,7 +71,7 @@ export const ArrStd$tExtract = (a, i, j) => uint53__lean_array_extract(a, i, j);
  * @returns {boolean}
  */
 export const ArrStd$tAny = (a) =>
-  uint53__lean_array_any(a, (x$1) => 3 < x$1, 0, a.length);
+  uint53__lean_array_any(a, (x$1) => x$1 > 3, 0, a.length);
 
 /**
  * `ArrStd.tAll`
@@ -79,7 +79,7 @@ export const ArrStd$tAny = (a) =>
  * @returns {boolean}
  */
 export const ArrStd$tAll = (a) =>
-  uint53__lean_array_all(a, (x$1) => 3 < x$1, 0, a.length);
+  uint53__lean_array_all(a, (x$1) => x$1 > 3, 0, a.length);
 
 /**
  * `ArrStd.tContains`
@@ -96,7 +96,7 @@ export const ArrStd$tContains = (a, x) =>
  * @returns {({ tag: 0 } | { tag: 1, _1: uint53(number) })}
  */
 export const ArrStd$tFind = (a) =>
-  array__lean_array_find_opt((x$1) => 2 < x$1, a);
+  array__lean_array_find_opt((x$1) => x$1 > 2, a);
 
 /**
  * `ArrStd.tFindIdx`
@@ -104,7 +104,7 @@ export const ArrStd$tFind = (a) =>
  * @returns {({ tag: 0 } | { tag: 1, _1: uint53(number) })}
  */
 export const ArrStd$tFindIdx = (a) =>
-  uint53__lean_array_find_idx_opt((x$1) => 2 < x$1, a);
+  uint53__lean_array_find_idx_opt((x$1) => x$1 > 2, a);
 
 /**
  * `ArrStd.tIdxOf`
@@ -210,7 +210,7 @@ export const ArrStd$tBack = (a) => array__lean_array_back_opt(a);
  * @returns {uint53(number)}
  */
 export const ArrStd$tCount = (a) =>
-  uint53__lean_array_count_p((x$1) => 1 < x$1, a);
+  uint53__lean_array_count_p((x$1) => x$1 > 1, a);
 
 /**
  * `ArrStd.tTake`
@@ -228,6 +228,6 @@ export const ArrStd$tTake = (a, n) => uint53__lean_array_extract(a, 0, n);
 export const ArrStd$tU8 = (a) => {
   const x$2 = array__lean_array_map((x$1) => (x$1 + 1) & 255, a);
   return array__lean_array_reverse(
-    uint53__lean_array_filter((x$3) => 3 < x$3, x$2, 0, x$2.length),
+    uint53__lean_array_filter((x$3) => x$3 > 3, x$2, 0, x$2.length),
   );
 };

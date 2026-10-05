@@ -11,7 +11,7 @@ import {
  * @param {int(bigint)} x
  * @returns {string}
  */
-export const twiceUse = (x) => (42n < x ? "HelloHello" : "");
+export const twiceUse = (x) => (x > 42n ? "HelloHello" : "");
 
 /**
  * `payloadArg`
@@ -19,7 +19,7 @@ export const twiceUse = (x) => (42n < x ? "HelloHello" : "");
  * @param {string} s
  * @returns {string}
  */
-export const payloadArg = (x, s) => (42n < x ? s + ", World!" : "");
+export const payloadArg = (x, s) => (x > 42n ? s + ", World!" : "");
 
 /**
  * `threeArms`
@@ -29,7 +29,7 @@ export const payloadArg = (x, s) => (42n < x ? s + ", World!" : "");
  * @returns {string}
  */
 export const threeArms = (x, s, t) => {
-  if (42n < x) {
+  if (x > 42n) {
     return s + ", World!";
   }
   return x < 0n ? t + ", World!" : "";
@@ -45,7 +45,7 @@ export const threeArms = (x, s, t) => {
  */
 export const bigShared = (x, s, t, f) => {
   let x$1;
-  if (42n < x) {
+  if (x > 42n) {
     x$1 = s;
   } else if (x < 0n) {
     x$1 = t;
@@ -76,7 +76,7 @@ export const fromMatch = (n) => {
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const exceptIf = (x) => (0n < x ? x * 2n : -1n);
+export const exceptIf = (x) => (x > 0n ? x * 2n : -1n);
 
 /**
  * `doChain`
@@ -85,7 +85,7 @@ export const exceptIf = (x) => (0n < x ? x * 2n : -1n);
  * @returns {int(bigint)}
  */
 export const doChain = (x, y) => {
-  if (0n < x && 0n < y) {
+  if (x > 0n && y > 0n) {
     return x + y;
   }
   return 0n;
@@ -126,14 +126,14 @@ export const safeDivTwice = (a, b, c) => {
  * @param {int(bigint)} x
  * @returns {string}
  */
-export const boolTwice = (x) => (42n < x ? "big" : "small");
+export const boolTwice = (x) => (x > 42n ? "big" : "small");
 
 /**
  * `pairOpt`
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const pairOpt = (x) => (0n < x ? x : -x);
+export const pairOpt = (x) => (x > 0n ? x : -x);
 
 /**
  * `afterCall`
@@ -143,7 +143,7 @@ export const pairOpt = (x) => (0n < x ? x : -x);
  */
 export const afterCall = (f, x) => {
   const fx = f(x);
-  return 0n < fx ? fx : 0n;
+  return fx > 0n ? fx : 0n;
 };
 
 /**
@@ -153,8 +153,8 @@ export const afterCall = (f, x) => {
  * @returns {({ tag: 0, _1: string } | { tag: 1, _1: int(bigint) })}
  */
 export const exceptChain = (x, y) => {
-  if (0n < x) {
-    return 0n < y ? { tag: 1, _1: x + y } : { tag: 0, _1: "y" };
+  if (x > 0n) {
+    return y > 0n ? { tag: 1, _1: x + y } : { tag: 0, _1: "y" };
   }
   return { tag: 0, _1: "x" };
 };
@@ -166,7 +166,7 @@ export const exceptChain = (x, y) => {
  * @returns {int(bigint)}
  */
 export const exceptChainGet = (x, y) => {
-  if (0n < x && 0n < y) {
+  if (x > 0n && y > 0n) {
     return x + y;
   }
   return 0n;
@@ -178,7 +178,7 @@ export const exceptChainGet = (x, y) => {
  * @returns {int(bigint)}
  */
 export const orElseIf = (x) => {
-  if (10n < x) {
+  if (x > 10n) {
     return x;
   }
   return x < -10n ? -x : 0n;
@@ -190,14 +190,14 @@ export const orElseIf = (x) => {
  * @param {string} s
  * @returns {string}
  */
-export const ifLet = (x, s) => (0n < x ? s + "!" : "?");
+export const ifLet = (x, s) => (x > 0n ? s + "!" : "?");
 
 /**
  * `isSomeIf`
  * @param {int(bigint)} x
  * @returns {boolean}
  */
-export const isSomeIf = (x) => 0n < x;
+export const isSomeIf = (x) => x > 0n;
 
 /**
  * `usedTwice`
@@ -205,7 +205,7 @@ export const isSomeIf = (x) => 0n < x;
  * @returns {int(bigint)}
  */
 export const usedTwice = (x) => {
-  const x$1 = 0n < x;
+  const x$1 = x > 0n;
   return (x$1 ? x : 0n) + (x$1 ? x * 2n : 1n);
 };
 
@@ -214,4 +214,4 @@ export const usedTwice = (x) => {
  * @param {int(bigint)} x
  * @returns {int(bigint)}
  */
-export const pairBool = (x) => (0n < x ? x * 3n : -1n);
+export const pairBool = (x) => (x > 0n ? x * 3n : -1n);

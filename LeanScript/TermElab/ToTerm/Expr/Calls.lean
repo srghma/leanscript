@@ -422,6 +422,17 @@ partial def trDecide (L : Loc) (p inst : Expr) : TM Src := do
         let one (c : Expr) : Expr := mkApp2 (mkConst ``String.push) (mkStrLit "") c
         let (x, y) := (one a, one b)
         return ← tr L (dec (← mkEq x y) (mkApp2 (mkConst ``String.decEq) x y))
+    -- `a < b` and `a ≤ b` on `Char`: the instances compare `a.val` and `b.val` (projections of
+    -- the leaf); the language compares the one-character strings instead, with the extern
+    -- `String.decidableLT` (`decide_char_lt_push`, `decide_char_le_push`): `a ≤ b` is
+    -- `!("".push b < "".push a)`, as `String.decLE` decides it
+    | ``Char.instDecidableLt, #[a, b] | ``Char.instDecidableLe, #[a, b] =>
+        let one (c : Expr) : Expr := mkApp2 (mkConst ``String.push) (mkStrLit "") c
+        let strLt (x y : Expr) : Expr :=
+          dec (mkApp4 (mkConst ``LT.lt [Level.zero]) (mkConst ``String) (mkConst ``String.instLT) x y)
+            (mkApp2 (mkConst ``String.decidableLT) x y)
+        if c' == ``Char.instDecidableLt then return ← tr L (strLt (one a) (one b))
+        return ← tr L (mkApp (mkConst ``not) (strLt (one b) (one a)))
     -- `a = b` on `Float` (a `match` on float literals, `| 1.0 => …`): `Float` is a leaf, so the
     -- instance's comparison of the models has no translation.  Against a finite non-zero
     -- literal `c` it is `x == c` (`Float.beq`, `===` in JavaScript;

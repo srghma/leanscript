@@ -14,7 +14,7 @@ import {
 export const test1 = (a) => {
   const x$2 = array__lean_array_map((x$1) => x$1 * 2n, a);
   return bigint_nat__lean_array_filter(
-    (x$3) => 4n < x$3,
+    (x$3) => x$3 > 4n,
     x$2,
     0n,
     BigInt(x$2.length),
@@ -43,7 +43,7 @@ export const test3 = (a) => {
   return {
     _1: x$2,
     _2: bigint_nat__lean_array_filter(
-      (x$3) => 4n < x$3,
+      (x$3) => x$3 > 4n,
       x$2,
       0n,
       BigInt(x$2.length),
@@ -64,4 +64,4 @@ export const test4 = (a) => array__lean_array_map((x$1) => x$1 + 1n, a);
  * @returns {Array<nat(bigint)>}
  */
 export const test5 = (a) =>
-  bigint_nat__lean_array_filter((x$1) => 4n < x$1, a, 0n, BigInt(a.length));
+  bigint_nat__lean_array_filter((x$1) => x$1 > 4n, a, 0n, BigInt(a.length));

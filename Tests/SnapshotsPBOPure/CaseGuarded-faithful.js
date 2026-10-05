@@ -10,7 +10,7 @@ export const test1 = (n) => {
   if (n < 1n) {
     return "n: " + n;
   }
-  return 1n < n && n < 100n ? "1 < x < 100: " + n : "catch";
+  return n > 1n && n < 100n ? "1 < x < 100: " + n : "catch";
 };
 
 /**
@@ -19,7 +19,7 @@ export const test1 = (n) => {
  * @returns {int(bigint)}
  */
 export const test2 = (a) => {
-  if (a < 1n || 1n < a) {
+  if (a < 1n || a > 1n) {
     return a;
   }
   return a === 1n ? 1n : 0n;

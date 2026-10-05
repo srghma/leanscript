@@ -8,7 +8,7 @@
  * @returns {string}
  */
 export const twoAppends = (f, x) => {
-  const x$1 = 42 < x;
+  const x$1 = x > 42;
   return f(
     x$1 ? "Hello, World" : "Default, World",
     x$1 ? "Hello, Universe" : "Default, Universe",
@@ -22,7 +22,7 @@ export const twoAppends = (f, x) => {
  * @returns {int53(number)}
  */
 export const intOps = (f, x) => {
-  const x$1 = 42 < x;
+  const x$1 = x > 42;
   return f(x$1 ? 11 : 21, x$1 ? 30 : 60);
 };
 
@@ -32,7 +32,7 @@ export const intOps = (f, x) => {
  * @returns {Array<string>}
  */
 export const threeUses = (x) =>
-  0 < x ? ["pos!", "<pos", "yes"] : ["neg!", "<neg", "no"];
+  x > 0 ? ["pos!", "<pos", "yes"] : ["neg!", "<neg", "no"];
 
 /**
  * `usesInArms`
@@ -42,8 +42,8 @@ export const threeUses = (x) =>
  * @returns {string}
  */
 export const usesInArms = (f, x, y) => {
-  const x$1 = 0 < x;
-  if (0 < y) {
+  const x$1 = x > 0;
+  if (y > 0) {
     return f(x$1 ? "a1" : "b1");
   }
   return f(x$1 ? "a2" : "b2");
@@ -56,7 +56,7 @@ export const usesInArms = (f, x, y) => {
  * @returns {string}
  */
 export const alsoDirect = (f, x) => {
-  const x$1 = 0 < x ? "a" : "b";
+  const x$1 = x > 0 ? "a" : "b";
   return f(x$1, x$1 + "!");
 };
 
@@ -67,6 +67,6 @@ export const alsoDirect = (f, x) => {
  * @returns {uint53(number)}
  */
 export const natOps = (f, x) => {
-  const x$1 = 5 < x;
+  const x$1 = x > 5;
   return f(x$1 ? 9 : 11, x$1 ? 6 : 8);
 };
