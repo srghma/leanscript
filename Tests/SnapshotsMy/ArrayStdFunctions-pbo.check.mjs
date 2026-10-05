@@ -435,6 +435,14 @@ check("ArrStd$tTake([13, 5, 2, 1], 5)", () => M.ArrStd$tTake([13, 5, 2, 1], 5), 
 check("ArrStd$tTake([13, 5, 2, 1], 5) twice", () => ((a0, a1) => (M.ArrStd$tTake(a0, a1), M.ArrStd$tTake(a0, a1)))([13, 5, 2, 1], 5), "#[13, 5, 2, 1]", false);
 check("ArrStd$tTake([13, 5, 2, 1], 13)", () => M.ArrStd$tTake([13, 5, 2, 1], 13), "#[13, 5, 2, 1]", false);
 check("ArrStd$tTake([13, 5, 2, 1], 13) twice", () => ((a0, a1) => (M.ArrStd$tTake(a0, a1), M.ArrStd$tTake(a0, a1)))([13, 5, 2, 1], 13), "#[13, 5, 2, 1]", false);
+check("ArrStd$tU8([])", () => M.ArrStd$tU8([]), "#[]", false);
+check("ArrStd$tU8([]) twice", () => ((a0) => (M.ArrStd$tU8(a0), M.ArrStd$tU8(a0)))([]), "#[]", false);
+check("ArrStd$tU8([0])", () => M.ArrStd$tU8([0]), "#[]", false);
+check("ArrStd$tU8([0]) twice", () => ((a0) => (M.ArrStd$tU8(a0), M.ArrStd$tU8(a0)))([0]), "#[]", false);
+check("ArrStd$tU8([0, 1, 2])", () => M.ArrStd$tU8([0, 1, 2]), "#[]", false);
+check("ArrStd$tU8([0, 1, 2]) twice", () => ((a0) => (M.ArrStd$tU8(a0), M.ArrStd$tU8(a0)))([0, 1, 2]), "#[]", false);
+check("ArrStd$tU8([255, 13, 5, 2])", () => M.ArrStd$tU8([255, 13, 5, 2]), "#[6, 14]", false);
+check("ArrStd$tU8([255, 13, 5, 2]) twice", () => ((a0) => (M.ArrStd$tU8(a0), M.ArrStd$tU8(a0)))([255, 13, 5, 2]), "#[6, 14]", false);
 
 console.log(`ArrayStdFunctions-pbo.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

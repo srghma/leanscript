@@ -1,3 +1,34 @@
+# Summary of changes for run eaaac882-e679-4442-acea-75ab92d90d69
+The JavaScript for `Tests/SnapshotsPBOPure/PrimOpInt02Configurable.lean` was already on par with the purescript-backend-optimizer references or better, so I didn't change the translation. There is one gap: 12 `UInt64`/`USize` definitions are refused at the `pbo` preset, explained below. The full comparison is in `Tests/SnapshotsPBOPure/PrimOpInt02Configurable.md`.
+
+**What the output looks like now**
+- **`faithful` (against `-bigint.js`):** each of the 71 definitions is already a literal array computed at compile time. `UInt64`, `Int64`, `USize` and `ISize` arrays are typed arrays, and equal arrays are shared (`TestUSize$test1 = TestUInt64$test1`). `intValues` is `(op) => [op(1n, 1n), …]`, one call with two arguments. There are no imports. The reference makes runtime calls (`$lean_uint64_add`, `instDecidableEq…`), builds a closure in each test and nests spreads like `[...[...[], x], y]`. It is also curried: `op(1)(1)`.
+- **`pbo` (against `-num.js`):** 59 of the 71 definitions are translated, the same way, with no imports. Every value is Lean's own. The reference's hand-written `-num.expected.js` gives signed answers for `UInt64` `test5`–`test8`, which don't match Lean.
+- **Which phase does the work:** the `Term` → `Term` optimiser inlines `intValues`, substitutes `op` and computes every operation on the literals. `Term` → `JsTerm` only writes the literals and shares equal arrays. This file has no loops or recursion, so labelled blocks and loops don't apply.
+
+**Refused at `pbo`:** `intValues`, `test1`, `test2`, `test9`, `test10` and `test11` of both `TestUInt64` and `TestUSize`. Each holds a value above \(2^{53}-1\), such as `1 + (-2) = 2^64 - 1` or the literal `-2 : UInt64`, which no JavaScript number holds exactly.
+- The reference computes these as numbers, which can't be exact here (its test file allows 10 inexact answers), and its expected output writes `-1` and `-2`.
+- `pbo` keeps Lean's answer or throws; it never rounds. Emitting these as top-level constants would make the whole module throw on import, so they stay refused. As before, `leanscript` exits 1 on this file.
+
+**What I changed: the differential checks**
+- **Gap:** before, this file's checks covered only 49 values per preset. The check generator in `LeanScriptCli/Check.lean` couldn't build samples for arrays of fixed-width integers, or for `op : UInt64 → UInt64 → Nat` and similar.
+- **Arrays:** it now handles `Array` of `UInt8`…`UInt64`, `Int8`…`Int64`, `USize` and `ISize`, written as the typed or plain array the configuration produces. At `pbo` it skips answers with an element above \(2^{53}-1\).
+- **Function parameters:** it handles functions of two fixed-width arguments as parameters.
+- **This file:** 63 checks at `pbo` and 77 at `faithful`. Every translated definition is now checked, and all pass.
+- **Other snapshots:** five gained checks, all passing: `PrimOpInt02NonConfigurable` (+42 per preset), `ArrayGetDefault` (+80), `ArrayStdFunctions` (+8), `ArrayFSet` (+6) and `ShareConstValues` (+1).
+
+**Tests and builds**
+- I regenerated all snapshots and no check fails; no `.js` file changed. The snapshot script still exits 1 because of the existing "literal too big" refusals at `pbo`.
+- `Tests/Main.lean` has a new `primOpInt02Spec`. It checks exactly which definitions are refused, checks fragments of both outputs, checks there are no imports or runtime calls, and runs the node checks. I updated two existing check counts (`ShareConstValues` 17→18, `ArrayGetDefault` 176→256).
+- `tests --timeout 180` passes 152/152, and `leanscript` and `tests` build.
+- No new theorems were added, so the properties table is unchanged. Everything is committed.
+
+**Cosmetic issue, not fixed:** the type comment on `intValues` shows `uint53` for the generic result type. The translator fixes type parameters to `Nat`.
+
+## Suggested follow-up
+
+The 12 refused `UInt64`/`USize` definitions at `pbo` could be emitted if you want output that matches the reference's behaviour: an opt-in setting could write numbers above \(2^{53}\) rounded, as purescript-backend-optimizer does. The cost is that those answers would no longer be exactly Lean's. I can add it if that's useful.
+
 # Summary of changes for run 12e7c078-521d-4248-8c15-4059e4fbc102
 `Tests/SnapshotsPBOPure/PrimOpInt01NonConfigurable` is now better than the purescript-backend-optimizer reference in every function. All 66 functions compile to inline JavaScript, and the generated module no longer imports anything from `runtime.js`. The reference uses a runtime function in 54 of its 66. The node checks against Lean pass: 1089 at `pbo` and 1089 at `faithful`.
 

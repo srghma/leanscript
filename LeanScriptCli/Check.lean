@@ -12,12 +12,13 @@ status when one fails.
 
 Only functions whose parameters and result are all of a *sample type* are checked: `Nat`,
 `Int`, `Bool`, `String`, `Char`, `Float`, the fixed-width integers (`UInt8` … `UInt64`,
-`Int8` … `Int64`), and `Array` and `List` of `Nat`, `Int`, `Bool` or
-`String`, `Array` of such arrays (a list is a JavaScript array, or cons cells under `ListRepr.taggedUnion`; either is
+`Int8` … `Int64`, `USize`, `ISize`), `Array` and `List` of `Nat`, `Int`, `Bool` or
+`String`, `Array` of the fixed-width integers (a typed array where the configuration makes it
+one), `Array` of such arrays (a list is a JavaScript array, or cons cells under `ListRepr.taggedUnion`; either is
 printed as its array, `#[…]`), structures of such fields, a `Float` or another structure among them (a structure of one field
 is unboxed: its sample is its field's), and some unions; a parameter can also be a function of one
 argument (`Int → String`, `Nat → Nat`, …: `SType.fn`) or of two integer arguments
-(`Int → Nat → Nat`: `SType.fn2`), passed a few fixed functions spelled in both languages, including a lazy value `Unit → τ` (`() => true`); trailing `Unit` parameters
+(`Int → Nat → Nat`, `UInt64 → UInt64 → Nat`: `SType.fn2`), passed a few fixed functions spelled in both languages, including a lazy value `Unit → τ` (`() => true`); trailing `Unit` parameters
 of the checked function are one call `()` of the delay it answers (`test1(() => true)()`).
 A value is compared through its printed form (`toString` in Lean; the same format computed
 in JavaScript), except a `Float`, which is compared bit for bit (`Float.toBits`).
@@ -97,7 +98,13 @@ def fnSampleOk : SType → SType → Bool
 
 /-- The functions `dom1 → dom2 → cod` the checks have samples of (`SType.fn2`). -/
 def fn2SampleOk (d1 d2 c : SType) : Bool :=
-  [SType.nat, .int].contains d1 && [SType.nat, .int].contains d2 && [SType.nat, .int].contains c
+  fn2DomOk d1 && fn2DomOk d2 && [SType.nat, .int].contains c
+where
+  /-- An argument of such a function: a `Nat`, an `Int` or a fixed-width integer (read as an
+      `Int` by the samples). -/
+  fn2DomOk : SType → Bool
+    | .nat | .int | .uint _ | .sint _ | .usize | .isize => true
+    | _ => false
 
 mutual
 
@@ -155,6 +162,10 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
     -- an array of arrays of those (`Array (Array Int)`, printed `#[#[1, 2], #[3]]` on both sides)
     | some t@(SType.arr SType.nat) | some t@(SType.arr SType.int) | some t@(SType.arr SType.bool)
     | some t@(SType.arr SType.string) => return some (.arr t)
+    -- an array of fixed-width integers (`Array UInt64`, `Array Int8`: a typed array or a
+    -- generic one, as the configuration says), printed `#[1, 2]` on both sides
+    | some t@(SType.uint _) | some t@(SType.sint _) | some t@SType.usize
+    | some t@SType.isize => return some (.arr t)
     | _ => return none
   if e.isAppOfArity ``Std.HashMap 4 then
     let args := e.getAppArgs
@@ -240,6 +251,20 @@ def enumCtorsShift (cs : List Expr) : Int :=
   | some c => if c.constName?.map Name.getPrefix == some ``Ordering then -1 else 0
   | none => 0
 
+/-- The typed array an `Array` of the fixed-width integers `t` is in the JavaScript, when the
+    configuration makes it one (`lowerArrayPrim`): its constructor, `Uint8Array`, …,
+    `BigUint64Array`. -/
+def typedArrayCtor? (cfg : JsConfig) : SType → Option String
+  | .uint 64 | .usize =>
+    if cfg.arrayUint64Repr == .bigUint64Array && cfg.uint64Repr == .bigint then
+      some "BigUint64Array" else none
+  | .sint 64 | .isize =>
+    if cfg.arrayInt64Repr == .bigInt64Array && cfg.int64Repr == .bigint then
+      some "BigInt64Array" else none
+  | .uint b => if cfg.arrayFixedIntRepr == .typedArray then some s!"Uint{b}Array" else none
+  | .sint b => if cfg.arrayFixedIntRepr == .typedArray then some s!"Int{b}Array" else none
+  | _ => none
+
 /-- The samples of a type (few and small: the functions are called on every combination).
     `nats` are the natural-number literals of the function (`natLitsOf`): the `Nat` fields of the
     values of a `SType.tree` take them too, besides their first two samples, so that a pattern
@@ -292,7 +317,11 @@ partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : Lis
       ⟨mkApp (mkConst ``Float.neg) (mkApp3 (mkConst ``Float.ofScientific) (mkNatLit 15)
         (toExpr true) (mkNatLit 1)), "-1.5"⟩]
   | .arr t => (listSamples cfg t true nats).map fun l =>
-      ⟨mkApp2 (mkConst ``List.toArray [.zero]) (elemTy t) l.lean, l.js⟩
+      -- a typed array (`BigUint64Array.of(1n, 2n)`) where the configuration makes it one
+      let js := match typedArrayCtor? cfg t with
+        | some c => s!"{c}.of({(l.js.drop 1).dropEnd 1})"
+        | none => l.js
+      ⟨mkApp2 (mkConst ``List.toArray [.zero]) (elemTy t) l.lean, js⟩
   | .list t => listSamples cfg t (cfg.listRepr == .stdListToJsArray) nats
   | .strMap t =>
     -- the keys a lookup is likely to name (a literal of the function among them, `strs` of
@@ -363,11 +392,30 @@ partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : Lis
   | .fn2 d1 d2 cod =>
     -- two functions computing on the two arguments read as integers, `x * 10 + y` and
     -- `y * 3 - x` (cut at 0 for a `Nat` answer), so that the answer shows both arguments
-    let big (t : SType) : Bool := if t == .nat then cfg.natRepr == .bigint else cfg.intRepr == .bigint
+    -- (a fixed-width argument read as its integer: `UInt64.toNat`, `Int8.toInt`, …)
+    let big (t : SType) : Bool := match t with
+      | .nat => cfg.natRepr == .bigint
+      | .uint 64 | .usize => cfg.uint64Repr == .bigint
+      | .sint 64 | .isize => cfg.int64Repr == .bigint
+      | .uint _ | .sint _ => false
+      | _ => cfg.intRepr == .bigint
     let intBig := cfg.intRepr == .bigint
     let conv (fromBig toBig : Bool) (e : String) : String :=
       if fromBig == toBig then e else if toBig then s!"BigInt({e})" else s!"Number({e})"
-    let toInt (t : SType) (e : Expr) : Expr := if t == .nat then mkApp (mkConst ``Int.ofNat) e else e
+    let ofNat (e : Expr) : Expr := mkApp (mkConst ``Int.ofNat) e
+    let toInt (t : SType) (e : Expr) : Expr := match t with
+      | .nat => ofNat e
+      | .uint 8 => ofNat (mkApp (mkConst ``UInt8.toNat) e)
+      | .uint 16 => ofNat (mkApp (mkConst ``UInt16.toNat) e)
+      | .uint 32 => ofNat (mkApp (mkConst ``UInt32.toNat) e)
+      | .uint _ => ofNat (mkApp (mkConst ``UInt64.toNat) e)
+      | .usize => ofNat (mkApp (mkConst ``USize.toNat) e)
+      | .sint 8 => mkApp (mkConst ``Int8.toInt) e
+      | .sint 16 => mkApp (mkConst ``Int16.toInt) e
+      | .sint 32 => mkApp (mkConst ``Int32.toInt) e
+      | .sint _ => mkApp (mkConst ``Int64.toInt) e
+      | .isize => mkApp (mkConst ``ISize.toInt) e
+      | _ => e
     let x := toInt d1 (.bvar 1)
     let y := toInt d2 (.bvar 0)
     let xj := conv (big d1) intBig "x"
@@ -433,6 +481,10 @@ where
   elemTy : SType → Expr
     | .nat => mkConst ``Nat | .int => mkConst ``Int | .bool => mkConst ``Bool
     | .unit => mkConst ``Unit
+    | .uint 8 => mkConst ``UInt8 | .uint 16 => mkConst ``UInt16 | .uint 32 => mkConst ``UInt32
+    | .uint _ => mkConst ``UInt64 | .usize => mkConst ``USize
+    | .sint 8 => mkConst ``Int8 | .sint 16 => mkConst ``Int16 | .sint 32 => mkConst ``Int32
+    | .sint _ => mkConst ``Int64 | .isize => mkConst ``ISize
     | .arr t => mkApp (mkConst ``Array [.zero]) (elemTy t)
     | _ => mkConst ``String
 
@@ -822,14 +874,18 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
       -- a 64-bit answer outside `±(2^53 - 1)` where the preset makes the type a number: the
       -- JavaScript throws by design ("integer overflow … use the bigint representation"),
       -- there is no answer to compare
+      -- (an array of them too: one element outside is enough)
       let num64 := match res with
-        | .uint 64 => cfg.uint64Repr == .num
-        | .sint 64 => cfg.int64Repr == .num
-        | .usize => cfg.uint64Repr == .num
-        | .isize => cfg.int64Repr == .num
+        | .uint 64 | .arr (.uint 64) => cfg.uint64Repr == .num
+        | .sint 64 | .arr (.sint 64) => cfg.int64Repr == .num
+        | .usize | .arr .usize => cfg.uint64Repr == .num
+        | .isize | .arr .isize => cfg.int64Repr == .num
         | .bitvec w => 53 < w && cfg.bitvecRepr == .num
         | _ => false
-      let tooBig : Bool := match e.toInt? with
+      let elems : List String := match res with
+        | .arr _ => (((e.dropPrefix "#[").toString.dropSuffix "]").toString.splitOn ", ")
+        | _ => [e]
+      let tooBig : Bool := elems.any fun x => match x.toInt? with
         | some i => decide (i.natAbs > 2 ^ 53 - 1)
         | none => false
       if num64 && tooBig then continue

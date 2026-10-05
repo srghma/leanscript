@@ -435,6 +435,14 @@ check("ArrStd$tTake([13n, 5n, 2n, 1n], 5n)", () => M.ArrStd$tTake([13n, 5n, 2n, 
 check("ArrStd$tTake([13n, 5n, 2n, 1n], 5n) twice", () => ((a0, a1) => (M.ArrStd$tTake(a0, a1), M.ArrStd$tTake(a0, a1)))([13n, 5n, 2n, 1n], 5n), "#[13, 5, 2, 1]", false);
 check("ArrStd$tTake([13n, 5n, 2n, 1n], 13n)", () => M.ArrStd$tTake([13n, 5n, 2n, 1n], 13n), "#[13, 5, 2, 1]", false);
 check("ArrStd$tTake([13n, 5n, 2n, 1n], 13n) twice", () => ((a0, a1) => (M.ArrStd$tTake(a0, a1), M.ArrStd$tTake(a0, a1)))([13n, 5n, 2n, 1n], 13n), "#[13, 5, 2, 1]", false);
+check("ArrStd$tU8(Uint8Array.of())", () => M.ArrStd$tU8(Uint8Array.of()), "#[]", false);
+check("ArrStd$tU8(Uint8Array.of()) twice", () => ((a0) => (M.ArrStd$tU8(a0), M.ArrStd$tU8(a0)))(Uint8Array.of()), "#[]", false);
+check("ArrStd$tU8(Uint8Array.of(0))", () => M.ArrStd$tU8(Uint8Array.of(0)), "#[]", false);
+check("ArrStd$tU8(Uint8Array.of(0)) twice", () => ((a0) => (M.ArrStd$tU8(a0), M.ArrStd$tU8(a0)))(Uint8Array.of(0)), "#[]", false);
+check("ArrStd$tU8(Uint8Array.of(0, 1, 2))", () => M.ArrStd$tU8(Uint8Array.of(0, 1, 2)), "#[]", false);
+check("ArrStd$tU8(Uint8Array.of(0, 1, 2)) twice", () => ((a0) => (M.ArrStd$tU8(a0), M.ArrStd$tU8(a0)))(Uint8Array.of(0, 1, 2)), "#[]", false);
+check("ArrStd$tU8(Uint8Array.of(255, 13, 5, 2))", () => M.ArrStd$tU8(Uint8Array.of(255, 13, 5, 2)), "#[6, 14]", false);
+check("ArrStd$tU8(Uint8Array.of(255, 13, 5, 2)) twice", () => ((a0) => (M.ArrStd$tU8(a0), M.ArrStd$tU8(a0)))(Uint8Array.of(255, 13, 5, 2)), "#[6, 14]", false);
 
 console.log(`ArrayStdFunctions-faithful.js: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

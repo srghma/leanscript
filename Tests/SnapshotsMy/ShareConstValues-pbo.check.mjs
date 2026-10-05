@@ -65,6 +65,7 @@ check("nested", () => M.nested, "#[#[1, 2, 3], #[4]]", false);
 check("nested2", () => M.nested2, "#[#[1, 2, 3], #[4]]", false);
 check("empty1", () => M.empty1, "#[]", false);
 check("empty2", () => M.empty2, "#[]", false);
+check("bytes", () => M.bytes, "#[1, 2, 3]", false);
 check("fresh(0)", () => M.fresh(0), "#[1, 2, 3, 0]", false);
 check("fresh(1)", () => M.fresh(1), "#[1, 2, 3, 1]", false);
 check("fresh(2)", () => M.fresh(2), "#[1, 2, 3, 2]", false);

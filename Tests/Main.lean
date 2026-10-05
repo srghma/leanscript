@@ -2680,7 +2680,7 @@ def inlineReferenceOpArrayLengthSpec : Spec := describe "InlineReferenceOpArrayL
            "export const pair = { _1: table, _2: { tag: 1, _1: table } };", "export const empty2 = [];",
            "export const freshConst = (x) => [1", "export const later = [[4", "], table];"],
           ["export const bytes = table;"], ["export const bytes = Uint8Array.of(1, 2, 3);"],
-          ["(n) => table", "(x) => table"], 17)] do
+          ["(n) => table", "(x) => table"], 18)] do
       let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
       let out ← IO.Process.output { cmd := bin.toString, args }
       assertEq s!"{file}: leanscript" "" (if out.exitCode == 0 then "" else out.stderr)
@@ -3405,7 +3405,7 @@ def primOpArray01Spec : Spec := describe "PrimOpArray01" do
             "export const sumFirstTwo = (a) => (a[0] ?? 0n) + (a[1] ?? 0n);"),
            ("export const getDAt = (a, i) => a[i] ?? 7;", "export const getDAt = (a, i) => a[Number(i)] ?? 7n;"),
            ("export const diteAt = (a, i, d) => a[i] ?? d;", "export const diteAt = (a, i, d) => a[Number(i)] ?? d;")],
-          176)] do
+          256)] do
       let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
       let out ← IO.Process.output { cmd := bin.toString, args }
       assertEq s!"{file}: leanscript exit code" 0 out.exitCode
@@ -3891,6 +3891,58 @@ def primOpInt01Spec : Spec := describe "PrimOpInt01Configurable" do
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+def primOpInt02Spec : Spec := describe "PrimOpInt02Configurable" do
+  it "every test folds to an array literal; the 64-bit arrays and `intValues` of fixed-width integers are checked (needs node and leanscript)"
+      (timeoutMs? := some 120000) do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/primopint02"
+    IO.FS.createDirAll dir
+    let file := "PrimOpInt02Configurable"
+    let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"Tests/SnapshotsPBOPure/{file}.lean"]
+    let out ← IO.Process.output { cmd := bin.toString, args }
+    -- at `pbo` a `UInt64`/`USize` value above `2^53 - 1` has no number: those definitions are
+    -- refused (a failure of `leanscript`), the others translated
+    assertEq "leanscript exit code" 1 out.exitCode
+    let refused := ["intValues", "test1", "test2", "test9", "test10", "test11"]
+    for ns in ["TestUInt64", "TestUSize"] do
+      for d in refused do
+        assertEq s!"{ns}.{d} refused at pbo" true
+          ((out.stderr.splitOn s!"{ns}.{d} (preset pbo): literal too big").length > 1)
+    assertEq "only those are refused" (2 * refused.length)
+      ((out.stderr.splitOn "literal too big").length - 1)
+    let pbo := ["export const TestUInt64$test5 = [false, true, false, true, false, false];",
+      "export const TestUSize$test5 = TestUInt64$test5;",
+      "export const TestNat$test2 = [0, 0, 1, 1, 0, 0];",
+      "export const TestInt64$test10 = [1, 0, 2, 0, 0, 1];",
+      "export const TestInt$test10 = [1, 0, 2, 0, -1, 1];",
+      "export const TestInt$test11 = TestInt64$test11;"]
+    let faithful := ["export const TestUInt64$test11 = BigUint64Array.of(18446744073709551615n, 1n);",
+      "export const TestUSize$test1 = TestUInt64$test1;",
+      "export const TestInt64$test9 = BigInt64Array.of(1n, 2n, 2n, -2n, -2n, 1n);",
+      "export const TestInt$test10 = [1n, 0n, 2n, 0n, -1n, 1n];",
+      "export const TestNat$test10 = [1n, 0n, 2n, 0n, 0n, 0n];"]
+    for (preset, frags, nChecks) in [("pbo", pbo, (63 : Nat)), ("faithful", faithful, 77)] do
+      let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+      if preset == "faithful" then
+        assertEq s!"{preset}: every function translated" false
+          ((js.splitOn "not translated").length > 1)
+      for frag in frags do
+        assertEq s!"{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+      -- everything is computed at compile time: no runtime operation, no call of `op`
+      -- outside `intValues`
+      assertEq s!"{preset}: no import" false ((js.splitOn "import").length > 1)
+      assertEq s!"{preset}: no runtime call" false ((js.splitOn "__lean_").length > 1)
+      let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+      assertEq s!"{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+      assertEq s!"{preset}: number of checks" true
+        ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -3951,6 +4003,7 @@ def spec : Spec := do
   primOpChar01Spec
   primOpChar02Spec
   primOpInt01Spec
+  primOpInt02Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=
