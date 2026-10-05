@@ -3,7 +3,6 @@
 
 import {
   uint53__lean_nat_add,
-  uint53__lean_nat_sub,
   uint53__lean_nat_mod__Nat_mod,
 } from "../../runtime.js";
 
@@ -46,8 +45,8 @@ export const test2 = (n) => {
 export const test3 = (a, b) => {
   const x$1 = uint53__lean_nat_add(a, 1);
   return uint53__lean_nat_add(
-    a < b ? uint53__lean_nat_sub(b, a) : uint53__lean_nat_sub(a, b),
-    b < x$1 ? uint53__lean_nat_sub(x$1, b) : uint53__lean_nat_sub(b, x$1),
+    a < b ? Math.max(0, b - a) : Math.max(0, a - b),
+    b < x$1 ? Math.max(0, x$1 - b) : Math.max(0, b - x$1),
   );
 };
 

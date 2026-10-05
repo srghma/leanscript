@@ -306,6 +306,88 @@ def bitvecDecide? (c : Name) (args : Array Expr) : MetaM (Option Expr) := do
   unless ty.isAppOfArity ``Decidable 1 do return none
   return some (mkApp2 (mkConst ``Decidable.decide) ty.appArg! inst)
 
+/-- The conversions between `USize` and `UInt64`, `ISize` and `Int64`: the identity on a 64-bit
+    platform, the one the translation assumes (`USize` is the leaf `uint64`, `ISize` the leaf
+    `int64`; `LeanScript/TermElab/ToTerm/PlatformIntOps.lean`). -/
+def platformIntConv : List Name :=
+  [``USize.toUInt64, ``UInt64.toUSize, ``ISize.toInt64, ``Int64.toISize]
+
+/-- The functions of `USize` and `ISize` read as the function of `UInt64` and `Int64` between
+    the conversions `platformIntConv`: `(f, g, from?, to?)` is `f x₁ … xₙ =
+    to (g (from x₁) … (from xₙ))`, the arguments of `f` of the platform type converted by
+    `from` (all of them, or none when `from?` is `none`), the result by `to` (none when `to?` is
+    `none`).  Each reading is proved equal to the original on every platform in
+    `LeanScript/TermElab/ToTerm/PlatformIntOps.lean` (`usize_add`, …). -/
+def platformIntOpTable : List (Name × Name × Option Name × Option Name) :=
+  let u (f g : Name) : Name × Name × Option Name × Option Name :=
+    (f, g, some ``USize.toUInt64, some ``UInt64.toUSize)
+  let i (f g : Name) : Name × Name × Option Name × Option Name :=
+    (f, g, some ``ISize.toInt64, some ``Int64.toISize)
+  [u ``USize.add ``UInt64.add, u ``USize.sub ``UInt64.sub, u ``USize.mul ``UInt64.mul,
+   u ``USize.div ``UInt64.div, u ``USize.mod ``UInt64.mod, u ``USize.neg ``UInt64.neg,
+   u ``USize.land ``UInt64.land, u ``USize.lor ``UInt64.lor, u ``USize.xor ``UInt64.xor,
+   u ``USize.complement ``UInt64.complement,
+   (``USize.ofNat, ``UInt64.ofNat, none, some ``UInt64.toUSize),
+   (``USize.toNat, ``UInt64.toNat, some ``USize.toUInt64, none),
+   (``USize.toUInt8, ``UInt64.toUInt8, some ``USize.toUInt64, none),
+   (``USize.toUInt16, ``UInt64.toUInt16, some ``USize.toUInt64, none),
+   (``USize.toUInt32, ``UInt64.toUInt32, some ``USize.toUInt64, none),
+   (``UInt8.toUSize, ``UInt8.toUInt64, none, some ``UInt64.toUSize),
+   (``UInt16.toUSize, ``UInt16.toUInt64, none, some ``UInt64.toUSize),
+   (``UInt32.toUSize, ``UInt32.toUInt64, none, some ``UInt64.toUSize),
+   i ``ISize.add ``Int64.add, i ``ISize.sub ``Int64.sub, i ``ISize.mul ``Int64.mul,
+   i ``ISize.div ``Int64.div, i ``ISize.mod ``Int64.mod, i ``ISize.neg ``Int64.neg,
+   i ``ISize.land ``Int64.land, i ``ISize.lor ``Int64.lor, i ``ISize.xor ``Int64.xor,
+   i ``ISize.complement ``Int64.complement,
+   (``ISize.ofInt, ``Int64.ofInt, none, some ``Int64.toISize),
+   (``ISize.ofNat, ``Int64.ofNat, none, some ``Int64.toISize),
+   (``ISize.toInt, ``Int64.toInt, some ``ISize.toInt64, none)]
+
+/-- The arity of a function of `platformIntOpTable`. -/
+def platformIntArity (f : Name) : Nat :=
+  if [``USize.neg, ``USize.complement, ``ISize.neg, ``ISize.complement, ``USize.ofNat,
+      ``USize.toNat, ``USize.toUInt8, ``USize.toUInt16, ``USize.toUInt32, ``UInt8.toUSize,
+      ``UInt16.toUSize, ``UInt32.toUSize, ``ISize.ofInt, ``ISize.ofNat, ``ISize.toInt].contains f
+  then 1 else 2
+
+/-- A call of a function of `USize` or `ISize` (`platformIntOpTable`): the call of the function
+    of `UInt64` or `Int64` between the conversions (`USize.add a b` is
+    `(UInt64.add a.toUInt64 b.toUInt64).toUSize`, proved equal by `usize_add`), or `none`.
+    The definition of `USize.add` takes the leaf of width `System.Platform.numBits` apart, which
+    has no translation. -/
+def platformIntOpCall? (c : Name) (args : Array Expr) : Option Expr := do
+  let (g, frm?, to?) ← platformIntOpTable.lookup c
+  guard (args.size == platformIntArity c)
+  let xs := match frm? with
+    | some frm => args.map (mkApp (mkConst frm))
+    | none => args
+  let r := mkAppN (mkConst g) xs
+  return match to? with
+    | some t => mkApp (mkConst t) r
+    | none => r
+
+/-- The decisions of `USize` and `ISize`, and the one of `UInt64` and `Int64` that decides the
+    same on the converted arguments (`usize_lt`, …,
+    `LeanScript/TermElab/ToTerm/PlatformIntOps.lean`). -/
+def platformIntDecTable : List (Name × Name × Name) :=
+  [(``USize.decEq, ``UInt64.decEq, ``USize.toUInt64),
+   (``USize.decLt, ``UInt64.decLt, ``USize.toUInt64),
+   (``USize.decLe, ``UInt64.decLe, ``USize.toUInt64),
+   (``ISize.decEq, ``Int64.decEq, ``ISize.toInt64),
+   (``ISize.decLt, ``Int64.decLt, ``ISize.toInt64),
+   (``ISize.decLe, ``Int64.decLe, ``ISize.toInt64)]
+
+/-- A decision of `USize` or `ISize` (`USize.decLt a b`): `decide` of the decision of `UInt64`
+    or `Int64` on the converted arguments (`decide (a.toUInt64 < b.toUInt64)` by
+    `UInt64.decLt`, proved equal by `usize_lt`), or `none`. -/
+def platformIntDecide? (c : Name) (args : Array Expr) : MetaM (Option Expr) := do
+  let some (g, frm) := platformIntDecTable.lookup c | return none
+  unless args.size == 2 do return none
+  let inst := mkAppN (mkConst g) (args.map (mkApp (mkConst frm)))
+  let ty ← whnfR (← inferType inst)
+  unless ty.isAppOfArity ``Decidable 1 do return none
+  return some (mkApp2 (mkConst ``Decidable.decide) ty.appArg! inst)
+
 /-- Is `a` a type of functions (`Nat → Nat`)? -/
 def isFunType (a : Expr) : MetaM Bool := do
   if !(← isType a) then return false
@@ -330,6 +412,10 @@ partial def trExtern (L : Loc) (e fn : Expr) (args : Array Expr) : TM Src := do
   if let some e' ← bitvecOpCall? c args then return ← tr L e'
   if let some e' ← bitvecShiftCall? c args then return ← tr L e'
   if let some e' ← bitvecToNatCall? c args then return ← tr L e'
+  -- `USize` and `ISize` are `UInt64` and `Int64` (a 64-bit platform): the conversions between
+  -- them are the identity, their operations the ones of the 64-bit types
+  if platformIntConv.contains c && args.size == 1 then return ← tr L args[0]!
+  if let some e' := platformIntOpCall? c args then return ← tr L e'
   if let some entry := externTable.find? c then
     if isStrMapEntry entry && !(← strKeyedHashMapCall args) then
       if let some e' ← unfoldCall? e then return ← tr L e'
@@ -405,6 +491,8 @@ partial def trDecide (L : Loc) (p inst : Expr) : TM Src := do
   if let .const c' _ := inst.getAppFn then
     -- a decision of `BitVec w` at the width of a fixed-width integer is the integer's
     if let some e' ← bitvecDecide? c' inst.getAppArgs then return ← tr L e'
+    -- a decision of `USize` or `ISize` is the one of `UInt64` or `Int64`
+    if let some e' ← platformIntDecide? c' inst.getAppArgs then return ← tr L e'
     if let some entry := externTable.find? c' then
       return ← externCall tr L entry inst.getAppFn inst.getAppArgs
     match c', inst.getAppArgs with

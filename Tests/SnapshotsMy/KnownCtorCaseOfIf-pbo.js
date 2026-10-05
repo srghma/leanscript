@@ -7,7 +7,6 @@ import {
   int53__lean_int_mul,
   int53__lean_int_add,
   int53__lean_int_ediv,
-  int53__lean_int_neg,
 } from "../../runtime.js";
 
 /**
@@ -137,7 +136,7 @@ export const boolTwice = (x) => (x > 42 ? "big" : "small");
  * @param {int53(number)} x
  * @returns {int53(number)}
  */
-export const pairOpt = (x) => (x > 0 ? x : int53__lean_int_neg(x));
+export const pairOpt = (x) => (x > 0 ? x : 0 - x);
 
 /**
  * `afterCall`
@@ -187,7 +186,7 @@ export const orElseIf = (x) => {
   if (x > 10) {
     return x;
   }
-  return x < -10 ? int53__lean_int_neg(x) : 0;
+  return x < -10 ? 0 - x : 0;
 };
 
 /**

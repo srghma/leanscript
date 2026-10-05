@@ -65,7 +65,7 @@ def «cands_lean_int_mul» : List Cand :=
 
 /-- The operations of `lean_int_neg`. -/
 def «cands_lean_int_neg» : List Cand :=
-  [⟨_, _, _, _, .inlined .bigint_int__lean_int_neg⟩, ⟨_, _, _, _, .imported .int53__lean_int_neg⟩]
+  [⟨_, _, _, _, .inlined .bigint_int__lean_int_neg⟩, ⟨_, _, _, _, .inlined .int53__lean_int_neg⟩]
 
 /-- The operations of `lean_int_neg_succ_of_nat`. -/
 def «cands_lean_int_neg_succ_of_nat» : List Cand :=
@@ -169,7 +169,7 @@ def «cands_lean_nat_shiftr» : List Cand :=
 
 /-- The operations of `lean_nat_sub`. -/
 def «cands_lean_nat_sub» : List Cand :=
-  [⟨_, _, _, _, .imported .bigint_nat__lean_nat_sub⟩, ⟨_, _, _, _, .imported .uint53__lean_nat_sub⟩]
+  [⟨_, _, _, _, .imported .bigint_nat__lean_nat_sub⟩, ⟨_, _, _, _, .inlined .uint53__lean_nat_sub⟩]
 
 /-- The operations of `lean_nat_to_int`. -/
 def «cands_lean_nat_to_int» : List Cand :=

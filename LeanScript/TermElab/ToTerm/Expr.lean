@@ -84,8 +84,13 @@ partial def tr (L : Loc) (e : Expr) : TM Src := do
     let T ← inferType e
     if (← isProp T) || (← isType e) then
       fail m!"the proof or type{indentExpr e}\nhas no value in the language"
-    -- a closed value of a leaf type is a literal
-    if !e.hasFVar && !e.hasMVar && !L.mentionsFn e then
+    -- a closed value of a leaf type is a literal; but not one of `USize` or `ISize`, or built
+    -- from them (`USize.toUInt64 3`): their width `System.Platform.numBits` does not reduce at
+    -- compile time, so their operations are translated (`platformIntOpCall?`) down to the
+    -- literals of `UInt64` and `Int64` they are on a 64-bit platform
+    let platform := T.isConstOf ``USize || T.isConstOf ``ISize ||
+      (e.find? fun x => x.isConstOf ``USize || x.isConstOf ``ISize).isSome
+    if !platform && !e.hasFVar && !e.hasMVar && !L.mentionsFn e then
       if let .prim p ← cirOf L T false then
         let d ← instantiateMVars (← Term.elabTerm (← `(LeanPrimTy.denote $p)) none)
         if ← isDefEq T d then

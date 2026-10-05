@@ -1,3 +1,35 @@
+# Summary of changes for run 442bafa4-afe6-45c7-8e84-de34ba46ab89
+All 65 functions of `Tests/SnapshotsPBOPure/PrimOpInt01Configurable.lean` now translate at both presets. Before, the 22 `USize` and `ISize` functions were refused ("the width of `BitVec System.Platform.numBits` is not a numeral"). Every function is now on par with the reference or better (`-num.js` for the `pbo` preset, `-bigint.js` for `faithful`), except division, covered below. The node checks against Lean pass: 831 at `pbo` and 940 at `faithful`, up from 569 and 577. The full comparison is in `Tests/SnapshotsPBOPure/PrimOpInt01Configurable.md`.
+
+**What changed, by phase:**
+- **Lean → `Term` (where the main fix had to go):**
+  - **Platform assumption:** the translation now assumes a 64-bit platform, as the compiled Lean behind the checks does and as both references do. `USize` becomes `UInt64` and `ISize` becomes `Int64`, and the conversions between them are treated as the identity. This identity is the one unproved assumption.
+  - **Operations:** each `USize`/`ISize` operation is read as the 64-bit operation between those conversions, e.g. `USize.add a b` is `(a.toUInt64 + b.toUInt64).toUSize`. This covers arithmetic, `%`, bitwise operations, `=`/`<`/`≤`, `ofNat`/`toNat`/`ofInt`/`toInt`, and conversions to and from `UInt8`/`UInt16`/`UInt32`.
+  - **Proofs:** each of these readings is proved equal to the original **on every platform**, with no assumption about the platform, in `LeanScript/TermElab/ToTerm/PlatformIntOps.lean` (`isize_div`, `usize_complement`, …). No `sorry`; only the standard axioms.
+  - **Literals:** constant `USize`/`ISize` values such as `3 : USize` translate to the matching `UInt64`/`Int64` literals.
+- **`Term` → `Term`:** nothing new was needed. The existing rules already give `a !== b` for `ne` and `a > b` for `gt`.
+- **`Term` → `JsTerm`:** new inline forms in `scripts/js_ops_inline.json` (regenerated with `scripts/gen_js_ops.py`). Each is proved against the model of `runtime.js` in the new `RuntimeSpec/InlineInt.lean`:
+  - `Int64` add/sub/mul/neg/complement as a `BigInt`: `BigInt.asIntN(64, a + b)` and so on.
+  - Negation of `Int` and `Int64` as a number: `0 - a`.
+  - `Nat.sub` as a number: `Math.max(0, a - b)`.
+- **`JsTerm` → `JsTerm`:** nothing was needed. This file has no loops or recursion, so labelled blocks and loops don't apply here.
+
+**Compared with the references:** comparisons are JavaScript operators instead of runtime calls; `ne` is one `!==` instead of an `if`; `gt`/`ge` keep the operand order; the `BigInt` arithmetic of `USize`, `ISize` and `Int64` is inline; negation is inline; and every function takes two parameters at once instead of being curried.
+
+**Not done, and why:**
+- **Division** stays a runtime call where the reference writes `b !== 0 ? … : 0` inline. Inline forms here read each argument exactly once, and that test reads the divisor twice.
+- **`Nat`/`Int` add, mul and sub at `pbo`** stay runtime calls on purpose. The runtime throws on overflow past \(2^{53}\), where the reference's bare `v0 + v1` silently rounds.
+- **`USize`/`ISize` shifts**, `USize.size` and narrowing `ISize` conversions are not translated yet. These are listed in `NOT_IMPLEMENTED.md`.
+
+**Tests:**
+- The check generator now produces `USize`/`ISize` samples, including \(2^{64}-1\), \(-2^{63}\) and \(2^{63}-1\) at `faithful`.
+- New snapshot `Tests/SnapshotsMy/PlatformInts.lean` (literals, conversions, bitwise operations, `%`, conditions, two loops): 187 and 241 checks pass.
+- New `primOpInt01Spec` in `Tests/Main.lean`, and one existing expectation updated for the `0 - x` form. `tests --timeout 180` passes 151/151.
+- I regenerated all snapshots and no check fails. The snapshot script still exits 1, from the "literal too big" refusals at `pbo`, which were already there for `UInt64` and now also appear for the newly translated `USize`.
+- `leanscript`, `tests`, `TermTests`, `TyTests`, `JsTerm`, `JsSpec`, `RuntimeSpec` and `OpsSpec` build. `LeanScript/Term/Syntax/UsageAlgebra.lean` still fails because it imports Mathlib, which the project doesn't depend on; it was like that before and I didn't touch it.
+
+Both new proofs are registered as proved in the properties table, and everything is committed.
+
 # Summary of changes for run 6e3fa792-452c-4f5c-8c77-2fd95cb353c2
 The JavaScript for `Tests/SnapshotsPBOPure/PrimOpChar02.lean` was already on par with `legacy-backend/PrimOpChar02.js` or better before I changed anything, at both presets:
 - `test1` … `test6` are legacy's lines with `export` in front. The `Term` optimiser inlines `charValues` and folds each test to an array literal.

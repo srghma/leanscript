@@ -3,7 +3,6 @@
 
 import {
   uint53__lean_nat_add,
-  uint53__lean_nat_sub,
   uint53__lean_nat_mod__Nat_mod,
   uint53__lean_nat_mul,
 } from "../../runtime.js";
@@ -37,7 +36,7 @@ export const swapSum_x27 = (p, q) => ({
  * @returns {uint53(number)}
  */
 export const absDiff = (a, b) =>
-  a < b ? uint53__lean_nat_sub(b, a) : uint53__lean_nat_sub(a, b);
+  a < b ? Math.max(0, b - a) : Math.max(0, a - b);
 
 /**
  * `plus`

@@ -3,7 +3,6 @@
 
 import {
   int53__uint53__lean_int_pow,
-  int53__lean_int_neg,
   int53__lean_int_mul,
   uint53__lean_nat_mul,
   uint53__lean_nat_pow,
@@ -29,16 +28,14 @@ export const powVar = (x, n) => int53__uint53__lean_int_pow(x, n);
  * @param {int53(number)} x
  * @returns {int53(number)}
  */
-export const powNeg = (x) =>
-  int53__uint53__lean_int_pow(int53__lean_int_neg(x), 3);
+export const powNeg = (x) => int53__uint53__lean_int_pow(0 - x, 3);
 
 /**
  * `negPow`
  * @param {int53(number)} x
  * @returns {int53(number)}
  */
-export const negPow = (x) =>
-  int53__lean_int_neg(int53__uint53__lean_int_pow(x, 3));
+export const negPow = (x) => 0 - int53__uint53__lean_int_pow(x, 3);
 
 /**
  * `powPow`

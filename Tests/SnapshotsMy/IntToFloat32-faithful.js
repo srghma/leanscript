@@ -7,7 +7,6 @@ import {
   bigint_int__lean_int32_of_int,
   bigint_nat__lean_uint64_to_float32,
   bigint_int__lean_int64_to_float32,
-  bigint_int__lean_int64_add,
   bigint_int__lean_int64_of_int,
 } from "../../runtime.js";
 
@@ -48,5 +47,5 @@ export const u64ToF32 = (n) =>
  */
 export const i64ToF32 = (i) =>
   bigint_int__lean_int64_to_float32(
-    bigint_int__lean_int64_add(bigint_int__lean_int64_of_int(i), 16777216n),
+    BigInt.asIntN(64, bigint_int__lean_int64_of_int(i) + 16777216n),
   );

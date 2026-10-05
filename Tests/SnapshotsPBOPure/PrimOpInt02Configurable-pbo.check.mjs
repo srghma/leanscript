@@ -65,6 +65,12 @@ check("TestUInt64$test5", () => M.TestUInt64$test5, "#[false, true, false, true,
 check("TestUInt64$test6", () => M.TestUInt64$test6, "#[false, false, true, false, true, false]", false);
 check("TestUInt64$test7", () => M.TestUInt64$test7, "#[true, true, false, true, false, true]", false);
 check("TestUInt64$test8", () => M.TestUInt64$test8, "#[true, false, true, false, true, true]", false);
+check("TestUSize$test3", () => M.TestUSize$test3, "#[true, false, false, false, false, true]", false);
+check("TestUSize$test4", () => M.TestUSize$test4, "#[false, true, true, true, true, false]", false);
+check("TestUSize$test5", () => M.TestUSize$test5, "#[false, true, false, true, false, false]", false);
+check("TestUSize$test6", () => M.TestUSize$test6, "#[false, false, true, false, true, false]", false);
+check("TestUSize$test7", () => M.TestUSize$test7, "#[true, true, false, true, false, true]", false);
+check("TestUSize$test8", () => M.TestUSize$test8, "#[true, false, true, false, true, true]", false);
 check("TestNat$intValues((x, y) => ((v) => (v > 0 ? v : 0))(x * 10 + y))", () => M.TestNat$intValues((x, y) => ((v) => (v > 0 ? v : 0))(x * 10 + y)), "#[11, 12, 21, 10, 2, 0]", false);
 check("TestNat$intValues((x, y) => ((v) => (v > 0 ? v : 0))(y * 3 - x))", () => M.TestNat$intValues((x, y) => ((v) => (v > 0 ? v : 0))(y * 3 - x)), "#[2, 5, 1, 0, 6, 0]", false);
 check("TestNat$test1", () => M.TestNat$test1, "#[2, 3, 3, 1, 2, 0]", false);
@@ -83,6 +89,12 @@ check("TestInt64$test5", () => M.TestInt64$test5, "#[false, true, false, false, 
 check("TestInt64$test6", () => M.TestInt64$test6, "#[false, false, true, true, false, false]", false);
 check("TestInt64$test7", () => M.TestInt64$test7, "#[true, true, false, false, true, true]", false);
 check("TestInt64$test8", () => M.TestInt64$test8, "#[true, false, true, true, false, true]", false);
+check("TestISize$test3", () => M.TestISize$test3, "#[true, false, false, false, false, true]", false);
+check("TestISize$test4", () => M.TestISize$test4, "#[false, true, true, true, true, false]", false);
+check("TestISize$test5", () => M.TestISize$test5, "#[false, true, false, false, true, false]", false);
+check("TestISize$test6", () => M.TestISize$test6, "#[false, false, true, true, false, false]", false);
+check("TestISize$test7", () => M.TestISize$test7, "#[true, true, false, false, true, true]", false);
+check("TestISize$test8", () => M.TestISize$test8, "#[true, false, true, true, false, true]", false);
 check("TestInt$intValues((x, y) => ((v) => (v > 0 ? v : 0))(x * 10 + y))", () => M.TestInt$intValues((x, y) => ((v) => (v > 0 ? v : 0))(x * 10 + y)), "#[11, 12, 21, 8, 0, 0]", false);
 check("TestInt$intValues((x, y) => ((v) => (v > 0 ? v : 0))(y * 3 - x))", () => M.TestInt$intValues((x, y) => ((v) => (v > 0 ? v : 0))(y * 3 - x)), "#[2, 5, 1, 0, 7, 0]", false);
 check("TestInt$test1", () => M.TestInt$test1, "#[2, 3, 3, -1, 1, -2]", false);

@@ -62,6 +62,8 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | bigint_nat__lean_nat_dec_lt : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_nat), (.terminal .bigint_nat)] (.terminal .bool)
   /-- `a < b` (Nat.decLt) -/
   | uint53__lean_nat_dec_lt : JsOpInlinable .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .bool)
+  /-- `Math.max(0, a - b)` (Nat.sub) -/
+  | uint53__lean_nat_sub : JsOpInlinable .pure .doesntThrow [(.terminal .uint53), (.terminal .uint53)] (.terminal .uint53)
   /-- `a < b` (UInt8.decLt) -/
   | uint8__lean_uint8_dec_lt : JsOpInlinable .pure .doesntThrow [(.terminal .uint8), (.terminal .uint8)] (.terminal .bool)
   /-- `a <= b` (UInt32.decLe) -/
@@ -156,6 +158,8 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | bigint_int__lean_int_add : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
   /-- `-a` (Int.neg) -/
   | bigint_int__lean_int_neg : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int)] (.terminal .bigint_int)
+  /-- `0 - a` (Int.neg) -/
+  | int53__lean_int_neg : JsOpInlinable .pure .doesntThrow [(.terminal .int53)] (.terminal .int53)
   /-- `a - b` (Int.sub) -/
   | bigint_int__lean_int_sub : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
   /-- `a ** b` (Int.pow (not `@[extern]`: a recursion in Lean)) -/
@@ -354,10 +358,22 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | bigint_int__lean_int32_to_int : JsOpInlinable .pure .doesntThrow [(.terminal .int32)] (.terminal .bigint_int)
   /-- `a` (Int32.toInt) -/
   | int53__lean_int32_to_int : JsOpInlinable .pure .doesntThrow [(.terminal .int32)] (.terminal .int53)
+  /-- `BigInt.asIntN(64, a - b)` (Int64.sub) -/
+  | bigint_int__lean_int64_sub : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
+  /-- `BigInt.asIntN(64, a ^ b)` (Int64.xor) -/
+  | bigint_int__lean_int64_xor : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
+  /-- `BigInt.asIntN(64, a * b)` (Int64.mul) -/
+  | bigint_int__lean_int64_mul : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
+  /-- `BigInt.asIntN(64, a & b)` (Int64.land) -/
+  | bigint_int__lean_int64_land : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
+  /-- `BigInt.asIntN(64, a | b)` (Int64.lor) -/
+  | bigint_int__lean_int64_lor : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
   /-- `a < b` (Int64.decLt) -/
   | bigint_int__lean_int64_dec_lt : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bool)
   /-- `a < b` (Int64.decLt) -/
   | int53__lean_int64_dec_lt : JsOpInlinable .pure .doesntThrow [(.terminal .int53), (.terminal .int53)] (.terminal .bool)
+  /-- `BigInt.asIntN(64, ~a)` (Int64.complement) -/
+  | bigint_int__lean_int64_complement : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int)] (.terminal .bigint_int)
   /-- `a === b` (Int64.decEq) -/
   | bigint_int__lean_int64_dec_eq : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bool)
   /-- `a === b` (Int64.decEq) -/
@@ -372,6 +388,12 @@ inductive JsOpInlinable : Effectfulness → MayThrow → List JsTy → JsTy → 
   | int53__bigint_int__lean_int64_to_int_sint : JsOpInlinable .pure .doesntThrow [(.terminal .int53)] (.terminal .bigint_int)
   /-- `a` (Int64.toInt) -/
   | int53__lean_int64_to_int_sint : JsOpInlinable .pure .doesntThrow [(.terminal .int53)] (.terminal .int53)
+  /-- `BigInt.asIntN(64, -a)` (Int64.neg) -/
+  | bigint_int__lean_int64_neg : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int)] (.terminal .bigint_int)
+  /-- `0 - a` (Int64.neg) -/
+  | int53__lean_int64_neg : JsOpInlinable .pure .doesntThrow [(.terminal .int53)] (.terminal .int53)
+  /-- `BigInt.asIntN(64, a + b)` (Int64.add) -/
+  | bigint_int__lean_int64_add : JsOpInlinable .pure .doesntThrow [(.terminal .bigint_int), (.terminal .bigint_int)] (.terminal .bigint_int)
   /-- `a + b` (String.Internal.append) -/
   | string__lean_string_append__String_Internal_append : JsOpInlinable .pure .doesntThrow [(.terminal .string), (.terminal .string)] (.terminal .string)
   /-- `a + b` (String.push) -/

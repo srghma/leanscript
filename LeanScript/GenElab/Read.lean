@@ -401,6 +401,10 @@ partial def classify (e : Expr) : MetaM Head := do
   | ``Int16, 0 => p (← `(LeanPrimTy.int16))
   | ``Int32, 0 => p (← `(LeanPrimTy.int32))
   | ``Int64, 0 => p (← `(LeanPrimTy.int64))
+  -- `USize` and `ISize` on a 64-bit platform (the one assumption on the platform the
+  -- translation makes, `LeanScript/TermElab/ToTerm/PlatformIntOps.lean`): `UInt64` and `Int64`
+  | ``USize, 0 => p (← `(LeanPrimTy.uint64))
+  | ``ISize, 0 => p (← `(LeanPrimTy.int64))
   | ``Char, 0 => p (← `(LeanPrimTy.char))
   | ``String, 0 => p (← `(LeanPrimTy.string))
   | ``String.Pos.Raw, 0 => p (← `(LeanPrimTy.stringPosRaw))

@@ -42,6 +42,7 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .uint8__lean_uint8_to_nat__UInt8_toBitVec => .arg 0
   | .bigint_nat__lean_nat_dec_lt => .bin "<" (.arg 0) (.arg 1)
   | .uint53__lean_nat_dec_lt => .bin "<" (.arg 0) (.arg 1)
+  | .uint53__lean_nat_sub => .call "Math.max" [.num 0, .bin "-" (.arg 0) (.arg 1)]
   | .uint8__lean_uint8_dec_lt => .bin "<" (.arg 0) (.arg 1)
   | .uint32__lean_uint32_dec_le => .bin "<=" (.arg 0) (.arg 1)
   | .bigint_nat__lean_nat_dec_eq__Nat_decEq => .bin "===" (.arg 0) (.arg 1)
@@ -89,6 +90,7 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .int53__lean_int_dec_nonneg => .bin ">=" (.arg 0) (.num 0)
   | .bigint_int__lean_int_add => .bin "+" (.arg 0) (.arg 1)
   | .bigint_int__lean_int_neg => .un "-" (.arg 0)
+  | .int53__lean_int_neg => .bin "-" (.num 0) (.arg 0)
   | .bigint_int__lean_int_sub => .bin "-" (.arg 0) (.arg 1)
   | .bigint_int__bigint_nat__lean_int_pow => .bin "**" (.arg 0) (.arg 1)
   | .bigint_int__uint53__lean_int_pow => .bin "**" (.arg 0) (.call "BigInt" [.arg 1])
@@ -188,8 +190,14 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .int32__lean_int32_shift_right => .bin ">>" (.arg 0) (.arg 1)
   | .bigint_int__lean_int32_to_int => .call "BigInt" [.arg 0]
   | .int53__lean_int32_to_int => .arg 0
+  | .bigint_int__lean_int64_sub => .call "BigInt.asIntN" [.num 64, .bin "-" (.arg 0) (.arg 1)]
+  | .bigint_int__lean_int64_xor => .call "BigInt.asIntN" [.num 64, .bin "^" (.arg 0) (.arg 1)]
+  | .bigint_int__lean_int64_mul => .call "BigInt.asIntN" [.num 64, .bin "*" (.arg 0) (.arg 1)]
+  | .bigint_int__lean_int64_land => .call "BigInt.asIntN" [.num 64, .bin "&" (.arg 0) (.arg 1)]
+  | .bigint_int__lean_int64_lor => .call "BigInt.asIntN" [.num 64, .bin "|" (.arg 0) (.arg 1)]
   | .bigint_int__lean_int64_dec_lt => .bin "<" (.arg 0) (.arg 1)
   | .int53__lean_int64_dec_lt => .bin "<" (.arg 0) (.arg 1)
+  | .bigint_int__lean_int64_complement => .call "BigInt.asIntN" [.num 64, .un "~" (.arg 0)]
   | .bigint_int__lean_int64_dec_eq => .bin "===" (.arg 0) (.arg 1)
   | .int53__lean_int64_dec_eq => .bin "===" (.arg 0) (.arg 1)
   | .bigint_int__lean_int64_dec_le => .bin "<=" (.arg 0) (.arg 1)
@@ -197,6 +205,9 @@ def template {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy} :
   | .bigint_int__lean_int64_to_int_sint => .arg 0
   | .int53__bigint_int__lean_int64_to_int_sint => .call "BigInt" [.arg 0]
   | .int53__lean_int64_to_int_sint => .arg 0
+  | .bigint_int__lean_int64_neg => .call "BigInt.asIntN" [.num 64, .un "-" (.arg 0)]
+  | .int53__lean_int64_neg => .bin "-" (.num 0) (.arg 0)
+  | .bigint_int__lean_int64_add => .call "BigInt.asIntN" [.num 64, .bin "+" (.arg 0) (.arg 1)]
   | .string__lean_string_append__String_Internal_append => .bin "+" (.arg 0) (.arg 1)
   | .string__lean_string_push => .bin "+" (.arg 0) (.arg 1)
   | .string__lean_string_append__String_append => .bin "+" (.arg 0) (.arg 1)

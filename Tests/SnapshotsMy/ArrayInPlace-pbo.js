@@ -10,7 +10,6 @@ import {
   uint53__lean_mk_array,
   uint53__lean_nat_div,
   uint53__lean_array_swap_mutable,
-  uint53__lean_nat_sub,
   array__lean_array_pop_mutable,
 } from "../../runtime.js";
 
@@ -95,7 +94,7 @@ export const test5 = (n) => {
     acc$4 = uint53__lean_array_swap_mutable(
       acc$4,
       i$6,
-      uint53__lean_nat_sub(uint53__lean_nat_sub(n, i$6), 1),
+      Math.max(0, Math.max(0, n - i$6) - 1),
     );
   }
   return array__lean_array_pop_mutable(acc$4);

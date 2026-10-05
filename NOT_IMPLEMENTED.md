@@ -207,6 +207,13 @@ The supported fragment and the refusals are listed in the header of
   its termination is read off its syntax (a `Nat` variable moved towards a bound by a
   literal step, `TermTests/ToTerm/WhileTest.lean`); any other `while`, `repeat`, and loops in other
   monads are refused.
+- **`USize` and `ISize` assume a 64-bit platform** (they are read as `UInt64` and `Int64`,
+  `LeanScript/TermElab/ToTerm/PlatformIntOps.lean`).  Each operation is proved to be the
+  64-bit one between `toUInt64`/`toUSize` on every platform, but the conversions themselves are
+  the identity only when `System.Platform.numBits = 64`.  Not translated yet: the shifts
+  (`USize.shiftLeft` takes its count modulo `numBits`), `USize.size`, `USize.ofNat32`,
+  `ISize.toInt8`/`toInt16`/`toInt32` and the other conversions not listed in
+  `platformIntOpTable`.
 - **No proof that the translation is correct** in general: each test checks it on examples
   by `rfl`, and `ToTermTest.sumToT_run` proves it at every argument for one function.
 

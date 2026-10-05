@@ -6,14 +6,12 @@
 //   mc91TR: LeanScript: the recursive call mc91Loop (n✝ + 1 + 1) (x✝ + 11) is not structural: it must pass the parameters unchanged except the one recursed on, which must be a direct subvalue of it
 //   mc91While: LeanScript: the `while` loop forIn { } (c, cur) fun x __s => have c := __s.fst; have cur := __s.snd; if (c != 0) = true then if cur > 100 then have cur := cur - 10; have c := c - 1; pure (ForInStep.yield (c, cur)) else have cur := cur + 11; have c := c + 1; pure (ForInStep.yield (c, cur)) else pure (ForInStep.done (c, cur)) is not structurally terminating: the language has no unbounded loop, so a `while` loop is only accepted when its condition bounds a `Nat` variable `x` of the loop (`x > 0`, `x ≠ 0`, `x < b`, `x ≤ b`, with `b` unchanged by the loop) and every iteration that goes on moves `x` towards the bound by a literal step (`x := x - k`, `x := x / k`, `x := x + k`)
 
-import { uint53__lean_nat_sub } from "../../runtime.js";
-
 /**
  * `mc91`
  * @param {uint53(number)} n
  * @returns {uint53(number)}
  */
-export const mc91 = (n) => (n > 100 ? uint53__lean_nat_sub(n, 10) : 91);
+export const mc91 = (n) => (n > 100 ? Math.max(0, n - 10) : 91);
 
 /**
  * `iter`

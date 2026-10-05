@@ -34,6 +34,10 @@ inductive SType where
   | uint (bits : Nat)
   /-- `Int8`, `Int16`, `Int32`, `Int64` (`bits` is the width). -/
   | sint (bits : Nat)
+  /-- `USize`: a `UInt64` in the JavaScript (the translation assumes a 64-bit platform). -/
+  | usize
+  /-- `ISize`: an `Int64` in the JavaScript (the translation assumes a 64-bit platform). -/
+  | isize
   /-- `BitVec w`, for a literal width `w ≥ 2` (a JavaScript number, or a `BigInt` above 53 bits
       when `bitvecRepr` says so); printed as its natural number (`BitVec.toNat`). -/
   | bitvec (w : Nat)
@@ -139,6 +143,8 @@ partial def stypeOf? (e : Expr) : MetaM (Option SType) := do
     if e.isConstOf n then return some (.uint b)
   for (n, b) in [(``Int8, 8), (``Int16, 16), (``Int32, 32), (``Int64, 64)] do
     if e.isConstOf n then return some (.sint b)
+  if e.isConstOf ``USize then return some .usize
+  if e.isConstOf ``ISize then return some .isize
   if e.isAppOfArity ``BitVec 1 then
     let some w ← evalNat (← whnf e.appArg!) | return none
     return if 2 ≤ w then some (.bitvec w) else none
@@ -259,6 +265,16 @@ partial def samplesOf (cfg : JsConfig) (t : SType) (nats : List Nat := []) : Lis
     let ns : List Nat := ([0, 1, 2, 5, 13, w - 1, w, w + 36].eraseDups.filter (· < 2 ^ w)) ++
       (if w ≤ 53 || big then [2 ^ w - 1] else [])
     ns.map fun n => ⟨mkApp2 (mkConst ``BitVec.ofNat) (mkNatLit w) (mkNatLit n), intLit big n⟩
+  -- `USize` and `ISize`: the samples of `UInt64` and `Int64`, and at the `BigInt`
+  -- representation the edges of the 64-bit range too
+  | .usize =>
+    let big := cfg.uint64Repr == .bigint
+    let ns : List Nat := [0, 1, 2, 5, 13] ++ (if big then [2 ^ 64 - 1] else [])
+    ns.map fun n => ⟨mkApp (mkConst ``USize.ofNat) (mkNatLit n), intLit big n⟩
+  | .isize =>
+    let big := cfg.int64Repr == .bigint
+    let is : List Int := [-7, -1, 0, 3, 12] ++ (if big then [-(2 : Int) ^ 63, 2 ^ 63 - 1] else [])
+    is.map fun i => ⟨mkApp (mkConst ``ISize.ofInt) (toExpr i), intLit big i⟩
   | .sint b =>
     let big := b == 64 && cfg.int64Repr == .bigint
     let is : List Int := [-7, -1, 0, 3, 12] ++
@@ -809,6 +825,8 @@ unsafe def checksOf (cfg : JsConfig) (n : Name) (jsName : String) (arity : Nat)
       let num64 := match res with
         | .uint 64 => cfg.uint64Repr == .num
         | .sint 64 => cfg.int64Repr == .num
+        | .usize => cfg.uint64Repr == .num
+        | .isize => cfg.int64Repr == .num
         | .bitvec w => 53 < w && cfg.bitvecRepr == .num
         | _ => false
       let tooBig : Bool := match e.toInt? with

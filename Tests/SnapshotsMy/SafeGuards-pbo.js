@@ -7,7 +7,6 @@ import {
   uint53__lean_nat_add,
   uint53__lean_string_length__String_Internal_length,
   uint53__lean_nat_land,
-  uint53__lean_nat_sub,
 } from "../../runtime.js";
 
 /**
@@ -66,9 +65,6 @@ export const test6 = (a) => uint53__lean_nat_land(a.length, 7);
  */
 export const test7 = (s, i) =>
   uint53__lean_nat_div(
-    uint53__lean_nat_sub(
-      uint53__lean_string_length__String_Internal_length(s),
-      i,
-    ),
+    Math.max(0, uint53__lean_string_length__String_Internal_length(s) - i),
     2,
   );

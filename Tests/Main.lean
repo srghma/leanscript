@@ -3160,7 +3160,7 @@ def knownConstructors03Spec : Spec := describe "KnownConstructors03" do
           [".tag", "if (", "return "], (7 : Nat)),
         ("Tests/SnapshotsMy", "KnownCtorCaseOfIf",
           ["export const twiceUse = (x) => (x > 42 ? \"HelloHello\" : \"\");",
-           "export const pairOpt = (x) => (x > 0 ? x : int53__lean_int_neg(x));",
+           "export const pairOpt = (x) => (x > 0 ? x : 0 - x);",
            "export const pairBool = (x) => (x > 0 ? int53__lean_int_mul(x, 3) : -1);",
            "export const isSomeIf = (x) => x > 0;",
            "  if (x > 0 && y > 0) {",
@@ -3820,6 +3820,64 @@ def primOpChar02Spec : Spec := describe "PrimOpChar02" do
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+def primOpInt01Spec : Spec := describe "PrimOpInt01Configurable" do
+  it "USize and ISize are translated as UInt64 and Int64; inline Int64 BigInt arithmetic, negation and Nat.sub (needs node and leanscript)"
+      (timeoutMs? := some 120000) do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/primopint01"
+    IO.FS.createDirAll dir
+    -- (directory, file, fragments of `pbo`, of `faithful`, fragments of neither, checks of each)
+    for (path, file, pbo, faithful, absent, nPbo, nFaithful) in [
+        ("Tests/SnapshotsPBOPure", "PrimOpInt01Configurable",
+          ["export const TestUSize$add = (a, b) => uint53__lean_uint64_add(a, b);",
+           "export const TestUSize$ne = (a, b) => a !== b;",
+           "export const TestUSize$gt = (a, b) => a > b;",
+           "export const TestISize$lt = (a, b) => a < b;",
+           "export const TestISize$ge = (a, b) => a >= b;",
+           "export const TestISize$neg = (a) => 0 - a;",
+           "export const TestInt64$neg = (a) => 0 - a;",
+           "export const TestInt$neg = (a) => 0 - a;",
+           "export const TestNat$sub = (a, b) => Math.max(0, a - b);"],
+          ["export const TestUSize$add = (a, b) => BigInt.asUintN(64, a + b);",
+           "export const TestUSize$le = (a, b) => a <= b;",
+           "export const TestISize$add = (a, b) => BigInt.asIntN(64, a + b);",
+           "export const TestISize$neg = (a) => BigInt.asIntN(64, -a);",
+           "export const TestInt64$sub = (a, b) => BigInt.asIntN(64, a - b);",
+           "export const TestInt64$mul = (a, b) => BigInt.asIntN(64, a * b);",
+           "export const TestInt$neg = (a) => -a;"],
+          ["int53__lean_int_neg", "int53__lean_int64_neg", "uint53__lean_nat_sub",
+           "bigint_int__lean_int64_add", "bigint_int__lean_int64_mul", "_dec_"],
+          (831 : Nat), (940 : Nat)),
+        ("Tests/SnapshotsMy", "PlatformInts",
+          ["export const usizeLit = (a) =>\n  uint53__lean_uint64_add(uint53__lean_uint64_mul(a, 3), 7);",
+           "export const uint32ToUSize = (x) => x;",
+           "export const usizeClamp = (a) => (a <= 10 ? a : 10);"],
+          ["export const usizeToNat = (a) => a + 1n;",
+           "export const uint32ToUSize = (x) => BigInt(x);",
+           "export const usizeMax = (a, b) => (a < b ? b : a);"],
+          [], 187, 241)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript exit code" 0 out.exitCode
+      for (preset, frags, nChecks) in [("pbo", pbo, nPbo), ("faithful", faithful, nFaithful)] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        assertEq s!"{file}-{preset}: every function translated" false
+          ((js.splitOn "not translated").length > 1)
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -3879,6 +3937,7 @@ def spec : Spec := do
   primOpBooleanNotRegressionSpec
   primOpChar01Spec
   primOpChar02Spec
+  primOpInt01Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

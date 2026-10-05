@@ -17,7 +17,6 @@ import {
   uint53__lean_array_erase_idx_if_in_bounds,
   uint53__lean_array_insert_idx_if_in_bounds,
   uint53__lean_array_qsort,
-  uint53__lean_nat_sub,
   uint53__lean_nat_mul,
   uint53__lean_array_foldr,
   array__lean_array_zip,
@@ -144,7 +143,7 @@ export const ArrStd$tSort = (a) =>
     a,
     (x$1, x$2) => x$1 < x$2,
     0,
-    uint53__lean_nat_sub(a.length, 1),
+    Math.max(0, a.length - 1),
   );
 
 /**
