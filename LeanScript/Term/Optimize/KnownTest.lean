@@ -451,62 +451,57 @@ theorem Comp.share?_eval {σ : Ty ks} {ℓ : Nat} (c : Comp Δ d Φ Γ σ ℓ) (
 
 /-- `let x := c; b`, or `b[x := n]` when `c` is `share n`, a boolean used once
     (`Term.subst`): a condition `x` bound by `let` is tested as `n`, whose operands the walk then
-    knows in the arms (`Neu.factsOf`).  (`Term.joinOrLet` writes such `let`s.) -/
-def Term.letEOrSubst {js : JCtx ks} {σ : Ty ks} {ℓ : Nat} {o' : Lvl} :
-    (u : Usage1ω) → Comp Δ d Φ Γ σ ℓ → Term Δ d Φ (⟨σ, u, d⟩ :: Γ) τ js o' →
-    (o : Lvl) × Term Δ d Φ Γ τ js o
-  | .one, c, b => match c.share? with
-    | some n =>
-      if σ = .bool then
-        (b.subst (D' := d) KLRen.id (USub.cons ⟨_, .neu n⟩ (USub.ofRen ULRen.idL)) JRen.id).getD
-          ⟨_, .letE .one c b⟩
-      else ⟨_, .letE .one c b⟩
-    | none => ⟨_, .letE .one c b⟩
-  | .many, c, b => ⟨_, .letE .many c b⟩
+    knows in the arms (`Neu.factsOf`).  (`Term.joinOrLet` writes such `let`s.)  A comparison of
+    an operand with itself (`x == x`, `x < x`, `Neu.reflFold`) is substituted as its literal,
+    however many times it is used. -/
+def Term.letEOrSubst {js : JCtx ks} {σ : Ty ks} {ℓ : Nat} {o' : Lvl}
+    (u : Usage1ω) (c : Comp Δ d Φ Γ σ ℓ) (b : Term Δ d Φ (⟨σ, u, d⟩ :: Γ) τ js o') :
+    (o : Lvl) × Term Δ d Φ Γ τ js o :=
+  match c.share? with
+  | some n =>
+    if σ = .bool && (u == .one || n.reflFold.1 == none) then
+      (b.subst (D' := d) KLRen.id (USub.cons n.reflFold (USub.ofRen ULRen.idL)) JRen.id).getD
+        ⟨_, .letE u c b⟩
+    else ⟨_, .letE u c b⟩
+  | none => ⟨_, .letE u c b⟩
 
 theorem Term.letEOrSubst_eval {js : JCtx ks} {σ : Ty ks} {ℓ : Nat} {o' : Lvl} (u : Usage1ω)
     (c : Comp Δ d Φ Γ σ ℓ) (b : Term Δ d Φ (⟨σ, u, d⟩ :: Γ) τ js o') (κ : KEnv Δ Φ)
     (ρ : UEnv Δ Γ) (jκ : JEnv Δ τ js) :
     (Term.letEOrSubst u c b).2.eval κ ρ jκ = (Term.letE u c b).eval κ ρ jκ := by
-  cases u with
-  | many => rfl
-  | one =>
-    simp only [Term.letEOrSubst]
-    cases hn : c.share? with
-    | none => rfl
-    | some n =>
-      dsimp only
-      by_cases hσ : σ = .bool
-      · rw [if_pos hσ]
-        simp only [Option.getD]
-        split
-        · rename_i r hs
-          rw [Term.subst_eval (KLRen.Agree.id κ)
-            (USub.Agree.cons (USub.Agree.ofRen (ULRen.Agree.idL ρ)) _) (JRen.Agree.id jκ) b hs]
-          simp only [Term.eval, Comp.share?_eval c n hn κ ρ, PExpr.eval]
-        · rfl
-      · rw [if_neg hσ]
+  simp only [Term.letEOrSubst]
+  cases hn : c.share? with
+  | none => rfl
+  | some n =>
+    dsimp only
+    by_cases hc : (decide (σ = Ty.bool) && (u == Usage1ω.one || n.reflFold.fst == none)) = true
+    · rw [ite_eq_left_of_eq_true _ _ (eq_true hc)]
+      simp only [Option.getD]
+      split
+      · rename_i r hs
+        rw [Term.subst_eval (KLRen.Agree.id κ)
+          (USub.Agree.cons (USub.Agree.ofRen (ULRen.Agree.idL ρ)) _) (JRen.Agree.id jκ) b hs]
+        simp only [Term.eval, Comp.share?_eval c n hn κ ρ, Neu.reflFold_eval]
+      · rfl
+    · rw [ite_eq_right_of_eq_false _ _ (eq_false hc)]
 
 theorem Term.numCalls_letEOrSubst {js : JCtx ks} {σ : Ty ks} {ℓ : Nat} {o' : Lvl} (u : Usage1ω)
     (c : Comp Δ d Φ Γ σ ℓ) (b : Term Δ d Φ (⟨σ, u, d⟩ :: Γ) τ js o') :
     (Term.letEOrSubst u c b).2.numCalls ≤ c.numCalls + b.numCalls := by
-  cases u with
-  | many => simp [Term.letEOrSubst, Term.numCalls]
-  | one =>
-    simp only [Term.letEOrSubst]
-    cases c.share? with
-    | none => simp [Term.numCalls]
-    | some n =>
-      dsimp only
-      by_cases hσ : σ = .bool
-      · rw [if_pos hσ]
-        simp only [Option.getD]
-        split
-        · rename_i r hs
-          have := Term.numCalls_subst b hs
-          dsimp only; omega
-        · simp [Term.numCalls]
-      · rw [if_neg hσ]; simp [Term.numCalls]
+  simp only [Term.letEOrSubst]
+  cases c.share? with
+  | none => simp [Term.numCalls]
+  | some n =>
+    dsimp only
+    by_cases hc : (decide (σ = Ty.bool) && (u == Usage1ω.one || n.reflFold.fst == none)) = true
+    · rw [ite_eq_left_of_eq_true _ _ (eq_true hc)]
+      simp only [Option.getD]
+      split
+      · rename_i r hs
+        have := Term.numCalls_subst b hs
+        dsimp only; omega
+      · simp [Term.numCalls]
+    · rw [ite_eq_right_of_eq_false _ _ (eq_false hc)]; simp [Term.numCalls]
 
 end Jumps
 

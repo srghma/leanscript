@@ -29,6 +29,12 @@ a pure expression.
   arms are written the same way is that arm (`c ? 7 : 7` is `7`); it goes into constructors and
   the arguments of extern calls, so `c ? ⟨1, c ? 1 : 2⟩ : ⟨2, c ? 1 : 2⟩` is `c ? ⟨1, 1⟩ : ⟨2, 2⟩`
   (`Neu.condSimp_eval`: the value does not change).  The result may have another level, and is returned with it.
+* `Neu.reflFold n`: a comparison of an operand with itself (`Neu.reflLit?`, the two operands
+  written the same way, `PExpr.same`) is its literal: `x == x` and `x ≤ x` are `true`, `x < x`
+  is `false` (`Neu.reflFold_eval`), on the leaf types whose `==` is equality and whose `<`/`≤`
+  are a strict and a reflexive order (`Neu.eqView?`, `Neu.ordView?`: `Nat`, `Int`, `String`, the
+  fixed-width integers; never `Float`, where `x == x` is `false` for `NaN`).  `Neu.condSimp`
+  applies it to every call of an extern, `Term.letEOrSubst` to `let x := share n`.
 -/
 
 namespace LeanScript
@@ -346,6 +352,151 @@ theorem Neu.condIsElse_eval {τ : Ty ks} {ℓ : Nat} {o₁ o₂ : Lvl} (c : Neu 
         exact eq_of_heq ((ha'.trans (heq_of_eq hxy)).trans hb'.symm)
   · cases h
 
+/-! ## Comparisons of an operand with itself -/
+
+theorem decide_irrefl_of_eq {α : Type} {r : α → α → Prop} (irr : ∀ a, ¬ r a a) {a b : α}
+    (inst : Decidable (r a b)) (h : a = b) : @decide (r a b) inst = false := by
+  subst h; exact decide_eq_false (irr a)
+
+theorem decide_refl_of_eq {α : Type} {r : α → α → Prop} (refl : ∀ a, r a a) {a b : α}
+    (inst : Decidable (r a b)) (h : a = b) : @decide (r a b) inst = true := by
+  subst h; exact decide_eq_true (refl a)
+
+/-- The two operands of a call of a comparison extern, and the value of the call when the two
+    operands are equal: `true` for `==` and `≤`, `false` for `<`. -/
+structure Neu.ReflSplit {ℓ : Nat} (c : Neu Δ Φ Γ .bool ℓ) where
+  σ : Ty ks
+  o₁ : Lvl
+  o₂ : Lvl
+  x : PExpr Δ Φ Γ σ o₁
+  y : PExpr Δ Φ Γ σ o₂
+  val : Bool
+  eval : ∀ κ ρ, x.eval κ ρ = y.eval κ ρ → (c.eval κ ρ : Bool) = val
+
+/-- The operands of a call of `<` or `≤` of a totally ordered leaf type (`Nat`, `Int`, `String`,
+    the fixed-width integers; never `Float`). -/
+def Neu.ordView? {ℓ : Nat} : (c : Neu Δ Φ Γ .bool ℓ) → Option (Neu.ReflSplit c)
+  | .extern (.preludeExtern .lean_nat_dec_lt) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, false, fun _ _ h =>
+        decide_irrefl_of_eq (r := fun a b : Nat => a < b) Nat.lt_irrefl (Nat.decLt _ _) h⟩
+  | .extern (.preludeExtern .lean_nat_dec_le__Nat_decLe) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, true, fun _ _ h =>
+        decide_refl_of_eq (r := fun a b : Nat => a ≤ b) Nat.le_refl (Nat.decLe _ _) h⟩
+  | .extern (.intBasicExtern .lean_int_dec_lt) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, false, fun _ _ h =>
+        decide_irrefl_of_eq (r := fun a b : Int => a < b) Int.lt_irrefl (Int.decLt _ _) h⟩
+  | .extern (.intBasicExtern .lean_int_dec_le) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, true, fun _ _ h =>
+        decide_refl_of_eq (r := fun a b : Int => a ≤ b) Int.le_refl (Int.decLe _ _) h⟩
+  | .extern (.stringBasicExtern .lean_string_dec_lt) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, false, fun _ _ h =>
+        decide_irrefl_of_eq (r := fun a b : String => a < b) String.lt_irrefl (String.decidableLT _ _) h⟩
+  | .extern (.preludeExtern .lean_uint8_dec_lt) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, false, fun _ _ h =>
+        decide_irrefl_of_eq (r := fun a b : UInt8 => a < b) UInt8.lt_irrefl (UInt8.decLt _ _) h⟩
+  | .extern (.preludeExtern .lean_uint8_dec_le) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, true, fun _ _ h =>
+        decide_refl_of_eq (r := fun a b : UInt8 => a ≤ b) UInt8.le_refl (UInt8.decLe _ _) h⟩
+  | .extern (.uint16BasicExtern .lean_uint16_dec_lt) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, false, fun _ _ h =>
+        decide_irrefl_of_eq (r := fun a b : UInt16 => a < b) UInt16.lt_irrefl (UInt16.decLt _ _) h⟩
+  | .extern (.uint16BasicExtern .lean_uint16_dec_le) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, true, fun _ _ h =>
+        decide_refl_of_eq (r := fun a b : UInt16 => a ≤ b) UInt16.le_refl (UInt16.decLe _ _) h⟩
+  | .extern (.preludeExtern .lean_uint32_dec_lt) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, false, fun _ _ h =>
+        decide_irrefl_of_eq (r := fun a b : UInt32 => a < b) UInt32.lt_irrefl (UInt32.decLt _ _) h⟩
+  | .extern (.preludeExtern .lean_uint32_dec_le) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, true, fun _ _ h =>
+        decide_refl_of_eq (r := fun a b : UInt32 => a ≤ b) UInt32.le_refl (UInt32.decLe _ _) h⟩
+  | .extern (.uint64BasicExtern .lean_uint64_dec_lt) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, false, fun _ _ h =>
+        decide_irrefl_of_eq (r := fun a b : UInt64 => a < b) UInt64.lt_irrefl (UInt64.decLt _ _) h⟩
+  | .extern (.uint64BasicExtern .lean_uint64_dec_le) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, true, fun _ _ h =>
+        decide_refl_of_eq (r := fun a b : UInt64 => a ≤ b) UInt64.le_refl (UInt64.decLe _ _) h⟩
+  | .extern (.int8BasicExtern .lean_int8_dec_lt) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, false, fun _ _ h =>
+        decide_irrefl_of_eq (r := fun a b : Int8 => a < b) (fun _ => Int8.lt_irrefl) (Int8.decLt _ _) h⟩
+  | .extern (.int8BasicExtern .lean_int8_dec_le) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, true, fun _ _ h =>
+        decide_refl_of_eq (r := fun a b : Int8 => a ≤ b) Int8.le_refl (Int8.decLe _ _) h⟩
+  | .extern (.int16BasicExtern .lean_int16_dec_lt) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, false, fun _ _ h =>
+        decide_irrefl_of_eq (r := fun a b : Int16 => a < b) (fun _ => Int16.lt_irrefl) (Int16.decLt _ _) h⟩
+  | .extern (.int16BasicExtern .lean_int16_dec_le) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, true, fun _ _ h =>
+        decide_refl_of_eq (r := fun a b : Int16 => a ≤ b) Int16.le_refl (Int16.decLe _ _) h⟩
+  | .extern (.int32BasicExtern .lean_int32_dec_lt) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, false, fun _ _ h =>
+        decide_irrefl_of_eq (r := fun a b : Int32 => a < b) (fun _ => Int32.lt_irrefl) (Int32.decLt _ _) h⟩
+  | .extern (.int32BasicExtern .lean_int32_dec_le) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, true, fun _ _ h =>
+        decide_refl_of_eq (r := fun a b : Int32 => a ≤ b) Int32.le_refl (Int32.decLe _ _) h⟩
+  | .extern (.int64BasicExtern .lean_int64_dec_lt) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, false, fun _ _ h =>
+        decide_irrefl_of_eq (r := fun a b : Int64 => a < b) (fun _ => Int64.lt_irrefl) (Int64.decLt _ _) h⟩
+  | .extern (.int64BasicExtern .lean_int64_dec_le) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, true, fun _ _ h =>
+        decide_refl_of_eq (r := fun a b : Int64 => a ≤ b) Int64.le_refl (Int64.decLe _ _) h⟩
+  | .extern (.preludeExtern .lean_nat_dec_le__Nat_ble) (.cons x (.cons y .nil)) _ =>
+      some ⟨_, _, _, x, y, true, fun κ ρ h => by
+        show Nat.ble (x.eval κ ρ) (y.eval κ ρ) = true
+        rw [h]; exact Nat.ble_self_eq_true _⟩
+  | _ => none
+
+/-- The operands of a call of an equality (`Neu.eqView?`) or order (`Neu.ordView?`) extern. -/
+def Neu.reflView? {ℓ : Nat} (c : Neu Δ Φ Γ .bool ℓ) : Option (Neu.ReflSplit c) :=
+  match c.eqView? with
+  | some s => some ⟨_, _, _, s.x, s.y, true, fun κ ρ h => (s.eval κ ρ).2 h⟩
+  | none => c.ordView?
+
+/-- The value of a comparison whose two operands are written the same way (`PExpr.same`):
+    `x == x` and `x ≤ x` are `true`, `x < x` is `false`. -/
+def Neu.reflLit? {ℓ : Nat} (c : Neu Δ Φ Γ .bool ℓ) : Option Bool :=
+  match c.reflView? with
+  | some s => if s.x.same s.y then some s.val else none
+  | none => none
+
+theorem Neu.reflLit?_eval {ℓ : Nat} (c : Neu Δ Φ Γ .bool ℓ) (b : Bool) (h : c.reflLit? = some b)
+    (κ : KEnv Δ Φ) (ρ : UEnv Δ Γ) : (c.eval κ ρ : Bool) = b := by
+  unfold Neu.reflLit? at h
+  split at h
+  · rename_i s _
+    split at h
+    · rename_i hs
+      cases h
+      exact s.eval κ ρ (eq_of_heq ((PExpr.same_eval s.x s.y hs).2 κ ρ))
+    · cases h
+  · cases h
+
+/-- The type is `Bool`. -/
+def Ty.isBool? : (τ : Ty ks) → Option (PLift (τ = .bool))
+  | .prim .bool => some ⟨rfl⟩
+  | _ => none
+
+/-- A neutral expression, or the literal it is when it is a comparison of an operand with
+    itself (`Neu.reflLit?`). -/
+def Neu.reflFold {τ : Ty ks} {ℓ : Nat} (n : Neu Δ Φ Γ τ ℓ) : (o : Lvl) × PExpr Δ Φ Γ τ o :=
+  match τ.isBool? with
+  | some ⟨h⟩ => match (h ▸ n).reflLit? with
+    | some b => ⟨none, h ▸ .lit .bool b⟩
+    | none => ⟨_, .neu n⟩
+  | none => ⟨_, .neu n⟩
+
+theorem Neu.reflFold_eval {τ : Ty ks} {ℓ : Nat} (n : Neu Δ Φ Γ τ ℓ) (κ : KEnv Δ Φ)
+    (ρ : UEnv Δ Γ) : n.reflFold.2.eval κ ρ = n.eval κ ρ := by
+  unfold Neu.reflFold
+  cases hb : τ.isBool? with
+  | none => rfl
+  | some p =>
+    obtain ⟨h⟩ := p
+    subst h
+    dsimp only
+    cases hr : n.reflLit? with
+    | none => rfl
+    | some b => exact (Neu.reflLit?_eval n b hr κ ρ).symm
+
 /-- `c ? a : b` (`Neu.mkCond`), or `a` when both arms are written the same way
     (`PExpr.same`: `c ? 7 : 7` is `7`, `c ? x : x` is `x`), or `b` when `c` tests the equality
     of the two arms (`Neu.condIsElse`: `x == k ? k : x` is `x`). -/
@@ -393,7 +544,7 @@ def Neu.condSimp : {τ : Ty ks} → {ℓ : Nat} → List (BoolFact Γ) → Neu �
         | none => ⟨_, .neu (.cond c a b)⟩
   | _, _, _, .data_out b j e => ⟨_, .neu (.data_out b j e)⟩
   | _, _, facts, .extern e args h =>
-      ⟨_, .neu (Neu.mkExtern e args h (Args.condSimp facts args)).2⟩
+      (Neu.mkExtern e args h (Args.condSimp facts args)).2.reflFold
 /-- `Neu.condSimp` of a pure expression, inside its constructors too. -/
 def PExpr.condSimp : {τ : Ty ks} → {o : Lvl} → List (BoolFact Γ) → PExpr Δ Φ Γ τ o →
     (o' : Lvl) × PExpr Δ Φ Γ τ o'
@@ -458,7 +609,8 @@ theorem Neu.condSimp_eval : {τ : Ty ks} → {ℓ : Nat} → (facts : List (Bool
           exact Neu.eval_cond_ite c a b κ ρ
   | _, _, _, .data_out _ _ _, _, _, _ => rfl
   | _, _, facts, .extern e args h, κ, ρ, hf => by
-      simp only [Neu.condSimp, PExpr.eval]
+      simp only [Neu.condSimp]
+      rw [Neu.reflFold_eval]
       exact Neu.mkExtern_eval e args h _ κ ρ (Args.condSimp_eval facts args κ ρ hf)
   termination_by structural _ _ _ n => n
 theorem PExpr.condSimp_eval : {τ : Ty ks} → {o : Lvl} → (facts : List (BoolFact Γ)) →

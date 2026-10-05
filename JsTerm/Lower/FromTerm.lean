@@ -414,6 +414,11 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
       return (JsExpr.condShift? ce ae be).getD (.cond ce ae be)
     | ⟨_, e'⟩ => cPExpr e' n C M
   | Neu.extern (σs := σs) (τ := τ) e args h => do
+    -- a comparison of an operand with itself (`c === c`, `c < c`) is its literal
+    -- (`Neu.reflFold`): the optimiser folds it too, but only where this leaves the level of an
+    -- open body unchanged
+    let r := (Neu.extern e args h).reflFold
+    if r.2.boolLit?.isSome then return ← cPExpr r.2 n C M
     let nm := externName e
     -- `l ++ l'` on cons cells: the whole chain of appends, built from its end (`cConsAppend`)
     if nm == "lean_list_append" && (lowerTy cfg τ).isConsList then
@@ -434,6 +439,8 @@ partial def cNeu {Φ : KCtx ks} {Γ : UCtx ks} {τ : Ty ks} {ℓ : Nat}
     if let some r' := r.narrowCmp? then return r'
     -- `b < a` of two parameters is `a > b` (`JsTerm.Lower.OrdCmp`)
     if let some r' := r.ordFlip? n.params then return r'
+    -- `"a" === c` is `c === "a"` (`JsTerm.Lower.OrdCmp`)
+    if let some r' := r.eqFlip? n.params then return r'
     -- a shift of `UInt64` by a literal count without the mask of its count (`JsTerm.Lower.Shift`)
     if let some r' := r.litShift? then return r'
     -- an update of an array nothing else refers to is done in place; `set!` and

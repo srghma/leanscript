@@ -3768,6 +3768,58 @@ def primOpChar01Spec : Spec := describe "PrimOpChar01" do
         assertEq s!"{file}-{preset}: number of checks" true
           ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
 
+def primOpChar02Spec : Spec := describe "PrimOpChar02" do
+  it "charValues and its folded tests are legacy's lines; comparisons of c with itself are literals (needs node and leanscript)"
+      (timeoutMs? := some 120000) do
+    let bin : System.FilePath := ".lake/build/bin/leanscript"
+    let built : Bool ← (bin.pathExists : IO Bool)
+    if !built then return  -- `lake build leanscript` first
+    let node ← try
+        some <$> IO.Process.output { cmd := "node", args := #["--version"] }
+      catch _ => pure none
+    if node.isNone then return  -- no `node`: nothing to run
+    let dir := s!"{← IO.currentDir}/.lake/build/primopchar02"
+    IO.FS.createDirAll dir
+    -- every line `const testN = …;` of the legacy output is a line of ours, after `export `
+    let legacy ← IO.FS.readFile "Tests/SnapshotsPBOPure/legacy-backend/PrimOpChar02.js"
+    let legacyFns := (legacy.splitOn "\n").filter (fun (l : String) => l.startsWith "const test")
+    assertEq "legacy: six tests" 6 legacyFns.length
+    -- (directory, file, fragments, fragments that must not appear, checks)
+    for (path, file, frags, absent, nChecks) in [
+        ("Tests/SnapshotsPBOPure", "PrimOpChar02",
+          "export const charValues = (op) => [op(\"a\", \"a\"), op(\"a\", \"b\"), op(\"b\", \"a\")];" ::
+            legacyFns.map ("export " ++ ·), [], (6 : Nat)),
+        ("Tests/SnapshotsMy", "CharCmpSelf",
+          ["export const v1 = (c) => [c === \"a\", c === \"a\", true];",
+           "export const v2 = (c) => [c !== \"a\", c !== \"a\", false];",
+           "export const v3 = (c) => [c < \"a\", c > \"a\", false];",
+           "export const v4 = (c) => [c > \"a\", c < \"a\", false];",
+           "export const v5 = (c) => [c <= \"a\", c >= \"a\", true];",
+           "export const v6 = (c) => [c >= \"a\", c <= \"a\", true];",
+           "export const selfNat = (n) => [true, false, true, false];",
+           "export const selfInt = (i) => [true, false, true, false, true];",
+           "export const selfUInt8 = (x) => [true, false, true];",
+           "export const selfInt32 = (x) => [true, false, true];",
+           -- `x == x` is `false` for `NaN`: not folded on floats
+           "export const selfFloat = (x) => [x === x, x < x, x <= x];",
+           "export const astral = [false, true];"],
+          ["\"a\" === c", "\"a\" !== c", "c === c", "c < c"], 125)] do
+      let args := #["--quiet", "--check", s!"--out-dir={dir}", s!"{path}/{file}.lean"]
+      let out ← IO.Process.output { cmd := bin.toString, args }
+      assertEq s!"{file}: leanscript exit code" 0 out.exitCode
+      for preset in ["pbo", "faithful"] do
+        let js ← IO.FS.readFile s!"{dir}/{file}-{preset}.js"
+        assertEq s!"{file}-{preset}: every function translated" false
+          ((js.splitOn "not translated").length > 1)
+        for frag in frags do
+          assertEq s!"{file}-{preset}: `{frag}`" true ((js.splitOn frag).length > 1)
+        for frag in absent do
+          assertEq s!"{file}-{preset}: no `{frag}`" false ((js.splitOn frag).length > 1)
+        let run ← IO.Process.output { cmd := "node", args := #[s!"{dir}/{file}-{preset}.check.mjs"] }
+        assertEq s!"{file}-{preset}: the checks" "" (if run.exitCode == 0 then "" else run.stdout ++ run.stderr)
+        assertEq s!"{file}-{preset}: number of checks" true
+          ((run.stdout.splitOn s!"{nChecks} passed, 0 failed").length > 1)
+
 def spec : Spec := do
   tcoSpec
   whileSpec
@@ -3826,6 +3878,7 @@ def spec : Spec := do
   primOpBoolean02Spec
   primOpBooleanNotRegressionSpec
   primOpChar01Spec
+  primOpChar02Spec
   wfTermSpec
 
 public def main (args : List String) : IO UInt32 :=

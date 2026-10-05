@@ -179,6 +179,30 @@ def JsExpr.ordFlip? {C M : List JsTy} {τ : JsTy} (e : JsExpr S C M τ) (params 
     if x.swapOperands params y then some (.boolCmp op.flip y x) else none
   | _, _ => none
 
+/-- Is the inlined operation `x === y` or `x !== y` of its two arguments in order? -/
+def JsOpInlinable.isEqCmp {e : Effectfulness} {t : MayThrow} {σs : List JsTy} {τ : JsTy}
+    (op : JsOpInlinable e t σs τ) : Bool :=
+  match op.template with
+  | .bin "===" (.arg 0) (.arg 1) => true
+  | .bin "!==" (.arg 0) (.arg 1) => true
+  | _ => false
+
+/-- An equality `x === y` (or `x !== y`) whose operands read better the other way round
+    (`JsExpr.swapOperands`: `"a" === c` is `c === "a"`), so written.  `===` is symmetric for
+    every pair of values (`NaN` included), and reading a literal or a constant has no effect, so
+    the order the operands are computed in does not matter.  The operation stays the same
+    inlined operation, so the rewrites that recognise it later still do. -/
+def JsExpr.eqFlip? {C M : List JsTy} {τ : JsTy} (params : List Nat) :
+    JsExpr S C M τ → Option (JsExpr S C M τ)
+  | .inlined (σs := [σ, σ']) op (.cons x (.cons y .nil)) =>
+    if h : σ' = σ then
+      match σ', h, op, y with
+      | _, rfl, op, y =>
+        if op.isEqCmp && x.swapOperands params y then some (.inlined op (.cons y (.cons x .nil)))
+        else none
+    else none
+  | _ => none
+
 /-- The negation `!(x op y)` of a comparison of a totally ordered type, as the opposite
     comparison `x op.neg y` (then with its operands swapped if they read better so). -/
 def JsExpr.negOrdCmp? {C M : List JsTy} (params : List Nat) (e : JsExpr S C M (.terminal .bool)) :

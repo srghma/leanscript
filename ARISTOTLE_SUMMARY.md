@@ -1,3 +1,43 @@
+# Summary of changes for run 6e3fa792-452c-4f5c-8c77-2fd95cb353c2
+The JavaScript for `Tests/SnapshotsPBOPure/PrimOpChar02.lean` was already on par with `legacy-backend/PrimOpChar02.js` or better before I changed anything, at both presets:
+- `test1` … `test6` are legacy's lines with `export` in front. The `Term` optimiser inlines `charValues` and folds each test to an array literal.
+- `charValues` is `(op) => [op("a", "a"), op("a", "b"), op("b", "a")]`: one call with two arguments per element, where legacy makes two curried calls (`op("a")("a")`).
+- All 6 checks against Lean pass at each preset. There are no loops or recursion in this file, so labelled blocks and loops didn't come into it.
+
+The full write-up is in `Tests/SnapshotsPBOPure/PrimOpChar02.md`.
+
+Because the file folds to constants, I tried variations in a new snapshot, `Tests/SnapshotsMy/CharCmpSelf.lean`, mainly `charValues` applied to an unknown character `c`. That turned up two problems, which I fixed in your order of phases:
+
+| | before | now |
+|---|---|---|
+| `==` | `[c === "a", "a" === c, c === c]` | `[c === "a", c === "a", true]` |
+| `<` | `[c < "a", c > "a", c < c]` | `[c < "a", c > "a", false]` |
+| `selfNat`, `selfInt`, `selfUInt8`, … | `[n === n, n < n, …]` | `[true, false, …]` |
+
+**`Term → Term`** (`LeanScript/Term/Optimize/KnownCond.lean`, `KnownTest.lean`):
+- `Neu.reflFold` turns a comparison whose two operands are written the same way into its literal: `x == x` and `x ≤ x` become `true`, `x < x` becomes `false`.
+- It covers `Char`/`String`, `Nat`, `Int` and the fixed-width integers, but never `Float`, where `x == x` is false for `NaN`.
+- It runs in `Neu.condSimp` and in `Term.letEOrSubst`, where it also replaces `let x := share …`.
+- `Neu.reflFold_eval` proves it keeps `Term.eval`, and `Term.optimizeN_eval` and `Term.numCalls_optimizeN` still build. They have no `sorry` and use only the standard axioms.
+
+**`Term → JsTerm`** (`JsTerm/Lower/FromTerm.lean`, `JsTerm/Lower/OrdCmp.lean`):
+- **Fallback for the same fold.** In a function of several parameters the `Term` optimiser can't fold these comparisons, because that would change the level of an open body. The conversion folds them there; this step isn't proved, and the node checks back it up.
+- **Literal on the right.** `JsExpr.eqFlip?` writes `"a" === c` as `c === "a"`, and the same for `!==`. It uses the same rule the order comparisons already used. Doing this in `Term` would have needed a separate level proof for each equality extern.
+
+**`JsTerm → JsTerm`:** nothing was needed.
+
+**Tests:**
+- `CharCmpSelf` passes 125/125 checks at each preset.
+- New `Tests/TermTests/Optimize/ReflCmpTest.lean` checks the optimised `Term`s and the value of a several-parameter case.
+- New `primOpChar02Spec` in `Tests/Main.lean` checks the legacy lines, the `CharCmpSelf` fragments and absences, and runs the node checks.
+- I regenerated every snapshot; no other output changed and no check fails.
+- `tests --timeout 180` passes 150/150.
+- `leanscript`, `tests`, `TermTests`, `TyTests`, `JsTerm`, `JsSpec` and `LanguageJavascriptMini` build.
+
+**Not done:** `Char.toNat`, `isDigit`, `isAlpha`, `toUpper`, `isUpper` and `isAlphanum` are still not translated. They need the character's code point, which no extern in the language provides yet; it would be `c.codePointAt(0)`. I added this to `NOT_IMPLEMENTED.md`.
+
+`Neu.reflFold_eval` is registered as proved in the properties table. Everything is committed.
+
 # Summary of changes for run 1b6f9a3f-7b71-4e16-8aa9-f1b2049c78f8
 The JavaScript for `Tests/SnapshotsPBOPure/PrimOpChar01.lean` now matches `legacy-backend/PrimOpChar01.js` line for line (with `export` in front), at both presets. All 96 checks against Lean pass at each preset. The full write-up is in `Tests/SnapshotsPBOPure/PrimOpChar01.md`.
 
